@@ -62,8 +62,34 @@ impl Timer {
         })
     }
 
+    /// Restore a timer from stored fields. No checks: a shrunk phase may legitimately have a total of 0.
+    pub fn from_parts(
+        start_ms: i64,
+        total_ms: i64,
+        pause_buffer_ms: i64,
+        pause_ts: Option<i64>,
+    ) -> Self {
+        Self {
+            start: start_ms,
+            total: total_ms,
+            pause_buffer: pause_buffer_ms,
+            pause_ts,
+        }
+    }
+
     pub fn start(&self) -> i64 {
         self.start
+    }
+
+    /// When the timer was paused, if it is paused.
+    pub fn pause_ts(&self) -> Option<i64> {
+        self.pause_ts
+    }
+
+    /// The instant the phase reaches (or reached) its total, assuming it keeps running from now: the
+    /// start plus the total plus everything spent paused. Meaningful for a running timer.
+    pub fn end_instant(&self) -> i64 {
+        self.start + self.total + self.pause_buffer
     }
 
     pub fn total(&self) -> i64 {
@@ -148,6 +174,21 @@ mod tests {
 
     fn timer(total_min: i64, clock: &FakeClock) -> Timer {
         Timer::new(clock.now_ms(), total_min * MIN).expect("valid timer")
+    }
+
+    #[test]
+    fn parts_round_trip_and_end_instant() {
+        let t = Timer::from_parts(1_000, 5 * MIN, 2 * MIN, Some(9_000));
+        assert_eq!(
+            (t.start(), t.total(), t.pause_buffer(), t.pause_ts()),
+            (1_000, 5 * MIN, 2 * MIN, Some(9_000))
+        );
+        assert_eq!(t.end_instant(), 1_000 + 7 * MIN);
+        assert_eq!(
+            Timer::from_parts(0, 0, 0, None).total(),
+            0,
+            "a total of 0 is allowed when restoring"
+        );
     }
 
     #[test]

@@ -13,7 +13,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: [&str; 2] = [
+const MIGRATIONS: [&str; 3] = [
     r#"
     CREATE TABLE users (
         id            TEXT PRIMARY KEY,
@@ -81,6 +81,14 @@ const MIGRATIONS: [&str; 2] = [
         failures     INTEGER NOT NULL,
         locked_until INTEGER NOT NULL,
         updated_at   INTEGER NOT NULL
+    ) WITHOUT ROWID;
+"#,
+    r#"
+    -- Command ids already processed, so a retried or replayed command does nothing the second time.
+    CREATE TABLE commands_seen (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        id      TEXT NOT NULL,
+        PRIMARY KEY (user_id, id)
     ) WITHOUT ROWID;
 "#,
 ];
@@ -431,23 +439,45 @@ impl Db {
     /// safe. Other users' logs are never consulted.
     pub fn apply_event(&mut self, user: &str, event: &EventRecord) -> Result<Applied> {
         let tx = self.conn.transaction()?;
-        let inserted = tx.execute(
-            "INSERT OR IGNORE INTO events (user_id, id, entity, op, key, payload) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![
-                user,
-                event.id,
-                event.entity.code(),
-                event.op.code(),
-                event.key,
-                serde_json::to_string(&event.payload)?
-            ],
-        )?;
-        if inserted == 0 {
-            return Ok(Applied::Duplicate);
+        let applied = insert_and_project(&tx, user, event)?;
+        if applied != Applied::Duplicate {
+            tx.commit()?;
         }
-        let applied = project(&tx, user, event)?;
-        tx.commit()?;
         Ok(applied)
+    }
+
+    /// Has this command id already been processed for this user?
+    pub fn command_seen(&self, user: &str, command_id: &str) -> Result<bool> {
+        let n: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM commands_seen WHERE user_id = ?1 AND id = ?2",
+            params![user, command_id],
+            |r| r.get(0),
+        )?;
+        Ok(n > 0)
+    }
+
+    /// Apply the events a command produced as one unit: all of them or none, and only if this command id has
+    /// not been processed before. Answers `None` for a command seen already (nothing is written).
+    pub fn apply_command(
+        &mut self,
+        user: &str,
+        command_id: &str,
+        events: &[EventRecord],
+    ) -> Result<Option<Vec<Applied>>> {
+        let tx = self.conn.transaction()?;
+        let fresh = tx.execute(
+            "INSERT OR IGNORE INTO commands_seen (user_id, id) VALUES (?1, ?2)",
+            params![user, command_id],
+        )?;
+        if fresh == 0 {
+            return Ok(None);
+        }
+        let results = events
+            .iter()
+            .map(|e| insert_and_project(&tx, user, e))
+            .collect::<Result<Vec<_>>>()?;
+        tx.commit()?;
+        Ok(Some(results))
     }
 
     /// Throw every projection away and rebuild it from the logs. Same result as applying events as they arrived.
@@ -652,6 +682,25 @@ fn save_row(tx: &Transaction<'_>, user: &str, entity: Entity, key: &str, row: &R
     Ok(())
 }
 
+/// Log `event` and project it. A repeated event id writes nothing and answers `Duplicate`.
+fn insert_and_project(tx: &Transaction<'_>, user: &str, event: &EventRecord) -> Result<Applied> {
+    let inserted = tx.execute(
+        "INSERT OR IGNORE INTO events (user_id, id, entity, op, key, payload) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            user,
+            event.id,
+            event.entity.code(),
+            event.op.code(),
+            event.key,
+            serde_json::to_string(&event.payload)?
+        ],
+    )?;
+    if inserted == 0 {
+        return Ok(Applied::Duplicate);
+    }
+    project(tx, user, event)
+}
+
 /// Apply one logged event to its row, remember it if it has to wait for its add, and replay waiting events
 /// after an add.
 fn project(tx: &Transaction<'_>, user: &str, event: &EventRecord) -> Result<Applied> {
@@ -762,7 +811,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("version");
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
         let mode: String = db
             .conn
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -785,7 +834,7 @@ mod tests {
             Db::open(&path),
             Err(DbError::FutureSchema {
                 found: 99,
-                supported: 2
+                supported: 3
             })
         ));
     }
@@ -891,6 +940,39 @@ mod tests {
             Applied::Duplicate
         );
         assert_eq!(count(&db, "events", ALICE), 1);
+    }
+
+    #[test]
+    fn a_command_is_applied_once_and_as_a_unit() {
+        let mut db = db();
+        let events = [
+            ev(
+                "1",
+                Entity::Timer,
+                Op::Add,
+                "current",
+                json!({"state": "session"}),
+            ),
+            session("2", Op::Add, "s1", json!({"started_at": 5})),
+        ];
+        let first = db.apply_command(ALICE, "cmd-1", &events).expect("apply");
+        assert_eq!(first, Some(vec![Applied::Added, Applied::Added]));
+
+        // The same command again writes nothing, even if its events differ.
+        let other = [session("3", Op::Add, "s2", json!({"started_at": 6}))];
+        assert_eq!(
+            db.apply_command(ALICE, "cmd-1", &other).expect("again"),
+            None
+        );
+        assert_eq!(db.row(ALICE, Entity::Session, "s2").expect("row"), None);
+        assert_eq!(count(&db, "events", ALICE), 2);
+
+        // Another user's identical command id is independent.
+        assert!(
+            db.apply_command(BOB, "cmd-1", &other)
+                .expect("bob")
+                .is_some()
+        );
     }
 
     #[test]

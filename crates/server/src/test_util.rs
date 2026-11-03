@@ -69,7 +69,8 @@ impl TestApp {
             Accounts::new(Hasher::cheap()),
             config,
             clock.clone(),
-        );
+        )
+        .expect("state");
         Self {
             state,
             clock,

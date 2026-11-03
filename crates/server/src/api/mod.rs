@@ -11,9 +11,10 @@ use crate::security::{client_address, peer_ip};
 use crate::state::Shared;
 
 pub mod auth;
+pub mod data;
 
 pub fn router() -> Router<Shared> {
-    auth::router()
+    auth::router().merge(data::router())
 }
 
 /// JSON body that answers with the API's own error shape when it does not parse.

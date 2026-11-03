@@ -9,9 +9,12 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod security;
+pub mod settings;
 pub mod state;
 #[cfg(test)]
 mod test_util;
+pub mod timer_service;
+pub mod validate;
 
 use state::Shared;
 
