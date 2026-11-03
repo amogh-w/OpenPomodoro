@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t, tn } from "./lib/i18n";
+  import { startAlerts } from "./lib/alerts.svelte";
   import { app, currentView } from "./lib/appState.svelte";
   import { formatElapsed, formatRemaining, minutesLeft } from "./lib/format";
   import { phaseClass } from "./lib/timerView";
   import { prefs } from "./platform/prefs.svelte";
+  import { installAudioUnlock } from "./platform/audio";
   import { setBadge } from "./platform/badge";
   import { holdAwake, releaseAwake } from "./platform/wakeLock";
   import { router } from "./lib/router.svelte";
@@ -18,6 +20,12 @@
   import Timer from "./screens/Timer.svelte";
 
   onMount(bootstrap);
+
+  // Sounds and notifications for the phases (only the leader tab acts), once the first tap has unlocked audio.
+  onMount(() => {
+    installAudioUnlock();
+    return startAlerts();
+  });
 
   const view = $derived(currentView());
   const tint = $derived(view ? phaseClass(view.state) : "");

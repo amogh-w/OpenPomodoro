@@ -3,6 +3,7 @@
   import { t, type MessageKey } from "../lib/i18n";
   import { accents, flavors, radii, setTheme, syncThemeButtons } from "../lib/theme";
   import AccountSection from "../lib/AccountSection.svelte";
+  import AlertSettings from "../lib/AlertSettings.svelte";
   import TimerSettings from "../lib/TimerSettings.svelte";
   import { install, promptInstall } from "../platform/install.svelte";
 
@@ -54,6 +55,8 @@
 </section>
 
 <TimerSettings />
+
+<AlertSettings />
 
 <section class="card mt-4 grid gap-3 p-4" aria-labelledby="app">
   <h2 id="app" class="t-title3">{t("settings.app")}</h2>
