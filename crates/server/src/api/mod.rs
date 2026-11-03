@@ -28,7 +28,17 @@ impl<T: DeserializeOwned> FromRequest<Shared> for ApiJson<T> {
         axum::Json::<T>::from_request(req, state)
             .await
             .map(|axum::Json(value)| ApiJson(value))
-            .map_err(|_| ApiError::bad_request("invalid_json"))
+            .map_err(|rejection| {
+                // A body over the limit is "too large", not "not JSON".
+                if rejection.status() == axum::http::StatusCode::PAYLOAD_TOO_LARGE {
+                    ApiError::new(
+                        axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+                        "payload_too_large",
+                    )
+                } else {
+                    ApiError::bad_request("invalid_json")
+                }
+            })
     }
 }
 

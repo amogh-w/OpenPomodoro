@@ -24,6 +24,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/signout", post(sign_out))
         .route("/api/me", get(me).delete(delete_me))
         .route("/api/me/password", post(change_password))
+        .route("/api/me/wipe", post(wipe_me))
+        .route("/api/admin/backup", get(admin_backup))
         .route("/api/admin/users", get(list_users).post(create_user))
         .route("/api/admin/users/{id}/password", post(set_user_password))
         .route("/api/admin/users/{id}/disabled", post(set_user_disabled))
@@ -215,7 +217,58 @@ async fn delete_me(
     Ok(signed_out(&state.config, StatusCode::NO_CONTENT))
 }
 
+/// Delete all of the signed-in user's recorded data (sessions, categories, settings, timer) but keep the account.
+async fn wipe_me(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    ApiJson(body): ApiJson<PasswordOnly>,
+) -> Result<StatusCode, ApiError> {
+    let user = auth.user.id.clone();
+    blocking(&state, move |s| {
+        s.accounts.wipe_data(&s.db(), &auth.user, &body.password)
+    })
+    .await??;
+    state.hub.publish(&user, crate::hub::CHANGED);
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // ---- admin ----
+
+/// A consistent copy of the whole database file, for the admin. It holds every account's data and the password
+/// hashes, so it is for the admin only and should be kept as safely as the server itself.
+async fn admin_backup(
+    State(state): State<Shared>,
+    AdminUser(_): AdminUser,
+) -> Result<Response, ApiError> {
+    let now = state.now_ms();
+    let bytes = blocking(&state, move |s| -> Result<Vec<u8>, ApiError> {
+        let path = std::env::temp_dir().join(format!("op-backup-{}.db", uuid::Uuid::new_v4()));
+        let made = s.db().backup_to(&path);
+        let bytes = made
+            .map_err(ApiError::from)
+            .and_then(|()| std::fs::read(&path).map_err(ApiError::internal));
+        let _ = std::fs::remove_file(&path);
+        bytes
+    })
+    .await??;
+    let day: String = op_core::ids::format_ts(now.div_euclid(1000))
+        .chars()
+        .take(8)
+        .collect();
+    let mut res = bytes.into_response();
+    let headers = res.headers_mut();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/vnd.sqlite3"),
+    );
+    if let Ok(v) = HeaderValue::from_str(&format!(
+        "attachment; filename=\"openpomodoro-backup-{day}.db\""
+    )) {
+        headers.insert(header::CONTENT_DISPOSITION, v);
+    }
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    Ok(res)
+}
 
 async fn list_users(
     State(state): State<Shared>,

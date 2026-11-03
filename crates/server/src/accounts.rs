@@ -416,6 +416,14 @@ impl Accounts {
         Ok(())
     }
 
+    /// Delete everything the user has recorded, but keep the account. Needs the password.
+    pub fn wipe_data(&self, db: &Db, user: &User, password: &str) -> Result<()> {
+        if !self.hasher.verify(&user.password_hash, password) {
+            return Err(AccountError::InvalidCredentials);
+        }
+        Ok(db.wipe_user_data(&user.id)?)
+    }
+
     // ---- admin ----
 
     pub fn list_users(&self, db: &Db, admin: &User) -> Result<Vec<User>> {

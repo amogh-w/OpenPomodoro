@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use axum::{
     Json, Router,
-    extract::{Query, State},
+    extract::{DefaultBodyLimit, Query, State},
     http::{HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{ApiJson, AuthUser};
+use crate::backup::{self, BackupError};
 use crate::error::ApiError;
 use crate::export;
 use crate::hub::CHANGED;
@@ -36,7 +37,15 @@ pub fn router() -> Router<Shared> {
         .route("/api/history", get(get_history))
         .route("/api/summary", get(get_summary))
         .route("/api/export", get(get_export))
+        // A backup can be far bigger than an ordinary request, so this one route takes a larger body.
+        .route(
+            "/api/me/import",
+            post(post_import).layer(DefaultBodyLimit::max(IMPORT_MAX_BYTES)),
+        )
 }
+
+/// Largest backup file accepted (32 MiB).
+const IMPORT_MAX_BYTES: usize = 32 * 1024 * 1024;
 
 fn row_json(key: &str, row: &Row) -> Value {
     let mut map = row.data.clone();
@@ -192,6 +201,29 @@ async fn get_history(
     Ok(Json(
         json!({ "sessions": sessions, "truncated": truncated }),
     ))
+}
+
+/// Restore a JSON backup into the signed-in account. Idempotent: restoring the same file again changes nothing.
+async fn post_import(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    ApiJson(file): ApiJson<Value>,
+) -> Result<Json<Value>, ApiError> {
+    let now = state.now_ms();
+    let plan = {
+        let mut ids = state.ids();
+        backup::plan(&file, &mut ids, now)
+    }
+    .map_err(|e| match e {
+        BackupError::NotABackup => ApiError::bad_request("bad_backup"),
+        BackupError::TooLarge => ApiError::new(StatusCode::PAYLOAD_TOO_LARGE, "backup_too_large"),
+    })?;
+    state.db().apply_batch(&auth.user.id, &plan.events)?;
+    state.hub.publish(&auth.user.id, CHANGED);
+    Ok(Json(json!({
+        "imported": { "categories": plan.categories, "sessions": plan.sessions, "settings": plan.settings },
+        "skipped": plan.skipped,
+    })))
 }
 
 #[derive(Deserialize)]
@@ -1005,5 +1037,274 @@ mod tests {
                 "{format} must not have Alice's"
             );
         }
+    }
+
+    // ---- restore, wipe and backup ----
+
+    /// A backup file as the JSON export makes it.
+    async fn export_json(app: &TestApp, who: &Client) -> Value {
+        app.get("/api/export?format=json")
+            .cookie(&who.cookie)
+            .send()
+            .await
+            .json()
+    }
+
+    async fn import(app: &TestApp, who: &Client, file: Value) -> Res {
+        app.post("/api/me/import", Some(file))
+            .cookie(&who.cookie)
+            .send()
+            .await
+    }
+
+    fn sessions_of(backup: &Value) -> Vec<(i64, Value, Value)> {
+        let mut list: Vec<_> = backup["sessions"]
+            .as_array()
+            .expect("sessions")
+            .iter()
+            .map(|s| {
+                (
+                    s["started_at"].as_i64().expect("start"),
+                    s["intention"].clone(),
+                    s["notes"].clone(),
+                )
+            })
+            .collect();
+        list.sort_by_key(|x| x.0);
+        list
+    }
+
+    #[tokio::test]
+    async fn import_needs_a_session_and_a_real_backup() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        let anon = app
+            .post(
+                "/api/me/import",
+                Some(json!({"app": "openpomodoro", "version": 1})),
+            )
+            .send()
+            .await;
+        assert_eq!(anon.status, StatusCode::UNAUTHORIZED);
+        for bad in [
+            json!({}),
+            json!({"app": "other", "version": 1}),
+            json!({"app": "openpomodoro", "version": 9}),
+            json!([1, 2]),
+        ] {
+            let res = import(&app, &me, bad.clone()).await;
+            assert_eq!(
+                (res.status, res.json()["error"].clone()),
+                (StatusCode::BAD_REQUEST, json!("bad_backup")),
+                "{bad}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_backup_restores_into_another_account_with_the_same_content() {
+        let app = TestApp::new();
+        let boss = admin(&app).await;
+        let mut alice = user(&app, &boss, "alice").await;
+        let bob = user(&app, &boss, "bob").await;
+
+        let cat = alice.id(&app);
+        let ev = json!([{"id": alice.id(&app), "entity": "category", "op": "add", "key": cat, "payload": {"name": "Writing", "color": "peach"}}]);
+        alice.events(&app, ev).await;
+        work(&app, &mut alice, &["write", "read"]).await;
+        let backup = export_json(&app, &alice).await;
+
+        let res = import(&app, &bob, backup.clone()).await;
+        assert_eq!(res.status, StatusCode::OK, "{}", res.text);
+        assert_eq!(
+            res.json()["imported"],
+            json!({"categories": 1, "sessions": 2, "settings": 9})
+        );
+        assert_eq!(res.json()["skipped"], 0);
+
+        let restored = export_json(&app, &bob).await;
+        assert_eq!(sessions_of(&restored), sessions_of(&backup));
+        assert_eq!(restored["categories"][0]["name"], "Writing");
+        assert_eq!(restored["settings"], backup["settings"]);
+        assert_eq!(
+            bob.state(&app).await["timer"]["state"],
+            "idle",
+            "restoring never touches the running timer"
+        );
+        assert_eq!(
+            sessions_of(&export_json(&app, &alice).await),
+            sessions_of(&backup),
+            "the source is unchanged"
+        );
+    }
+
+    #[tokio::test]
+    async fn restoring_the_same_file_twice_changes_nothing() {
+        let app = TestApp::new();
+        let boss = admin(&app).await;
+        let mut alice = user(&app, &boss, "alice").await;
+        let bob = user(&app, &boss, "bob").await;
+        work(&app, &mut alice, &["one", "two", "three"]).await;
+        let backup = export_json(&app, &alice).await;
+
+        import(&app, &bob, backup.clone()).await;
+        let once = export_json(&app, &bob).await;
+        import(&app, &bob, backup.clone()).await;
+        import(&app, &bob, backup).await;
+        let thrice = export_json(&app, &bob).await;
+        assert_eq!(
+            thrice["sessions"].as_array().map(Vec::len),
+            Some(3),
+            "no duplicates"
+        );
+        assert_eq!(sessions_of(&once), sessions_of(&thrice));
+    }
+
+    #[tokio::test]
+    async fn bad_items_in_a_backup_are_skipped_and_reported_without_losing_the_rest() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        let file = json!({
+            "app": "openpomodoro", "version": 1,
+            "sessions": [
+                {"id": "ok", "kind": "focus", "started_at": 1000, "ended_at": 2000, "intention": "kept"},
+                {"id": "bad-kind", "kind": "nap", "started_at": 1000, "ended_at": 2000},
+                {"id": "bad-time", "kind": "focus", "started_at": -5, "ended_at": 2000},
+            ],
+        });
+        let res = import(&app, &me, file).await;
+        assert_eq!(res.json()["imported"]["sessions"], 1);
+        assert_eq!(res.json()["skipped"], 2);
+        assert_eq!(sessions_of(&export_json(&app, &me).await).len(), 1);
+    }
+
+    #[tokio::test]
+    async fn only_the_import_route_accepts_a_large_body() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        // ~1.8 MB of backup: over the usual 1 MB limit, fine for a restore.
+        let notes = "n".repeat(3000);
+        let sessions: Vec<Value> = (0..600)
+            .map(|i| json!({"id": format!("s{i}"), "kind": "focus", "started_at": 1000 + i, "ended_at": 2000 + i, "notes": notes}))
+            .collect();
+        let file = json!({"app": "openpomodoro", "version": 1, "sessions": sessions});
+        assert!(file.to_string().len() > 1_500_000);
+        let res = import(&app, &me, file).await;
+        assert_eq!(
+            (res.status, res.json()["imported"]["sessions"].clone()),
+            (StatusCode::OK, json!(600))
+        );
+
+        // Every other route still has the small limit.
+        let big = json!({"events": [{"id": "x", "entity": "session", "op": "add", "key": "k", "payload": {"notes": "n".repeat(1_500_000)}}]});
+        let refused = app
+            .post("/api/events", Some(big))
+            .cookie(&me.cookie)
+            .send()
+            .await;
+        assert_eq!(
+            (refused.status, refused.json()["error"].clone()),
+            (StatusCode::PAYLOAD_TOO_LARGE, json!("payload_too_large"))
+        );
+    }
+
+    #[tokio::test]
+    async fn wiping_removes_my_data_but_keeps_my_account_and_everyone_elses() {
+        let app = TestApp::new();
+        let boss = admin(&app).await;
+        let mut alice = user(&app, &boss, "alice").await;
+        let mut bob = user(&app, &boss, "bob").await;
+        work(&app, &mut alice, &["alice work"]).await;
+        work(&app, &mut bob, &["bob work"]).await;
+
+        let wrong = app
+            .post("/api/me/wipe", Some(json!({"password": "not my password"})))
+            .cookie(&alice.cookie)
+            .send()
+            .await;
+        assert_eq!(wrong.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            sessions_of(&export_json(&app, &alice).await).len(),
+            1,
+            "a wrong password wipes nothing"
+        );
+
+        let unsafe_post = app
+            .post("/api/me/wipe", Some(json!({"password": PW})))
+            .cookie(&alice.cookie)
+            .without_csrf()
+            .send()
+            .await;
+        assert_eq!(unsafe_post.status, StatusCode::FORBIDDEN);
+
+        let ok = app
+            .post("/api/me/wipe", Some(json!({"password": PW})))
+            .cookie(&alice.cookie)
+            .send()
+            .await;
+        assert_eq!(ok.status, StatusCode::NO_CONTENT);
+        let after = export_json(&app, &alice).await;
+        assert_eq!(
+            (
+                after["sessions"].as_array().map(Vec::len),
+                after["categories"].as_array().map(Vec::len)
+            ),
+            (Some(0), Some(0))
+        );
+        let state = alice.state(&app).await;
+        assert_eq!(
+            (
+                state["timer"]["state"].clone(),
+                state["timer"]["rounds"].clone()
+            ),
+            (json!("idle"), json!(0))
+        );
+        assert_eq!(
+            app.get("/api/me").cookie(&alice.cookie).send().await.status,
+            StatusCode::OK,
+            "still signed in"
+        );
+        assert_eq!(
+            sessions_of(&export_json(&app, &bob).await).len(),
+            1,
+            "Bob's data is untouched"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_admin_can_download_the_database_and_nobody_else_can() {
+        let app = TestApp::new();
+        let boss = admin(&app).await;
+        let alice = user(&app, &boss, "alice").await;
+        assert_eq!(
+            app.get("/api/admin/backup").send().await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            app.get("/api/admin/backup")
+                .cookie(&alice.cookie)
+                .send()
+                .await
+                .status,
+            StatusCode::FORBIDDEN
+        );
+
+        let res = app
+            .get("/api/admin/backup")
+            .cookie(&boss.cookie)
+            .send()
+            .await;
+        assert_eq!(res.status, StatusCode::OK);
+        assert!(
+            res.text.starts_with("SQLite format 3"),
+            "it is a SQLite file"
+        );
+        let disposition = res.header("content-disposition").expect("disposition");
+        assert!(
+            disposition.starts_with("attachment; filename=\"openpomodoro-backup-")
+                && disposition.ends_with(".db\""),
+            "{disposition}"
+        );
+        assert_eq!(res.header("cache-control").as_deref(), Some("no-store"));
     }
 }

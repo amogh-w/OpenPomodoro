@@ -456,6 +456,39 @@ impl Db {
         Ok(applied)
     }
 
+    /// Apply many events as one unit (a restore): all of them or none, in one transaction instead of one per event.
+    pub fn apply_batch(&mut self, user: &str, events: &[EventRecord]) -> Result<Vec<Applied>> {
+        let tx = self.conn.transaction()?;
+        let results = events
+            .iter()
+            .map(|e| insert_and_project(&tx, user, e))
+            .collect::<Result<Vec<_>>>()?;
+        tx.commit()?;
+        Ok(results)
+    }
+
+    /// Delete everything a user has recorded (log, rows, waiting events, processed commands) but keep the account.
+    pub fn wipe_user_data(&self, user: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for table in ["rejected_events", "commands_seen", "rows", "events"] {
+            tx.execute(
+                &format!("DELETE FROM {table} WHERE user_id = ?1"),
+                params![user],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Write a consistent copy of the whole database to `path` (which must not exist yet), while it is in use.
+    pub fn backup_to(&self, path: &Path) -> Result<()> {
+        let target = path
+            .to_str()
+            .ok_or_else(|| DbError::Corrupt("backup path is not valid text".into()))?;
+        self.conn.execute("VACUUM INTO ?1", params![target])?;
+        Ok(())
+    }
+
     /// Has this command id already been processed for this user?
     pub fn command_seen(&self, user: &str, command_id: &str) -> Result<bool> {
         let n: i64 = self.conn.query_row(
@@ -1145,6 +1178,101 @@ mod tests {
         assert!(
             db.daily_totals(BOB, 0).expect("bob").is_empty(),
             "another user's days are not mine"
+        );
+    }
+
+    #[test]
+    fn a_batch_is_applied_in_one_go_and_twice_changes_nothing() {
+        let mut db = db();
+        let events: Vec<_> = (0..50)
+            .map(|i| {
+                session(
+                    &format!("{:03}", i),
+                    Op::Add,
+                    &format!("s{i}"),
+                    json!({"started_at": i}),
+                )
+            })
+            .collect();
+        let first = db.apply_batch(ALICE, &events).expect("batch");
+        assert!(first.iter().all(|a| *a == Applied::Added));
+        assert_eq!(db.rows(ALICE, Entity::Session).expect("rows").len(), 50);
+        let again = db.apply_batch(ALICE, &events).expect("again");
+        assert!(again.iter().all(|a| *a == Applied::Duplicate));
+        assert_eq!(count(&db, "events", ALICE), 50);
+    }
+
+    #[test]
+    fn wiping_a_users_data_leaves_the_account_and_other_users_alone() {
+        let mut db = db();
+        db.apply_event(ALICE, &session("1", Op::Add, "a", json!({"started_at": 1})))
+            .expect("a");
+        db.apply_event(
+            ALICE,
+            &session("9", Op::Edit, "waiting", json!({"mood": "focused"})),
+        )
+        .expect("waits");
+        db.apply_command(
+            ALICE,
+            "cmd-1",
+            &[ev(
+                "2",
+                Entity::Timer,
+                Op::Add,
+                "current",
+                json!({"state": "session"}),
+            )],
+        )
+        .expect("cmd");
+        db.apply_event(BOB, &session("1", Op::Add, "a", json!({"started_at": 2})))
+            .expect("b");
+        db.wipe_user_data(ALICE).expect("wipe");
+        for table in ["events", "rows", "rejected_events", "commands_seen"] {
+            assert_eq!(count(&db, table, ALICE), 0, "{table}");
+        }
+        assert!(
+            db.user_by_id(ALICE).expect("user").is_some(),
+            "the account stays"
+        );
+        assert_eq!(db.rows(BOB, Entity::Session).expect("bob").len(), 1);
+        // The wiped user can start again, even with the same ids.
+        assert_eq!(
+            db.apply_event(ALICE, &session("1", Op::Add, "a", json!({"started_at": 1})))
+                .expect("again"),
+            Applied::Added
+        );
+    }
+
+    #[test]
+    fn a_backup_copy_of_the_database_opens_and_has_the_same_data() {
+        let dir = TempDir::new();
+        let mut db = Db::open(&dir.path().join("live.db")).expect("open");
+        db.insert_user(&user(ALICE, "alice")).expect("user");
+        db.apply_event(
+            ALICE,
+            &session(
+                "1",
+                Op::Add,
+                "s1",
+                json!({"started_at": 5, "intention": "kept"}),
+            ),
+        )
+        .expect("add");
+        let copy = dir.path().join("copy.db");
+        db.backup_to(&copy).expect("backup");
+        let restored = Db::open(&copy).expect("open copy");
+        assert_eq!(
+            restored.user_by_name("alice").expect("user").map(|u| u.id),
+            Some(ALICE.to_string())
+        );
+        let row = restored
+            .row(ALICE, Entity::Session, "s1")
+            .expect("row")
+            .expect("exists");
+        assert_eq!(row.data.get("intention"), Some(&json!("kept")));
+        assert!(
+            db.backup_to(&copy).is_err(),
+            "it will not overwrite an existing file"
         );
     }
 

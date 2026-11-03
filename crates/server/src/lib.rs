@@ -5,6 +5,7 @@ use tower_http::services::{ServeDir, ServeFile};
 
 pub mod accounts;
 pub mod api;
+pub mod backup;
 pub mod config;
 pub mod db;
 pub mod error;
