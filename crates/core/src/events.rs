@@ -18,12 +18,52 @@ pub enum Entity {
     Timer,
 }
 
+impl Entity {
+    pub fn code(self) -> &'static str {
+        match self {
+            Entity::Session => "session",
+            Entity::Category => "category",
+            Entity::Setting => "setting",
+            Entity::Timer => "timer",
+        }
+    }
+
+    pub fn from_code(code: &str) -> Option<Entity> {
+        Some(match code {
+            "session" => Entity::Session,
+            "category" => Entity::Category,
+            "setting" => Entity::Setting,
+            "timer" => Entity::Timer,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Op {
     Add,
     Edit,
     Delete,
+}
+
+impl Op {
+    pub fn code(self) -> &'static str {
+        match self {
+            Op::Add => "add",
+            Op::Edit => "edit",
+            Op::Delete => "delete",
+        }
+    }
+
+    pub fn from_code(code: &str) -> Option<Op> {
+        Some(match code {
+            "add" => Op::Add,
+            "edit" => Op::Edit,
+            "delete" => Op::Delete,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -37,13 +77,20 @@ pub struct EventRecord {
     pub payload: Value,
 }
 
-/// A projected row. A deleted row stays as a tombstone so a late add or edit cannot bring it back.
-#[derive(Debug, Clone, PartialEq)]
+/// A projected row. Every field remembers the id of the event that last set it, so events can arrive in any
+/// order and still end in the same row. A deleted row stays as a tombstone so a late add or edit cannot bring it
+/// back; the tombstone holds the highest delete id seen.
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Row {
     pub data: Map<String, Value>,
-    /// Id of the last event that changed this row.
-    pub version: String,
-    pub deleted: bool,
+    pub versions: BTreeMap<String, String>,
+    pub tombstone: Option<String>,
+}
+
+impl Row {
+    pub fn is_deleted(&self) -> bool {
+        self.tombstone.is_some()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,7 +108,7 @@ pub enum Applied {
     Deleted,
     /// The event id was already applied; nothing changed.
     Duplicate,
-    /// A newer event already changed this row.
+    /// Newer events already set every field this event touches.
     Stale,
     /// The row is deleted; the tombstone wins.
     Superseded,
@@ -71,14 +118,6 @@ pub enum Applied {
 pub enum Decision {
     Write(Row, Applied),
     Skip(Applied),
-}
-
-fn merged(base: &Map<String, Value>, patch: &Map<String, Value>) -> Map<String, Value> {
-    let mut out = base.clone();
-    for (k, v) in patch {
-        out.insert(k.clone(), v.clone());
-    }
-    out
 }
 
 /// What `event` does to the row it targets. Does not check for duplicate event ids; the log's primary key does.
@@ -92,39 +131,47 @@ pub fn decide(existing: Option<&Row>, event: &EventRecord) -> Decision {
     match (event.op, existing) {
         (Op::Add, None) => {
             let data = patch.cloned().unwrap_or_default();
+            let versions = data.keys().map(|k| (k.clone(), event.id.clone())).collect();
             Decision::Write(
                 Row {
                     data,
-                    version: event.id.clone(),
-                    deleted: false,
+                    versions,
+                    tombstone: None,
                 },
                 Applied::Added,
             )
         }
         (Op::Edit | Op::Delete, None) => Decision::Skip(Applied::Rejected(Reason::Missing)),
-        (_, Some(row)) if row.deleted => Decision::Skip(Applied::Superseded),
-        (Op::Delete, Some(_)) => Decision::Write(
-            Row {
-                data: Map::new(),
-                version: event.id.clone(),
-                deleted: true,
-            },
-            Applied::Deleted,
-        ),
-        // Adding an id that exists is an edit. Only a newer event may change the row.
-        (Op::Add | Op::Edit, Some(row)) => {
-            if event.id <= row.version {
-                return Decision::Skip(Applied::Stale);
-            }
-            let data = merged(&row.data, patch.unwrap_or(&Map::new()));
-            Decision::Write(
+        (Op::Delete, Some(row)) => match &row.tombstone {
+            Some(seen) if event.id <= *seen => Decision::Skip(Applied::Superseded),
+            _ => Decision::Write(
                 Row {
-                    data,
-                    version: event.id.clone(),
-                    deleted: false,
+                    data: Map::new(),
+                    versions: BTreeMap::new(),
+                    tombstone: Some(event.id.clone()),
                 },
-                Applied::Edited,
-            )
+                Applied::Deleted,
+            ),
+        },
+        (_, Some(row)) if row.is_deleted() => Decision::Skip(Applied::Superseded),
+        // Adding an id that exists is an edit. A field changes only if this event is newer than the one that set it.
+        (Op::Add | Op::Edit, Some(row)) => {
+            let mut next = row.clone();
+            for (field, value) in patch.into_iter().flatten() {
+                if next
+                    .versions
+                    .get(field)
+                    .is_none_or(|current| event.id > *current)
+                {
+                    next.data.insert(field.clone(), value.clone());
+                    next.versions.insert(field.clone(), event.id.clone());
+                }
+            }
+            if next == *row {
+                Decision::Skip(Applied::Stale)
+            } else {
+                Decision::Write(next, Applied::Edited)
+            }
         }
     }
 }
@@ -290,7 +337,7 @@ mod tests {
             Applied::Rejected(Reason::Missing)
         );
         s.apply(ev("1", Op::Add, "a", json!({"n": 1})));
-        assert!(s.get(Entity::Session, "a").is_some_and(|r| r.deleted));
+        assert!(s.get(Entity::Session, "a").is_some_and(|r| r.is_deleted()));
     }
 
     #[test]
@@ -310,7 +357,7 @@ mod tests {
             Applied::Superseded
         );
         let row = s.get(Entity::Session, "a").expect("tombstone stays");
-        assert!(row.deleted && row.data.is_empty());
+        assert!(row.is_deleted() && row.data.is_empty());
     }
 
     #[test]
@@ -332,5 +379,87 @@ mod tests {
         other.entity = Entity::Category;
         assert_eq!(s.apply(other), Applied::Added);
         assert_eq!(field(&s, "a", "n"), Some(json!(1)));
+    }
+
+    #[test]
+    fn older_edit_of_other_fields_still_lands() {
+        let mut s = Store::new();
+        s.apply(ev("1", Op::Add, "a", json!({"n": 1})));
+        s.apply(ev("4", Op::Edit, "a", json!({"b": 4})));
+        assert_eq!(
+            s.apply(ev("2", Op::Edit, "a", json!({"a": 2}))),
+            Applied::Edited
+        );
+        assert_eq!(field(&s, "a", "a"), Some(json!(2)));
+        assert_eq!(field(&s, "a", "b"), Some(json!(4)));
+    }
+
+    #[test]
+    fn highest_delete_id_is_the_tombstone() {
+        let mut s = Store::new();
+        s.apply(ev("1", Op::Add, "a", json!({"n": 1})));
+        s.apply(ev("5", Op::Delete, "a", Value::Null));
+        assert_eq!(
+            s.apply(ev("3", Op::Delete, "a", Value::Null)),
+            Applied::Superseded
+        );
+        assert_eq!(
+            s.get(Entity::Session, "a")
+                .and_then(|r| r.tombstone.clone()),
+            Some("5".to_string())
+        );
+    }
+
+    fn permutations(items: &[EventRecord]) -> Vec<Vec<EventRecord>> {
+        if items.len() <= 1 {
+            return vec![items.to_vec()];
+        }
+        let mut out = Vec::new();
+        for i in 0..items.len() {
+            let mut rest = items.to_vec();
+            let head = rest.remove(i);
+            for mut tail in permutations(&rest) {
+                tail.insert(0, head.clone());
+                out.push(tail);
+            }
+        }
+        out
+    }
+
+    fn final_row(events: &[EventRecord]) -> Option<Row> {
+        let mut s = Store::new();
+        for e in events {
+            s.apply(e.clone());
+        }
+        s.get(Entity::Session, "a").cloned()
+    }
+
+    /// Whatever order the events arrive in, the row ends up the same (this is what sync will rely on).
+    #[test]
+    fn every_arrival_order_converges() {
+        let sets: Vec<Vec<EventRecord>> = vec![
+            vec![
+                ev("1", Op::Add, "a", json!({"x": 1, "y": 1})),
+                ev("2", Op::Edit, "a", json!({"x": 2})),
+                ev("3", Op::Edit, "a", json!({"y": 3, "z": 3})),
+                ev("4", Op::Edit, "a", json!({"x": 4})),
+                ev("5", Op::Add, "a", json!({"z": 5})),
+            ],
+            vec![
+                ev("1", Op::Add, "a", json!({"x": 1})),
+                ev("2", Op::Edit, "a", json!({"x": 2})),
+                ev("3", Op::Delete, "a", Value::Null),
+                ev("4", Op::Edit, "a", json!({"x": 4})),
+                ev("5", Op::Delete, "a", Value::Null),
+            ],
+        ];
+        for events in sets {
+            let expected = final_row(&events);
+            assert!(expected.is_some());
+            for order in permutations(&events) {
+                let ids: Vec<_> = order.iter().map(|e| e.id.as_str()).collect();
+                assert_eq!(final_row(&order), expected, "order {ids:?}");
+            }
+        }
     }
 }

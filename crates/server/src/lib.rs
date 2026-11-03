@@ -2,6 +2,10 @@
 
 use std::path::Path;
 
+pub mod db;
+#[cfg(test)]
+mod test_util;
+
 use axum::{
     Json, Router,
     extract::Request,
@@ -76,8 +80,8 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    fn web_dir() -> tempdir_lite::Dir {
-        let dir = tempdir_lite::Dir::new();
+    fn web_dir() -> crate::test_util::TempDir {
+        let dir = crate::test_util::TempDir::new();
         std::fs::write(dir.path().join("index.html"), "<p>shell</p>").expect("write index");
         dir
     }
@@ -154,34 +158,5 @@ mod tests {
         assert_eq!((status, body.as_str()), (StatusCode::OK, "<p>shell</p>"));
         let (status, body) = get_with("/some/client/route", &[("host", "localhost")]).await;
         assert_eq!((status, body.as_str()), (StatusCode::OK, "<p>shell</p>"));
-    }
-
-    /// Tiny scratch-dir helper so tests need no extra crate.
-    mod tempdir_lite {
-        use std::path::{Path, PathBuf};
-        use std::sync::atomic::{AtomicU32, Ordering};
-
-        static NEXT: AtomicU32 = AtomicU32::new(0);
-
-        pub struct Dir(PathBuf);
-
-        impl Dir {
-            pub fn new() -> Self {
-                let n = NEXT.fetch_add(1, Ordering::Relaxed);
-                let path =
-                    std::env::temp_dir().join(format!("op-server-test-{}-{n}", std::process::id()));
-                std::fs::create_dir_all(&path).expect("create temp dir");
-                Dir(path)
-            }
-            pub fn path(&self) -> &Path {
-                &self.0
-            }
-        }
-
-        impl Drop for Dir {
-            fn drop(&mut self) {
-                let _ = std::fs::remove_dir_all(&self.0);
-            }
-        }
     }
 }

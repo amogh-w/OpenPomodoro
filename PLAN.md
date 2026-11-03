@@ -37,7 +37,7 @@ Non-goals for v1: accounts, cloud, native mobile apps, native app/window blockin
 
 ### Events
 - Entities: `SESSION` (with `kind`: `focus` or `break`), `CATEGORY`, `SETTING`, `TIMER` (live timer state); `TODO` is added with C-07 (P2). Operations `ADD_/EDIT_/DELETE_`, payload JSON, applied in one transaction.
-- Add of an existing id becomes an edit. Edit or delete of a missing id is rejected and written to a `rejected_events` table (kept so it can be replayed if its add arrives later). Delete writes a tombstone.
+- Add of an existing id becomes an edit. Every field remembers the id of the event that set it and only a newer event changes it, so events can arrive in any order and still converge (tested over every arrival order). Edit or delete of a missing id is rejected and written to a `rejected_events` table, then replayed when its add arrives. Delete writes a tombstone that wins over later adds and edits; the highest delete id is kept.
 - Every state machine transition writes a `TIMER` event and updates the `current_timer` projection, so a reload, crash or second tab resumes the running phase.
 - A focus session becomes a `SESSION` record when it leaves `reflect`, or when the phase ends with auto-start break on (reflect is skipped; mood and notes can be added later from history). A break becomes a `SESSION` record when it ends or is stopped or skipped. Abandon writes no `SESSION`. C-06 drops focus sessions of 30 s or less with no intention.
 
@@ -199,7 +199,7 @@ Any other `(state, event)` pair is rejected as `unknown`; a blocked row is rejec
 - [x] 1.1 **Timer core** (T-01..T-05): pure types, `Clock` trait, timer rule from section 2 (extend/shrink, overflow extend, backwards-clock clamp); tests for pause/resume/extend, clock jumps, sleep. Shared JSON vectors in `test-vectors/timer.json` (17 cases) pass in Rust and in the TS port `web/src/lib/timer.ts`. Config bounds (1 min to 12 h per phase, at most 12 rounds) are guesses.
 - [x] 1.2 **State machine** (section 2 table): table-driven, reject unknown pairs, tests for every row, including breathe, overflow, rest, reflect, auto-start and strict-mode blocks. Shared JSON vectors for every row; TS port in `web/src/lib/machine.ts` checked against them.
 - [x] 1.3 **Ids and event log** (D-02): per-device monotonic generator (backward clock, `seq` overflow, restore from this device's max id) with a TS port (`web/src/lib/ids.ts`) checked against `test-vectors/ids.json`; pure `decide` function and in-memory `Store` for events and projections (idempotent add, add-existing becomes edit, newest event wins per row, rejected-event list with replay when the add arrives, tombstones that win over late adds and edits). The SQLite layer (1.4) reuses `decide`.
-- [ ] 1.4 **SQLite layer** (D-01): migrations, repositories for sessions (focus and break), categories, settings, `current_timer`; one transaction per event.
+- [x] 1.4 **SQLite layer** (D-01): `crates/server/src/db.rs`. Migrations by `PRAGMA user_version` (a newer file is refused), WAL, one transaction per event, duplicate event ids answer `Duplicate` with no writes, waiting events replayed after their add, projection rebuildable from the log. The projection is one `rows` table (entity, key, JSON data, per-field versions, tombstone) with an expression index on `started_at` for history queries, read through typed readers (`sessions_between`, `setting`, `current_timer`) rather than one table per entity. The device id and API token are created on first use and kept in `meta`.
 - [ ] 1.5 **API v0** (internal, for the PWA): state, commands, history, settings, idempotent event intake for the outbox; WebSocket push of state; per-install token. One integration test per path, plus token, `Host` and `Origin` rejection tests.
 - [ ] 1.6 **PWA shell** (D-03, U-01, U-03): IndexedDB live state and outbox with replay on reconnect, leader tab, update prompt, `platform` adapters for the browser.
 - [ ] 1.7 **Timer screen** (T-04, T-05, T-07, T-09, T-10, U-02, U-09, A-08): intention field, category pill, dial with keyboard/slider alternative, pause / stop / abandon / ±5 controls, breathe step, state colors, wake lock.
@@ -246,11 +246,11 @@ Rules: every platform feature is behind a `platform` adapter with a browser fall
 - No step is done until its status box is ticked and any new setting is documented.
 
 ## 6. Open decisions
-- `rusqlite` (simple, sync) vs `sqlx` (async, compile-time checks).
 - Whether `web/dist` is committed (server builds without Node) or built in CI/release only.
 - Final name check and logo (original artwork only).
 
 ### Decided
+- SQLite through `rusqlite` (bundled, sync), called from async handlers behind a mutex or `spawn_blocking`; chosen for simplicity, the data volume is tiny.
 - License: MIT (simple and familiar; Apache-2.0's patent grant was not needed for a small app).
 - Svelte 5 + Vite (static bundle) over a meta-framework; a marketing/docs site, if any, is a separate project.
 - Timer logic is shared with the PWA as a TS port checked against shared JSON test vectors (WASM may replace the port later).
