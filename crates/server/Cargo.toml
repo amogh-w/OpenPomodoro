@@ -9,7 +9,7 @@ workspace = true
 
 [dependencies]
 argon2 = "0.6.0"
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["ws"] }
 op-core = { version = "0.0.0", path = "../core" }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 serde = { version = "1.0.229", features = ["derive"] }
