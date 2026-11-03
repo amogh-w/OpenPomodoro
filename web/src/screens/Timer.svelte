@@ -34,6 +34,9 @@
   let mode = $state<"focus" | "break">("focus");
   let breakMinutes = $state(5);
   let touchedBreak = $state(false);
+  // A very short length for trying the flow (device setting "Short test timers"); null means the dial decides.
+  let testMs = $state<number | null>(null);
+  const TEST_LENGTHS = [5_000, 10_000, 30_000];
   const parsed = $derived(parseIntention(intention, app.categories));
   const fromText = $derived(parsed.durationMs !== null);
   const length = $derived(parsed.durationMs !== null ? Math.round(parsed.durationMs / 60_000) : minutes);
@@ -47,6 +50,7 @@
   });
   const isBreak = $derived(mode === "break");
   const dialMinutes = $derived(isBreak ? breakMinutes : length);
+  const plannedMs = $derived(testMs ?? dialMinutes * 60_000);
   const pad = (n: number): string => String(n).padStart(2, "0");
   const hhmm = (ms: number): string => {
     const d = new Date(ms);
@@ -56,7 +60,7 @@
   const range = $derived.by((): string => {
     const timer = app.timer;
     if (!view || view.phase === "idle" || view.phase === "reflect" || timer?.start == null || timer.total == null) {
-      return `${hhmm(tick.now)} → ${hhmm(tick.now + dialMinutes * 60_000)}`;
+      return `${hhmm(tick.now)} → ${hhmm(tick.now + plannedMs)}`;
     }
     const idle = timer.pause_ts != null ? tick.now - timer.pause_ts : 0;
     const end = view.overflow ? tick.now : timer.start + timer.total + (timer.pause_buffer ?? 0) + idle;
@@ -133,7 +137,7 @@
   }
 
   async function startBreak(): Promise<void> {
-    await run({ name: "take_rest", duration_ms: breakMinutes * 60_000 });
+    await run({ name: "take_rest", duration_ms: plannedMs });
   }
 
   const flip = (): void => {
@@ -147,7 +151,7 @@
       name: "init_focus",
       intention: parsed.text,
       category: chosenCategory ?? undefined,
-      duration_ms: length * 60_000,
+      duration_ms: plannedMs,
     });
     // The next session starts with a blank field; the earlier text is one tap away in the suggestions.
     if (started) intention = "";
@@ -280,13 +284,13 @@
   cancel={t("timer.endEarly.keep")}
 />
 
-<div class="xl:grid xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start xl:gap-10">
+<div class="lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12">
 <div>
 {#if !app.ready || !view}
   <p class="mt-8 text-center text-subtext1" role="status">{t("common.loading")}</p>
 {:else if view.phase === "idle"}
-  <form class="mx-auto grid max-w-xl gap-5 2xl:max-w-none 2xl:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] 2xl:gap-x-10" onsubmit={start}>
-    <div class="flex flex-wrap items-center justify-between gap-3 2xl:col-span-2">
+  <form class="mx-auto grid max-w-xl gap-5" onsubmit={start}>
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="t-large">{t("timer.title")}</h1>
       <div class="flex gap-2" role="group" aria-label={t("timer.mode")}>
         <button type="button" class="chip" aria-pressed={!isBreak} onclick={() => (mode = "focus")}>{t("timer.mode.focus")}</button>
@@ -297,7 +301,7 @@
     {#if app.settings}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
 
     {#if !isBreak}
-      <label class="grid gap-1.5 2xl:col-start-2 2xl:row-start-2">
+      <label class="grid gap-1.5">
         <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
         <input
           class="field"
@@ -314,7 +318,7 @@
       </label>
 
       {#if fromText || parsed.categoryId}
-        <div class="flex flex-wrap gap-2 2xl:col-start-2" aria-live="polite">
+        <div class="flex flex-wrap gap-2" aria-live="polite">
           {#if fromText}<span class="chip" aria-pressed="true">{t("timer.hint.length", { minutes: length })}</span>{/if}
           {#if parsed.categoryId}
             <span class="chip" aria-pressed="true">{t("timer.hint.category", { name: categoryName(parsed.categoryId) ?? "" })}</span>
@@ -323,7 +327,7 @@
       {/if}
     {/if}
 
-    <div class="grid gap-3 2xl:col-start-1 2xl:row-span-6 2xl:row-start-2 2xl:content-center">
+    <div class="grid gap-3">
       <Dial
         class="lg:size-[min(20rem,36vh)]"
         value={dialMinutes}
@@ -333,6 +337,7 @@
         disabled={!isBreak && fromText}
         onflip={flip}
         onchange={(next) => {
+          testMs = null;
           if (isBreak) {
             breakMinutes = next;
             touchedBreak = true;
@@ -342,13 +347,22 @@
           }
         }}
       />
+      {#if prefs.testTimers}
+        <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.test.label")}>
+          {#each TEST_LENGTHS as ms (ms)}
+            <button type="button" class="chip" aria-pressed={testMs === ms} onclick={() => (testMs = testMs === ms ? null : ms)}>
+              {t("timer.test.seconds", { n: ms / 1000 })}
+            </button>
+          {/each}
+        </div>
+      {/if}
       <div class="t-foot mx-auto rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
       {#if !isBreak && fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
       <p class="t-foot text-center text-subtext1">{t("timer.dial.flipHint")}</p>
     </div>
 
     {#if !isBreak && app.categories.length > 0}
-      <label class="grid gap-1.5 2xl:col-start-2">
+      <label class="grid gap-1.5">
         <span class="t-foot flex items-center gap-2 text-subtext1">
           {#if categoryOf(chosenCategory)}
             <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(chosenCategory)?.color})" aria-hidden="true"></span>
@@ -369,12 +383,12 @@
       </label>
     {/if}
 
-    {#if problem}<div class="alert tone-danger 2xl:col-start-2" role="alert">{problem}</div>{/if}
+    {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
 
-    <button class="btn btn-filled btn-lg w-full 2xl:col-start-2" type="submit" disabled={busy}>
+    <button class="btn btn-filled btn-lg w-full" type="submit" disabled={busy}>
       {isBreak ? t("timer.startBreak") : t("timer.start")}
     </button>
-    <p class="t-foot text-center text-subtext1 2xl:col-start-2">
+    <p class="t-foot text-center text-subtext1">
       {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
   </form>
@@ -499,7 +513,7 @@
 
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
 
-    {#if view.phase === "focus"}<div class="w-full xl:hidden"><NotesPane /></div>{/if}
+    {#if view.phase === "focus"}<div class="w-full lg:hidden"><NotesPane /></div>{/if}
 
     <div class="flex flex-wrap items-center justify-center gap-2">
       <button
@@ -543,7 +557,7 @@
   </div>
 {/if}
 </div>
-<aside class="hidden xl:block" aria-label={t("today.title")}>
+<aside class="hidden lg:sticky lg:top-6 lg:block" aria-label={t("today.title")}>
   {#if view?.phase === "focus"}<NotesColumn />{:else}<TodayPanel />{/if}
 </aside>
 </div>

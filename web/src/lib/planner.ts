@@ -6,7 +6,7 @@ import { type EventName, transition } from "./machine";
 import { type Timer, EXTEND_STEP_MS, elapsed, endInstant, extend, isEnded, isPaused, newTimer, pause, resume } from "./timer";
 import type { Settings, TimerData } from "./types";
 
-export const MIN_PHASE_MS = 60_000;
+export const MIN_PHASE_MS = 5_000;
 export const MAX_PHASE_MS = 12 * 60 * 60_000;
 const MAX_EXTEND_STEPS = 12;
 
@@ -204,7 +204,7 @@ function extrasOf(action: Action): Extras {
   return { notes: clean(action.notes, MAX_NOTES_CHARS), mood };
 }
 
-/** A focus session this short with no intention and no notes is an accidental start, not work. */
+/** A focus session this short with no intention and no notes is an accidental start, unless it ran its whole planned time. */
 const JUNK_MS = 30_000;
 
 /**
@@ -212,7 +212,7 @@ const JUNK_MS = 30_000;
  * ran its full planned length: a session ended early is kept in the log but does not move the cycle on.
  */
 function keepFocus(next: TimerData, records: RecordData[], record: RecordData): void {
-  if (record.kind === "focus" && record.duration_ms <= JUNK_MS && record.intention === null && record.notes === null) return;
+  if (record.kind === "focus" && record.duration_ms <= JUNK_MS && record.duration_ms < record.planned_ms && record.intention === null && record.notes === null) return;
   records.push(record);
   if (record.kind === "focus" && record.duration_ms >= record.planned_ms) next.rounds += 1;
 }

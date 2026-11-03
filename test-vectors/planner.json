@@ -3990,6 +3990,155 @@
           }
         }
       ]
+    },
+    {
+      "name": "five_second_timer_for_trying_the_flow",
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 4000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 5000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 5000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 5000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 5000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 5000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 5000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 5000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 5000,
+              "focus_ended_at": 5000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 5000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 5000,
+            "name": "take_rest"
+          },
+          "at": 5000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 5000,
+                "ended_at": 5000,
+                "intention": null,
+                "kind": "focus",
+                "mood": null,
+                "notes": null,
+                "planned_ms": 5000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 5000,
+              "state": "rest",
+              "total": 5000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 10000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 5000,
+              "state": "rest_end",
+              "total": 5000
+            }
+          }
+        }
+      ]
     }
   ],
   "defaults": {

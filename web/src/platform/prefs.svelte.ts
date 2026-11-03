@@ -9,6 +9,7 @@ const REDUCE_MOTION = "op_reduce_motion";
 const DIAL_STEP = "op_dial_step";
 const ASK_REFLECTION = "op_ask_reflection";
 const FOCUS_ON_CATEGORY = "op_focus_on_category";
+const TEST_TIMERS = "op_test_timers";
 
 /** Minutes the timer dial snaps to. */
 export const DIAL_STEPS = [1, 5, 10, 15] as const;
@@ -63,7 +64,14 @@ export const prefs = $state({
   askReflection: read(ASK_REFLECTION) !== "0",
   /** Move to the intention field after choosing a category. */
   focusOnCategory: read(FOCUS_ON_CATEGORY) === "1",
+  /** Offer 5, 10 and 30 second timers on the timer screen, for trying the whole flow quickly. */
+  testTimers: read(TEST_TIMERS) === "1",
 });
+
+export function setTestTimers(on: boolean): void {
+  prefs.testTimers = on;
+  write(TEST_TIMERS, on ? "1" : "0");
+}
 
 export function setDialStep(step: DialStep): void {
   prefs.dialStep = step;

@@ -2,7 +2,7 @@
   import { app, saveSetting, type SettingName } from "./appState.svelte";
   import { t } from "./i18n";
   import { stepMinutes } from "./stepper";
-  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setKeepAwake, setReduceMotion } from "../platform/prefs.svelte";
+  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setKeepAwake, setReduceMotion, setTestTimers } from "../platform/prefs.svelte";
   import { wakeLockSupported } from "../platform/wakeLock";
 
   const MIN = 60_000;
@@ -90,6 +90,15 @@
       </span>
       <span class="switch">
         <input type="checkbox" checked={prefs.askReflection} onchange={(e) => setAskReflection(e.currentTarget.checked)} />
+      </span>
+    </label>
+
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span class="block">{t("settings.testTimers")}
+        <span class="t-foot block text-subtext1">{t("settings.testTimers.hint")}</span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={prefs.testTimers} onchange={(e) => setTestTimers(e.currentTarget.checked)} />
       </span>
     </label>
 

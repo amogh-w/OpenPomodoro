@@ -74,8 +74,8 @@
   {#if tint}<div class="phase-layer {tint}" aria-hidden="true"></div>{/if}
 {/key}
 
-<div class="relative z-10 {session.status === 'signed_in' ? 'lg:pl-60' : ''}">
-<div class="mx-auto min-h-dvh max-w-[480px] px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))] md:max-w-xl lg:max-w-5xl lg:px-10 xl:max-w-6xl 2xl:max-w-[88rem] lg:pb-12 lg:pt-10">
+<div class="relative z-10 {session.status === 'signed_in' ? 'lg:pl-[4.5rem]' : ''}">
+<div class="mx-auto min-h-dvh max-w-[480px] px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))] md:max-w-xl lg:max-w-5xl lg:px-10 lg:pb-12 lg:pt-10">
   {#if sw.updateReady}
     <div class="alert tone-info mb-3" role="status">
       <svg class="size-5 shrink-0"><use href="/icons.svg#info" /></svg>

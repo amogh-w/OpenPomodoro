@@ -3,7 +3,8 @@
 const MIN: i64 = 60_000;
 
 /// Smallest and largest allowed phase length. The bounds are a guess; change them in one place if needed.
-pub const MIN_PHASE_MS: i64 = MIN;
+/// Shortest phase accepted. Five seconds is far below anything useful; it exists so the whole flow can be tried quickly.
+pub const MIN_PHASE_MS: i64 = 5_000;
 pub const MAX_PHASE_MS: i64 = 12 * 60 * MIN;
 /// Most focus rounds before a long break that the settings accept (also a guess).
 pub const MAX_ROUNDS: u32 = 12;
@@ -132,7 +133,7 @@ mod tests {
     #[test]
     fn validates_ranges() {
         assert_eq!(
-            Config::new(MIN - 1, 5 * MIN, 15 * MIN, 4),
+            Config::new(MIN_PHASE_MS - 1, 5 * MIN, 15 * MIN, 4),
             Err(ConfigError::DurationOutOfRange)
         );
         assert_eq!(
