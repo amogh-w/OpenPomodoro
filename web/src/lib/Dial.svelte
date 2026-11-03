@@ -13,10 +13,12 @@
     class?: string;
     /** Ring colour: a focus session is the accent, a break is green. */
     tone?: "accent" | "green";
+    /** What `value` counts: minutes (a turn is 60 of them) or seconds (a turn is a minute). */
+    unit?: "min" | "sec";
     /** Called when the hand is turned back past the start (counter-clockwise), to switch between focus and break. */
     onflip?: () => void;
   }
-  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "", tone = "accent", onflip }: Props = $props();
+  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "", tone = "accent", unit = "min", onflip }: Props = $props();
 
   const range = $derived({ min, max, step });
   const R = 100;
@@ -94,7 +96,7 @@
   aria-valuemin={min}
   aria-valuemax={max}
   aria-valuenow={value}
-  aria-valuetext={t("timer.dial.minutes", { minutes: value })}
+  aria-valuetext={unit === "sec" ? t("timer.dial.seconds", { seconds: value }) : t("timer.dial.minutes", { minutes: value })}
   aria-disabled={disabled}
   onpointerdown={down}
   onpointermove={move}
@@ -120,5 +122,5 @@
   />
   <circle cx={hx} cy={hy} r="14" class="{tone === 'green' ? 'fill-green' : 'fill-accent'} stroke-base" stroke-width="4" />
   <text x="120" y="128" text-anchor="middle" class="fill-text" font-size="56" font-weight="700">{value}</text>
-  <text x="120" y="156" text-anchor="middle" class="fill-subtext0" font-size="16">{t("timer.dial.unit")}</text>
+  <text x="120" y="156" text-anchor="middle" class="fill-subtext0" font-size="16">{unit === "sec" ? t("timer.dial.unitSeconds") : t("timer.dial.unit")}</text>
 </svg>

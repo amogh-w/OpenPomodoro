@@ -27,30 +27,31 @@
 
   // The form for starting a session.
   let intention = $state("");
-  let minutes = $state(25);
+  // What the dial sets, in seconds (the dial shows minutes, or seconds when it snaps to 5 s).
+  let focusSec = $state(25 * 60);
   let touchedLength = $state(false);
   let categoryId = $state("");
   // What the dial sets: a focus session, or (turned counter-clockwise) a break.
   let mode = $state<"focus" | "break">("focus");
-  let breakMinutes = $state(5);
+  let breakSec = $state(5 * 60);
   let touchedBreak = $state(false);
-  // A very short length for trying the flow (device setting "Short test timers"); null means the dial decides.
-  let testMs = $state<number | null>(null);
-  const TEST_LENGTHS = [5_000, 10_000, 30_000];
   const parsed = $derived(parseIntention(intention, app.categories));
   const fromText = $derived(parsed.durationMs !== null);
-  const length = $derived(parsed.durationMs !== null ? Math.round(parsed.durationMs / 60_000) : minutes);
+  const length = $derived(Math.round((parsed.durationMs ?? focusSec * 1000) / 60_000));
   const chosenCategory = $derived(parsed.categoryId ?? (categoryId || null));
   const categoryName = (id: string | null): string | undefined => app.categories.find((c) => c.id === id)?.name;
 
   // Until the user turns the dial, it shows their usual focus length.
   $effect(() => {
-    if (app.settings && !touchedLength) minutes = Math.round(app.settings.focus_ms / 60_000);
-    if (app.settings && !touchedBreak) breakMinutes = Math.round(app.settings.short_break_ms / 60_000);
+    if (app.settings && !touchedLength) focusSec = prefs.dialStep < 60 ? 5 : Math.round(app.settings.focus_ms / 1000);
+    if (app.settings && !touchedBreak) breakSec = prefs.dialStep < 60 ? 5 : Math.round(app.settings.short_break_ms / 1000);
   });
   const isBreak = $derived(mode === "break");
-  const dialMinutes = $derived(isBreak ? breakMinutes : length);
-  const plannedMs = $derived(testMs ?? dialMinutes * 60_000);
+  const secondsDial = $derived(prefs.dialStep < 60);
+  const unitSec = $derived(secondsDial ? 1 : 60);
+  const plannedMs = $derived(parsed.durationMs !== null && !isBreak ? parsed.durationMs : (isBreak ? breakSec : focusSec) * 1000);
+  /** The dial's number: minutes, or seconds when it snaps to 5 s. */
+  const dialValue = $derived(Math.max(1, Math.round(plannedMs / 1000 / unitSec)));
   const pad = (n: number): string => String(n).padStart(2, "0");
   const hhmm = (ms: number): string => {
     const d = new Date(ms);
@@ -330,32 +331,24 @@
     <div class="grid gap-3">
       <Dial
         class="lg:size-[min(20rem,36vh)]"
-        value={dialMinutes}
-        step={prefs.dialStep}
-        min={prefs.dialStep}
+        value={dialValue}
+        step={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
+        min={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
+        max={secondsDial ? 600 : 180}
+        unit={secondsDial ? "sec" : "min"}
         tone={isBreak ? "green" : "accent"}
         disabled={!isBreak && fromText}
         onflip={flip}
         onchange={(next) => {
-          testMs = null;
           if (isBreak) {
-            breakMinutes = next;
+            breakSec = next * unitSec;
             touchedBreak = true;
           } else {
-            minutes = next;
+            focusSec = next * unitSec;
             touchedLength = true;
           }
         }}
       />
-      {#if prefs.testTimers}
-        <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.test.label")}>
-          {#each TEST_LENGTHS as ms (ms)}
-            <button type="button" class="chip" aria-pressed={testMs === ms} onclick={() => (testMs = testMs === ms ? null : ms)}>
-              {t("timer.test.seconds", { n: ms / 1000 })}
-            </button>
-          {/each}
-        </div>
-      {/if}
       <div class="t-foot mx-auto rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
       {#if !isBreak && fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
       <p class="t-foot text-center text-subtext1">{t("timer.dial.flipHint")}</p>
@@ -482,32 +475,23 @@
       <p class="t-headline max-w-full truncate">{app.timer.intention}</p>
     {/if}
 
-    <div class="t-foot rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
-
     <div class="flex items-center justify-center gap-3">
       <button
-        class="btn btn-gray size-14 !px-0"
+        class="btn btn-gray size-11 !px-0"
         aria-label={t("timer.minus5")}
         disabled={busy || !view.can.extend}
         onclick={() => run({ name: "extend", delta_ms: -STEP_MS })}
       >
-        <svg class="size-6"><use href="/icons.svg#minus" /></svg>
+        <svg class="size-5"><use href="/icons.svg#minus" /></svg>
       </button>
+      <div class="t-foot rounded-full bg-surface0 px-3 py-1.5 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
       <button
-        class="btn btn-filled size-16 !px-0"
-        aria-label={view.paused ? t("timer.resume") : t("timer.pause")}
-        disabled={busy || !view.can.toggle_pause}
-        onclick={() => run({ name: "toggle_pause" })}
-      >
-        <svg class="size-7 fill-current"><use href="/icons.svg#{view.paused ? 'play' : 'pause'}" /></svg>
-      </button>
-      <button
-        class="btn btn-gray size-14 !px-0"
+        class="btn btn-gray size-11 !px-0"
         aria-label={t("timer.plus5")}
         disabled={busy || !view.can.extend}
         onclick={() => run({ name: "extend", delta_ms: STEP_MS })}
       >
-        <svg class="size-6"><use href="/icons.svg#plus" /></svg>
+        <svg class="size-5"><use href="/icons.svg#plus" /></svg>
       </button>
     </div>
 
@@ -515,45 +499,66 @@
 
     {#if view.phase === "focus"}<div class="w-full lg:hidden"><NotesPane /></div>{/if}
 
-    <div class="flex flex-wrap items-center justify-center gap-2">
+    <!-- Three round buttons for every running state: sound, the main action, and a stop menu. -->
+    <div class="flex items-center justify-center gap-4">
       <button
-        class="btn btn-gray size-11 !px-0"
+        class="btn btn-gray size-14 !px-0"
         aria-label={soundOn ? t("timer.soundOff") : t("timer.soundOn")}
         aria-pressed={!soundOn}
         onclick={() => updateAlertPrefs({ sound: !soundOn })}
       >
-        <svg class="size-5"><use href="/icons.svg#{soundOn ? 'volume-2' : 'volume-x'}" /></svg>
+        <svg class="size-6"><use href="/icons.svg#{soundOn ? 'volume-2' : 'volume-x'}" /></svg>
       </button>
-      {#if view.phase === "focus"}
-        {#if view.overflow}
-          <button class="btn btn-gray" disabled={busy} onclick={() => finishFocus("again")}>
-            <svg class="size-5"><use href="/icons.svg#repeat" /></svg>{t("timer.again")}
-          </button>
-          <button class="btn btn-filled" disabled={busy} onclick={() => finishFocus("break")}>
-            <svg class="size-5"><use href="/icons.svg#coffee" /></svg>{t("timer.takeBreak")}
-          </button>
-        {/if}
-        <button
-          class="btn {view.overflow ? 'btn-gray' : 'btn-plain'}"
-          disabled={busy || !view.can.stop}
-          onclick={endEarly}
-        >
-          {view.overflow ? t("timer.finish") : t("timer.endEarly")}
+
+      {#if view.phase === "focus" && view.overflow}
+        <button class="btn btn-gray size-14 !px-0" aria-label={t("timer.again")} title={t("timer.again")} disabled={busy} onclick={() => finishFocus("again")}>
+          <svg class="size-6"><use href="/icons.svg#repeat" /></svg>
         </button>
-        {#if view.can.abandon}
-          <button class="btn btn-plain" disabled={busy} onclick={abandonFocus}>{t("timer.abandon")}</button>
-        {/if}
+        <button class="btn btn-filled size-16 !px-0" aria-label={t("timer.takeBreak")} title={t("timer.takeBreak")} disabled={busy} onclick={() => finishFocus("break")}>
+          <svg class="size-7"><use href="/icons.svg#coffee" /></svg>
+        </button>
       {:else}
-        {#if view.can.init_focus}
-          <button class="btn btn-filled" disabled={busy} onclick={() => leaveBreak("init_focus")}>
-            {t("timer.startFocus")}
+        <button
+          class="btn btn-filled size-16 !px-0"
+          aria-label={view.paused ? t("timer.resume") : t("timer.pause")}
+          disabled={busy || !view.can.toggle_pause}
+          onclick={() => run({ name: "toggle_pause" })}
+        >
+          <svg class="size-7 fill-current"><use href="/icons.svg#{view.paused ? 'play' : 'pause'}" /></svg>
+        </button>
+      {/if}
+
+      {#if view.phase === "focus"}
+        <button class="btn btn-gray size-14 !px-0" aria-label={t("timer.stop")} title={t("timer.stop")} data-menu="stop-menu" disabled={busy}>
+          <svg class="size-6"><use href="/icons.svg#square" /></svg>
+        </button>
+        <div id="stop-menu" popover class="menu">
+          <button class="menu-item" disabled={!view.can.stop} data-menu-close onclick={endEarly}>
+            <svg class="size-5 text-subtext0"><use href="/icons.svg#circle-check" /></svg>{t("timer.finishSession")}
           </button>
-        {/if}
-        <button class="btn btn-gray" disabled={busy || !view.can.skip_rest} onclick={() => leaveBreak("skip_rest")}>
-          {t("timer.endBreak")}
+          {#if view.can.abandon}
+            <div class="menu-sep"></div>
+            <button class="menu-item text-red" data-menu-close onclick={abandonFocus}>
+              <svg class="size-5"><use href="/icons.svg#trash-2" /></svg>{t("timer.abandonSession")}
+            </button>
+          {/if}
+        </div>
+      {:else}
+        <button
+          class="btn btn-gray size-14 !px-0"
+          aria-label={t("timer.endBreak")}
+          title={t("timer.endBreak")}
+          disabled={busy || !view.can.skip_rest}
+          onclick={() => leaveBreak("skip_rest")}
+        >
+          <svg class="size-6"><use href="/icons.svg#square" /></svg>
         </button>
       {/if}
     </div>
+
+    {#if view.phase === "break" && view.can.init_focus}
+      <button class="btn btn-filled" disabled={busy} onclick={() => leaveBreak("init_focus")}>{t("timer.startFocus")}</button>
+    {/if}
   </div>
 {/if}
 </div>

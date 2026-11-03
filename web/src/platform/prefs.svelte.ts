@@ -6,17 +6,16 @@ const KEEP_AWAKE = "op_keep_awake";
 const ALERTS = "op_alerts";
 const ALLOW_LINKS = "op_allow_links";
 const REDUCE_MOTION = "op_reduce_motion";
-const DIAL_STEP = "op_dial_step";
+const DIAL_STEP = "op_dial_step_s";
 const ASK_REFLECTION = "op_ask_reflection";
 const FOCUS_ON_CATEGORY = "op_focus_on_category";
-const TEST_TIMERS = "op_test_timers";
 
-/** Minutes the timer dial snaps to. */
-export const DIAL_STEPS = [1, 5, 10, 15] as const;
+/** Seconds the timer dial snaps to. 5 seconds turns the dial into a seconds dial, for trying the whole flow quickly. */
+export const DIAL_STEPS = [5, 60, 300, 600, 900] as const;
 export type DialStep = (typeof DIAL_STEPS)[number];
 const initialStep = (): DialStep => {
   const n = Number(read(DIAL_STEP));
-  return (DIAL_STEPS as readonly number[]).includes(n) ? (n as DialStep) : 5;
+  return (DIAL_STEPS as readonly number[]).includes(n) ? (n as DialStep) : 300;
 };
 
 function read(key: string): string | null {
@@ -64,14 +63,8 @@ export const prefs = $state({
   askReflection: read(ASK_REFLECTION) !== "0",
   /** Move to the intention field after choosing a category. */
   focusOnCategory: read(FOCUS_ON_CATEGORY) === "1",
-  /** Offer 5, 10 and 30 second timers on the timer screen, for trying the whole flow quickly. */
-  testTimers: read(TEST_TIMERS) === "1",
 });
 
-export function setTestTimers(on: boolean): void {
-  prefs.testTimers = on;
-  write(TEST_TIMERS, on ? "1" : "0");
-}
 
 export function setDialStep(step: DialStep): void {
   prefs.dialStep = step;

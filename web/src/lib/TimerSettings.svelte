@@ -2,7 +2,7 @@
   import { app, saveSetting, type SettingName } from "./appState.svelte";
   import { t } from "./i18n";
   import { stepMinutes } from "./stepper";
-  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setKeepAwake, setReduceMotion, setTestTimers } from "../platform/prefs.svelte";
+  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setKeepAwake, setReduceMotion } from "../platform/prefs.svelte";
   import { wakeLockSupported } from "../platform/wakeLock";
 
   const MIN = 60_000;
@@ -94,15 +94,6 @@
     </label>
 
     <label class="flex min-h-11 items-center justify-between gap-3">
-      <span class="block">{t("settings.testTimers")}
-        <span class="t-foot block text-subtext1">{t("settings.testTimers.hint")}</span>
-      </span>
-      <span class="switch">
-        <input type="checkbox" checked={prefs.testTimers} onchange={(e) => setTestTimers(e.currentTarget.checked)} />
-      </span>
-    </label>
-
-    <label class="flex min-h-11 items-center justify-between gap-3">
       <span>{t("settings.focusOnCategory")}</span>
       <span class="switch">
         <input type="checkbox" checked={prefs.focusOnCategory} onchange={(e) => setFocusOnCategory(e.currentTarget.checked)} />
@@ -110,11 +101,13 @@
     </label>
 
     <div class="grid gap-2">
-      <span>{t("settings.dialStep")}</span>
+      <span>{t("settings.dialStep")}
+        <span class="t-foot block text-subtext1">{t("settings.dialStep.hint")}</span>
+      </span>
       <div class="flex flex-wrap gap-2" role="group" aria-label={t("settings.dialStep")}>
         {#each DIAL_STEPS as step (step)}
           <button class="chip" aria-pressed={prefs.dialStep === step} onclick={() => setDialStep(step)}>
-            {t("settings.dialStep.minutes", { n: step })}
+            {step < 60 ? t("settings.dialStep.seconds", { n: step }) : t("settings.dialStep.minutes", { n: step / 60 })}
           </button>
         {/each}
       </div>
