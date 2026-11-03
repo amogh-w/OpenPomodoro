@@ -162,6 +162,15 @@
   let editDialog: EditSessionDialog | undefined = $state();
   let earlyDialog: ConfirmDialog | undefined = $state();
   let abandonDialog: ConfirmDialog | undefined = $state();
+  let breakDialog: ConfirmDialog | undefined = $state();
+  const cycleLength = $derived(app.settings?.rounds_before_long ?? 4);
+  const roundNow = $derived(((app.timer?.rounds ?? 0) % cycleLength) + 1);
+
+  /** Rest is part of the cycle too, so cutting a break short asks first. Once it has run over, it just ends. */
+  async function leaveBreak(command: "skip_rest" | "init_focus"): Promise<void> {
+    if (view && !view.overflow && !(await breakDialog?.ask())) return;
+    await run({ name: command });
+  }
 
   /** A full session is the point, so stopping before the time is up asks first. Past the end it is simply done. */
   async function endEarly(): Promise<void> {
@@ -252,9 +261,16 @@
 <ConfirmDialog
   bind:this={earlyDialog}
   title={t("timer.endEarly.title")}
-  body={t("timer.endEarly.body", { left: formatSpan(view?.remainingMs ?? 0) })}
+  body={t("timer.endEarly.body", { left: formatSpan(view?.remainingMs ?? 0), n: roundNow, total: cycleLength })}
   confirm={t("timer.endEarly.confirm")}
   cancel={t("timer.endEarly.keep")}
+/>
+<ConfirmDialog
+  bind:this={breakDialog}
+  title={t("timer.endBreakEarly.title")}
+  body={t("timer.endBreakEarly.body", { left: formatSpan(view?.remainingMs ?? 0) })}
+  confirm={t("timer.endBreakEarly.confirm")}
+  cancel={t("timer.endBreakEarly.keep")}
 />
 <ConfirmDialog
   bind:this={abandonDialog}
@@ -359,7 +375,7 @@
       {isBreak ? t("timer.startBreak") : t("timer.start")}
     </button>
     <p class="t-foot text-center text-subtext1 2xl:col-start-2">
-      {t("timer.round", { n: ((app.timer?.rounds ?? 0) % (app.settings?.rounds_before_long ?? 4)) + 1, total: app.settings?.rounds_before_long ?? 4 })}
+      {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
   </form>
 {:else if view.phase === "breathe"}
@@ -382,6 +398,9 @@
     <h1 class="t-title1">{t("timer.phase.reflect")}</h1>
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
+    {#if app.timer?.planned_ms != null && (app.timer?.focus_elapsed_ms ?? 0) < app.timer.planned_ms}
+      <p class="alert tone-warn text-left" role="status">{t("timer.reflect.early", { n: roundNow, total: cycleLength })}</p>
+    {/if}
     <div class="grid gap-2">
       <span class="t-foot text-subtext1">{t("timer.mood")}</span>
       <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.mood")}>
@@ -512,11 +531,11 @@
         {/if}
       {:else}
         {#if view.can.init_focus}
-          <button class="btn btn-filled" disabled={busy} onclick={() => run({ name: "init_focus" })}>
+          <button class="btn btn-filled" disabled={busy} onclick={() => leaveBreak("init_focus")}>
             {t("timer.startFocus")}
           </button>
         {/if}
-        <button class="btn btn-gray" disabled={busy || !view.can.skip_rest} onclick={() => run({ name: "skip_rest" })}>
+        <button class="btn btn-gray" disabled={busy || !view.can.skip_rest} onclick={() => leaveBreak("skip_rest")}>
           {t("timer.endBreak")}
         </button>
       {/if}
