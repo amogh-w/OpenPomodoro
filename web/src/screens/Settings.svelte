@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { t, type MessageKey } from "../lib/i18n";
   import { accents, flavors, radii, setTheme, syncThemeButtons } from "../lib/theme";
+  import AccountSection from "../lib/AccountSection.svelte";
   import { install, promptInstall } from "../platform/install.svelte";
 
   // The kit marks the selected buttons (aria-pressed / ring) itself once they exist.
@@ -61,3 +62,5 @@
     <p class="text-subtext0">{t("install.unavailable")}</p>
   {/if}
 </section>
+
+<AccountSection />

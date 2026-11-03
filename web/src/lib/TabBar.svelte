@@ -8,6 +8,9 @@
     { route: "history", icon: "calendar", label: "nav.history" },
     { route: "settings", icon: "settings", label: "nav.settings" },
   ];
+
+  // The users screen belongs to Settings, so Settings stays highlighted there.
+  const active = (route: Route): boolean => router.route === route || (route === "settings" && router.route === "admin");
 </script>
 
 <nav aria-label={t("nav.label")} class="fixed inset-x-0 bottom-0 mx-auto max-w-[480px]">
@@ -17,8 +20,8 @@
       <!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
       <button
         class="tab"
-        aria-selected={router.route === tab.route}
-        aria-current={router.route === tab.route ? "page" : undefined}
+        aria-selected={active(tab.route)}
+        aria-current={active(tab.route) ? "page" : undefined}
         onclick={() => navigate(tab.route)}
       >
         <svg class="size-6"><use href="/icons.svg#{tab.icon}" /></svg>
