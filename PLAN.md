@@ -47,24 +47,33 @@ Non-goals for v1: accounts, cloud, native mobile apps, native app/window blockin
 - Across devices the order is wall clock only; ids do not prove causality.
 
 ### State machine
-States: `idle, breathe, session, paused, session_end (overflow), reflect, rest, rest_end (break overflow)`. `paused` remembers whether it paused `session` or `rest` and returns there.
+States: `idle, breathe, session, session_end (focus overflow), paused, reflect, rest, rest_end (break overflow)`. `paused` remembers which of `session, session_end, rest, rest_end` it paused and returns there. "Start focus" below means `breathe` when the breathing step is on, otherwise `session`.
 
-| Event | From | To | Notes |
+The machine is pure and owns no timer. The caller applies a timer change first and tells the machine the result: `extend` carries `phase_ended` (the timer's answer afterwards), and the caller sends `timer_ends` when the timer says a phase is over (including after a shrink past zero or a resume of a phase that ended while paused). Each transition may name one **effect** to persist.
+
+| Event | From | To | Effect |
 |---|---|---|---|
-| `init_focus` | idle, rest_end | breathe, or session if breathing is off | |
+| `init_focus` | idle | start focus | |
+| `init_focus` | rest_end | start focus | save break |
+| `start_focus` | idle / rest_end | session (no breathing) | save break from rest_end |
 | `skip_breathe` | breathe | session | |
-| `start_focus` | idle, rest_end | session | starts without the breathing step |
-| `timer_ends` | breathe / session / rest | session / session_end / rest_end | session goes to rest instead when auto-start break is on |
-| `toggle_pause` | session, rest, paused | paused, or back | blocked in strict mode |
-| `extend(+/-)` | session, session_end, rest, rest_end, paused | same state, or *_end if shrunk past zero | |
-| `stop` | session, session_end, paused (from session) | reflect | end focus early, keep it |
-| `stop` | rest, rest_end, paused (from rest) | idle | end break early, keep it |
-| `abandon` | breathe, session, session_end, paused (from session) | idle | nothing saved; blocked in strict mode |
-| `take_rest` | reflect, idle | rest | saves the focus session when leaving reflect |
-| `done` | reflect | idle | saves the focus session, no break |
-| `skip_rest` | rest, rest_end | idle, or session if auto-start focus is on | blocked in strict mode |
+| `timer_ends` | breathe | session | |
+| `timer_ends` | session | session_end, or rest when auto-start break is on | save focus when it goes to rest |
+| `timer_ends` | rest | rest_end, or start focus when auto-start focus is on | save break when it starts focus |
+| `toggle_pause` | session, session_end, rest, rest_end | paused | blocked in strict mode |
+| `toggle_pause` | paused | the phase it paused | resume is never blocked |
+| `extend(+/-)` | session, rest, paused (running phase) | unchanged | |
+| `extend(+/-)` | session_end, rest_end, or paused from them | back to session / rest (paused: still paused) when `phase_ended` is false, else unchanged | |
+| `stop` | session, session_end, paused from them | reflect | none (saved when leaving reflect) |
+| `stop` | rest, rest_end, paused from them | idle | save break; blocked in strict mode while the break is still running |
+| `abandon` | breathe | idle | |
+| `abandon` | session, session_end, paused from them | idle | nothing saved; blocked in strict mode |
+| `take_rest` | reflect | rest | save focus |
+| `take_rest` | idle | rest | |
+| `done` | reflect | idle | save focus |
+| `skip_rest` | rest, rest_end, paused from them | idle, or start focus when auto-start focus is on | save break; blocked in strict mode while the break is still running |
 
-Any other `(state, event)` pair is rejected and logged. The full table is tested row by row in step 1.2.
+Any other `(state, event)` pair is rejected as `unknown`; a blocked row is rejected as `strict`. Both are logged by the caller. `test-vectors/machine.json` holds every state and event pair under the default rules and each rule on its own (792 cases); Rust and the TS port pass all of them.
 
 ### Security
 - The server binds `127.0.0.1` by default and checks `Host` (local names only, against DNS rebinding) and `Origin` (the app's own origin) on every API and WebSocket request.
@@ -188,7 +197,7 @@ Any other `(state, event)` pair is rejected and logged. The full table is tested
 
 ### Phase 1 (P1)
 - [x] 1.1 **Timer core** (T-01..T-05): pure types, `Clock` trait, timer rule from section 2 (extend/shrink, overflow extend, backwards-clock clamp); tests for pause/resume/extend, clock jumps, sleep. Shared JSON vectors in `test-vectors/timer.json` (17 cases) pass in Rust and in the TS port `web/src/lib/timer.ts`. Config bounds (1 min to 12 h per phase, at most 12 rounds) are guesses.
-- [ ] 1.2 **State machine** (section 2 table): table-driven, reject unknown pairs, tests for every row, including breathe, overflow, rest, reflect, auto-start and strict-mode blocks. Shared JSON vectors for every row; TS port in `web/src/lib` checked against them.
+- [x] 1.2 **State machine** (section 2 table): table-driven, reject unknown pairs, tests for every row, including breathe, overflow, rest, reflect, auto-start and strict-mode blocks. Shared JSON vectors for every row; TS port in `web/src/lib/machine.ts` checked against them.
 - [ ] 1.3 **Ids and event log** (D-02): per-device monotonic generator (backward clock, `seq` overflow, restore from this device's max id), events and projections, idempotent add, rejected-event table, tombstones.
 - [ ] 1.4 **SQLite layer** (D-01): migrations, repositories for sessions (focus and break), categories, settings, `current_timer`; one transaction per event.
 - [ ] 1.5 **API v0** (internal, for the PWA): state, commands, history, settings, idempotent event intake for the outbox; WebSocket push of state; per-install token. One integration test per path, plus token, `Host` and `Origin` rejection tests.
