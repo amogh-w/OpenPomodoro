@@ -14,7 +14,7 @@
   .phase-focus { background: color-mix(in oklab, var(--ctp-red) 11%, var(--ctp-base)); }
   .phase-overflow { background: color-mix(in oklab, var(--ctp-yellow) 18%, var(--ctp-base)); }
   .phase-break { background: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base)); }
-  .phase-break-overflow { background: color-mix(in oklab, var(--ctp-teal) 18%, var(--ctp-base)); }
+  .phase-break-overflow { background: color-mix(in oklab, var(--ctp-teal) 22%, var(--ctp-crust)); }
   .phase-reflect { background: color-mix(in oklab, var(--ctp-lavender) 14%, var(--ctp-base)); }
 
   /* The breathing guide: only transform and opacity move. */

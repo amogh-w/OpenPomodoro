@@ -11,8 +11,12 @@
     onchange: (minutes: number) => void;
     disabled?: boolean;
     class?: string;
+    /** Ring colour: a focus session is the accent, a break is green. */
+    tone?: "accent" | "green";
+    /** Called when the hand is turned back past the start (counter-clockwise), to switch between focus and break. */
+    onflip?: () => void;
   }
-  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "" }: Props = $props();
+  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "", tone = "accent", onflip }: Props = $props();
 
   const range = $derived({ min, max, step });
   const R = 100;
@@ -45,6 +49,11 @@
     const now = pointerAngle(event);
     drag.total += turnBetween(drag.prev, now);
     drag.prev = now;
+    if (onflip && drag.start + (drag.total / 360) * 60 < min - step) {
+      drag = null;
+      onflip();
+      return;
+    }
     const next = scrub(drag.start, drag.total, range);
     if (next !== value) onchange(next);
   }
@@ -95,21 +104,21 @@
 >
   <circle cx="120" cy="120" r={R} fill="none" class="stroke-surface1" stroke-width="16" />
   {#if secondLap}
-    <circle cx="120" cy="120" r={R} fill="none" class="stroke-accent" stroke-width="16" opacity="0.3" />
+    <circle cx="120" cy="120" r={R} fill="none" class={tone === "green" ? "stroke-green" : "stroke-accent"} stroke-width="16" opacity="0.3" />
   {/if}
   <circle
     cx="120"
     cy="120"
     r={R}
     fill="none"
-    class="stroke-accent"
+    class={tone === "green" ? "stroke-green" : "stroke-accent"}
     stroke-width="16"
     stroke-linecap="round"
     stroke-dasharray={C}
     stroke-dashoffset={C * (1 - lap)}
     transform="rotate(-90 120 120)"
   />
-  <circle cx={hx} cy={hy} r="14" class="fill-accent stroke-base" stroke-width="4" />
+  <circle cx={hx} cy={hy} r="14" class="{tone === 'green' ? 'fill-green' : 'fill-accent'} stroke-base" stroke-width="4" />
   <text x="120" y="128" text-anchor="middle" class="fill-text" font-size="56" font-weight="700">{value}</text>
   <text x="120" y="156" text-anchor="middle" class="fill-subtext0" font-size="16">{t("timer.dial.unit")}</text>
 </svg>

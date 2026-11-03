@@ -49,3 +49,7 @@ gauge
 captions
 audio-lines
 timer
+volume-2
+volume-x
+coffee
+repeat
