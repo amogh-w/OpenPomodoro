@@ -5,6 +5,8 @@ const en = {
   "nav.timer": "Timer",
   "nav.history": "History",
   "nav.settings": "Settings",
+  "today.title": "Today",
+  "today.empty": "Nothing finished yet today.",
   "timer.title": "Timer",
   "timer.intention.label": "What will you work on?",
   "timer.intention.placeholder": "Write the report (try 30m or @category)",

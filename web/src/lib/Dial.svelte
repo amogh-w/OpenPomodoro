@@ -10,8 +10,9 @@
     step?: number;
     onchange: (minutes: number) => void;
     disabled?: boolean;
+    class?: string;
   }
-  let { value, min = 5, max = 180, step = 5, onchange, disabled = false }: Props = $props();
+  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "" }: Props = $props();
 
   const range = $derived({ min, max, step });
   const R = 100;
@@ -75,7 +76,7 @@
 <!-- A slider for assistive tech and keyboards; pointer drag turns it like a wheel. -->
 <svg
   bind:this={svg}
-  class="mx-auto block size-64 max-w-full touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent {disabled ? 'opacity-60' : ''}"
+  class="mx-auto block size-64 max-w-full touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent {disabled ? 'opacity-60' : ''} {extra}"
   viewBox="0 0 240 240"
   role="slider"
   tabindex="0"

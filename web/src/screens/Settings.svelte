@@ -16,6 +16,7 @@
 
 <h1 class="t-large">{t("settings.title")}</h1>
 
+<div class="lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid lg:[&>*]:mt-0 lg:[&>*]:mb-6">
 <section class="card mt-4 grid gap-5 p-4" aria-labelledby="appearance">
   <h2 id="appearance" class="t-title3">{t("settings.appearance")}</h2>
 
@@ -89,3 +90,4 @@
     {/each}
   </dl>
 </section>
+</div>

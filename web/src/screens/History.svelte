@@ -84,7 +84,7 @@
   </div>
 {/if}
 
-<section class="mt-4 grid grid-cols-2 gap-3" aria-label={t("history.title")}>
+<section class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t("history.title")}>
   <div class="card p-3">
     <div class="t-foot text-subtext1">{t("history.today")}</div>
     <div class="t-title2 tabular-nums">{formatSpan(stats.todayMs)}</div>
@@ -115,7 +115,7 @@
   </button>
 </div>
 
-<section class="mt-3 grid gap-2">
+<section class="mt-3 grid gap-2 lg:grid-cols-2 lg:items-start">
   {#each days as day (day.day)}
     {@const open = expanded === day.day}
     <div class="card overflow-hidden">

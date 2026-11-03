@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import Dial from "../lib/Dial.svelte";
   import NotesPane from "../lib/NotesPane.svelte";
+  import TodayPanel from "../lib/TodayPanel.svelte";
   import { app, currentView, sendCommand } from "../lib/appState.svelte";
   import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
   import { formatElapsed, formatRemaining } from "../lib/format";
@@ -173,13 +174,15 @@
 
 <svelte:window onkeydown={onKey} />
 
+<div class="xl:grid xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start xl:gap-10">
+<div>
 {#if !app.ready || !view}
   <p class="mt-8 text-center text-subtext1" role="status">{t("common.loading")}</p>
 {:else if view.phase === "idle"}
-  <form class="grid gap-5" onsubmit={start}>
-    <h1 class="t-large">{t("timer.title")}</h1>
+  <form class="mx-auto grid max-w-xl gap-5 2xl:max-w-none 2xl:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] 2xl:gap-x-10" onsubmit={start}>
+    <h1 class="t-large 2xl:col-span-2">{t("timer.title")}</h1>
 
-    <label class="grid gap-1.5">
+    <label class="grid gap-1.5 2xl:col-start-2 2xl:row-start-2">
       <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
       <input
         class="field"
@@ -196,7 +199,7 @@
     </label>
 
     {#if fromText || parsed.categoryId}
-      <div class="flex flex-wrap gap-2" aria-live="polite">
+      <div class="flex flex-wrap gap-2 2xl:col-start-2" aria-live="polite">
         {#if fromText}<span class="chip" aria-pressed="true">{t("timer.hint.length", { minutes: length })}</span>{/if}
         {#if parsed.categoryId}
           <span class="chip" aria-pressed="true">{t("timer.hint.category", { name: categoryName(parsed.categoryId) ?? "" })}</span>
@@ -204,7 +207,9 @@
       </div>
     {/if}
 
+    <div class="grid gap-3 2xl:col-start-1 2xl:row-span-6 2xl:row-start-2 2xl:content-center">
     <Dial
+      class="lg:size-80"
       value={length}
       disabled={fromText}
       onchange={(next) => {
@@ -212,10 +217,11 @@
         touchedLength = true;
       }}
     />
-    {#if fromText}<p class="t-foot -mt-3 text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
+    {#if fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
+    </div>
 
     {#if app.categories.length > 0}
-      <label class="grid gap-1.5">
+      <label class="grid gap-1.5 2xl:col-start-2">
         <span class="t-foot text-subtext1">{t("timer.category")}</span>
         <select class="field" bind:value={categoryId} disabled={parsed.categoryId !== null}>
           <option value="">{t("timer.category.none")}</option>
@@ -226,10 +232,10 @@
       </label>
     {/if}
 
-    {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
+    {#if problem}<div class="alert tone-danger 2xl:col-start-2" role="alert">{problem}</div>{/if}
 
-    <button class="btn btn-filled btn-lg w-full" type="submit" disabled={busy}>{t("timer.start")}</button>
-    <p class="t-foot text-center text-subtext1">
+    <button class="btn btn-filled btn-lg w-full 2xl:col-start-2" type="submit" disabled={busy}>{t("timer.start")}</button>
+    <p class="t-foot text-center text-subtext1 2xl:col-start-2">
       {t("timer.round", { n: (app.timer?.rounds ?? 0) + 1, total: app.settings?.rounds_before_long ?? 4 })}
     </p>
   </form>
@@ -249,7 +255,7 @@
     {/if}
   </div>
 {:else if view.phase === "reflect"}
-  <div class="grid gap-5 pt-8 text-center">
+  <div class="mx-auto grid max-w-xl gap-5 pt-8 text-center">
     <h1 class="t-title1">{t("timer.phase.reflect")}</h1>
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
@@ -278,7 +284,7 @@
   <div class="grid justify-items-center gap-5 pt-4 text-center">
     <h1 class="t-title2">{label()}</h1>
 
-    <div class="relative size-64" role="timer" aria-label={t("timer.remaining")}>
+    <div class="relative size-64 lg:size-96" role="timer" aria-label={t("timer.remaining")}>
       <svg class="size-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
         <circle cx="100" cy="100" r={R} fill="none" class="stroke-surface1" stroke-width="12" />
         <circle
@@ -294,7 +300,7 @@
         />
       </svg>
       <div class="absolute inset-0 grid place-content-center gap-1">
-        <div class="{clockText.length > 5 ? 'text-5xl' : 'text-6xl'} font-bold tabular-nums">{clockText}</div>
+        <div class="{clockText.length > 5 ? 'text-5xl lg:text-7xl' : 'text-6xl lg:text-8xl'} font-bold tabular-nums">{clockText}</div>
         {#if view.paused}<div class="text-subtext1">{t("timer.phase.paused")}</div>{/if}
       </div>
     </div>
@@ -355,3 +361,6 @@
     </div>
   </div>
 {/if}
+</div>
+<aside class="hidden xl:block" aria-label={t("today.title")}><TodayPanel /></aside>
+</div>

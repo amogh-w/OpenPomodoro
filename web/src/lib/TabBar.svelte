@@ -26,8 +26,12 @@
   }
 </script>
 
-<nav aria-label={t("nav.label")} class="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[480px]">
-  <div class="tabbar" role="tablist" tabindex="-1" onkeydown={onKey}>
+<nav aria-label={t("nav.label")} class="app-nav fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[480px] md:max-w-xl">
+  <div class="app-brand t-title3" aria-hidden="true">
+    <svg class="size-6 text-accent"><use href="/icons.svg#timer" /></svg>
+    {t("app.name")}
+  </div>
+  <div class="tabbar" role="tablist" aria-orientation="horizontal" tabindex="-1" onkeydown={onKey}>
     {#each tabs as tab (tab.route)}
       <button
         id="tab-{tab.route}"
@@ -39,7 +43,7 @@
         onclick={() => navigate(tab.route)}
       >
         <svg class="size-6"><use href="/icons.svg#{tab.icon}" /></svg>
-        {t(tab.label)}
+        <span>{t(tab.label)}</span>
       </button>
     {/each}
   </div>
