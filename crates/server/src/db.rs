@@ -1,7 +1,9 @@
 //! SQLite storage (D-01): migrations, WAL, and one transaction per event.
 //!
-//! `events` is the append-only log and the source of truth. `rows` is its projection, kept up to date in the
-//! same transaction by the shared [`op_core::decide`] rules, so a row can always be rebuilt from the log.
+//! Every row belongs to one user. `events` is that user's append-only log and the source of truth; `rows` is
+//! its projection, kept up to date in the same transaction by the shared [`op_core::decide`] rules, so a row
+//! can always be rebuilt from the log. Every query below is scoped by user id: one user can neither read nor
+//! collide with another's data.
 
 use std::fmt;
 use std::path::Path;
@@ -12,38 +14,54 @@ use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
 const MIGRATIONS: [&str; 1] = [r#"
+    CREATE TABLE users (
+        id            TEXT PRIMARY KEY,
+        username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        password_hash TEXT NOT NULL,
+        role          TEXT NOT NULL CHECK (role IN ('admin', 'user')),
+        disabled      INTEGER NOT NULL DEFAULT 0,
+        created_at    INTEGER NOT NULL
+    ) WITHOUT ROWID;
+
     CREATE TABLE events (
-        id      TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        id      TEXT NOT NULL,
         entity  TEXT NOT NULL,
         op      TEXT NOT NULL,
         key     TEXT NOT NULL,
-        payload TEXT NOT NULL
+        payload TEXT NOT NULL,
+        PRIMARY KEY (user_id, id)
     ) WITHOUT ROWID;
 
     CREATE TABLE rows (
+        user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         entity    TEXT NOT NULL,
         key       TEXT NOT NULL,
         data      TEXT NOT NULL,
         versions  TEXT NOT NULL,
         tombstone TEXT,
-        PRIMARY KEY (entity, key)
+        PRIMARY KEY (user_id, entity, key)
     ) WITHOUT ROWID;
 
     -- Edits and deletes that arrived before their add; replayed when the add shows up.
     CREATE TABLE rejected_events (
-        id     TEXT PRIMARY KEY REFERENCES events(id),
-        entity TEXT NOT NULL,
-        key    TEXT NOT NULL
+        user_id TEXT NOT NULL,
+        id      TEXT NOT NULL,
+        entity  TEXT NOT NULL,
+        key     TEXT NOT NULL,
+        PRIMARY KEY (user_id, id),
+        FOREIGN KEY (user_id, id) REFERENCES events(user_id, id) ON DELETE CASCADE
     ) WITHOUT ROWID;
-    CREATE INDEX rejected_by_row ON rejected_events (entity, key);
+    CREATE INDEX rejected_by_row ON rejected_events (user_id, entity, key);
 
+    -- Server-wide values (the server's own device id).
     CREATE TABLE meta (
         key   TEXT PRIMARY KEY,
         value TEXT NOT NULL
     ) WITHOUT ROWID;
 
     -- History queries by start time.
-    CREATE INDEX session_started ON rows (json_extract(data, '$.started_at')) WHERE entity = 'session';
+    CREATE INDEX session_started ON rows (user_id, json_extract(data, '$.started_at')) WHERE entity = 'session';
 "#];
 
 #[derive(Debug)]
@@ -57,6 +75,8 @@ pub enum DbError {
     },
     /// Stored data that does not parse back into a row.
     Corrupt(String),
+    /// Another account already uses this username (compared without regard to case).
+    UsernameTaken,
 }
 
 impl fmt::Display for DbError {
@@ -71,6 +91,7 @@ impl fmt::Display for DbError {
                 )
             }
             DbError::Corrupt(what) => write!(f, "corrupt data: {what}"),
+            DbError::UsernameTaken => write!(f, "username is already taken"),
         }
     }
 }
@@ -90,6 +111,40 @@ impl From<serde_json::Error> for DbError {
 }
 
 type Result<T> = std::result::Result<T, DbError>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Role {
+    Admin,
+    User,
+}
+
+impl Role {
+    pub fn code(self) -> &'static str {
+        match self {
+            Role::Admin => "admin",
+            Role::User => "user",
+        }
+    }
+
+    fn from_code(code: &str) -> Option<Role> {
+        match code {
+            "admin" => Some(Role::Admin),
+            "user" => Some(Role::User),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct User {
+    pub id: String,
+    pub username: String,
+    pub password_hash: String,
+    pub role: Role,
+    pub disabled: bool,
+    /// Unix milliseconds.
+    pub created_at: i64,
+}
 
 pub struct Db {
     conn: Connection,
@@ -114,64 +169,160 @@ impl Db {
         Ok(Db { conn })
     }
 
-    /// Append `event` to the log and update its row, all in one transaction. An event id that is already in
-    /// the log changes nothing and answers `Duplicate`, so retries and outbox replays are safe.
-    pub fn apply_event(&mut self, event: &EventRecord) -> Result<Applied> {
+    // ---- users ----
+
+    pub fn insert_user(&self, user: &User) -> Result<()> {
+        let result = self.conn.execute(
+            "INSERT INTO users (id, username, password_hash, role, disabled, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![user.id, user.username, user.password_hash, user.role.code(), user.disabled, user.created_at],
+        );
+        match result {
+            Ok(_) => Ok(()),
+            Err(rusqlite::Error::SqliteFailure(err, Some(msg)))
+                if err.code == rusqlite::ErrorCode::ConstraintViolation
+                    && msg.contains("users.username") =>
+            {
+                Err(DbError::UsernameTaken)
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn user_by_id(&self, id: &str) -> Result<Option<User>> {
+        self.query_user("WHERE id = ?1", id)
+    }
+
+    /// Usernames are compared without regard to case.
+    pub fn user_by_name(&self, username: &str) -> Result<Option<User>> {
+        self.query_user("WHERE username = ?1", username)
+    }
+
+    fn query_user(&self, filter: &str, arg: &str) -> Result<Option<User>> {
+        let sql = format!(
+            "SELECT id, username, password_hash, role, disabled, created_at FROM users {filter}"
+        );
+        let found = self
+            .conn
+            .query_row(&sql, params![arg], read_user)
+            .optional()?;
+        found.transpose()
+    }
+
+    /// All accounts, oldest first.
+    pub fn list_users(&self) -> Result<Vec<User>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, username, password_hash, role, disabled, created_at FROM users ORDER BY created_at, id",
+        )?;
+        let users = stmt.query_map([], read_user)?;
+        users
+            .map(|u| u.map_err(DbError::from).and_then(|u| u))
+            .collect()
+    }
+
+    pub fn count_users(&self) -> Result<u64> {
+        let n: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0))?;
+        Ok(u64::try_from(n).unwrap_or(0))
+    }
+
+    pub fn set_password_hash(&self, id: &str, hash: &str) -> Result<bool> {
+        Ok(self.conn.execute(
+            "UPDATE users SET password_hash = ?2 WHERE id = ?1",
+            params![id, hash],
+        )? > 0)
+    }
+
+    pub fn set_disabled(&self, id: &str, disabled: bool) -> Result<bool> {
+        Ok(self.conn.execute(
+            "UPDATE users SET disabled = ?2 WHERE id = ?1",
+            params![id, disabled],
+        )? > 0)
+    }
+
+    /// Delete an account and, by cascade, its whole log and projection.
+    pub fn delete_user(&self, id: &str) -> Result<bool> {
+        Ok(self
+            .conn
+            .execute("DELETE FROM users WHERE id = ?1", params![id])?
+            > 0)
+    }
+
+    // ---- events and rows (always for one user) ----
+
+    /// Append `event` to the user's log and update its row, all in one transaction. An event id that is
+    /// already in this user's log changes nothing and answers `Duplicate`, so retries and outbox replays are
+    /// safe. Other users' logs are never consulted.
+    pub fn apply_event(&mut self, user: &str, event: &EventRecord) -> Result<Applied> {
         let tx = self.conn.transaction()?;
         let inserted = tx.execute(
-            "INSERT OR IGNORE INTO events (id, entity, op, key, payload) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![event.id, event.entity.code(), event.op.code(), event.key, serde_json::to_string(&event.payload)?],
+            "INSERT OR IGNORE INTO events (user_id, id, entity, op, key, payload) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                user,
+                event.id,
+                event.entity.code(),
+                event.op.code(),
+                event.key,
+                serde_json::to_string(&event.payload)?
+            ],
         )?;
         if inserted == 0 {
             return Ok(Applied::Duplicate);
         }
-        let applied = project(&tx, event)?;
+        let applied = project(&tx, user, event)?;
         tx.commit()?;
         Ok(applied)
     }
 
-    /// Throw the projection away and rebuild it from the log. Same result as applying events as they arrived.
+    /// Throw every projection away and rebuild it from the logs. Same result as applying events as they arrived.
     pub fn rebuild_projection(&mut self) -> Result<()> {
         let tx = self.conn.transaction()?;
         tx.execute_batch("DELETE FROM rejected_events; DELETE FROM rows;")?;
         let events = {
-            let mut stmt =
-                tx.prepare("SELECT id, entity, op, key, payload FROM events ORDER BY id")?;
-            stmt.query_map([], read_event)?
+            let mut stmt = tx.prepare(
+                "SELECT user_id, id, entity, op, key, payload FROM events ORDER BY user_id, id",
+            )?;
+            stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, read_event(r, 1)?)))?
                 .collect::<std::result::Result<Vec<_>, _>>()?
         };
-        for event in events {
-            project(&tx, &event?)?;
+        for (user, event) in events {
+            project(&tx, &user, &event?)?;
         }
         tx.commit()?;
         Ok(())
     }
 
-    pub fn row(&self, entity: Entity, key: &str) -> Result<Option<Row>> {
-        load_row(&self.conn, entity, key)
+    pub fn row(&self, user: &str, entity: Entity, key: &str) -> Result<Option<Row>> {
+        load_row(&self.conn, user, entity, key)
     }
 
-    /// Live (not deleted) rows of one entity, ordered by key.
-    pub fn rows(&self, entity: Entity) -> Result<Vec<(String, Row)>> {
+    /// The user's live (not deleted) rows of one entity, ordered by key.
+    pub fn rows(&self, user: &str, entity: Entity) -> Result<Vec<(String, Row)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT key, data, versions, tombstone FROM rows WHERE entity = ?1 AND tombstone IS NULL ORDER BY key",
+            "SELECT key, data, versions, tombstone FROM rows
+             WHERE user_id = ?1 AND entity = ?2 AND tombstone IS NULL ORDER BY key",
         )?;
-        let rows = stmt.query_map(params![entity.code()], |r| {
+        let rows = stmt.query_map(params![user, entity.code()], |r| {
             Ok((r.get::<_, String>(0)?, read_row(r, 1)?))
         })?;
         rows.map(|r| r.map_err(DbError::from).and_then(|(k, row)| Ok((k, row?))))
             .collect()
     }
 
-    /// Live sessions (focus and break) whose `started_at` (Unix ms) is in `from_ms..to_ms`, oldest first.
-    pub fn sessions_between(&self, from_ms: i64, to_ms: i64) -> Result<Vec<(String, Row)>> {
+    /// The user's live sessions (focus and break) whose `started_at` (Unix ms) is in `from_ms..to_ms`, oldest first.
+    pub fn sessions_between(
+        &self,
+        user: &str,
+        from_ms: i64,
+        to_ms: i64,
+    ) -> Result<Vec<(String, Row)>> {
         let mut stmt = self.conn.prepare(
             "SELECT key, data, versions, tombstone FROM rows
-             WHERE entity = 'session' AND tombstone IS NULL
-               AND json_extract(data, '$.started_at') >= ?1 AND json_extract(data, '$.started_at') < ?2
+             WHERE user_id = ?1 AND entity = 'session' AND tombstone IS NULL
+               AND json_extract(data, '$.started_at') >= ?2 AND json_extract(data, '$.started_at') < ?3
              ORDER BY json_extract(data, '$.started_at'), key",
         )?;
-        let rows = stmt.query_map(params![from_ms, to_ms], |r| {
+        let rows = stmt.query_map(params![user, from_ms, to_ms], |r| {
             Ok((r.get::<_, String>(0)?, read_row(r, 1)?))
         })?;
         rows.map(|r| r.map_err(DbError::from).and_then(|(k, row)| Ok((k, row?))))
@@ -179,19 +330,21 @@ impl Db {
     }
 
     /// A setting's value (stored as the `value` field of its row).
-    pub fn setting(&self, name: &str) -> Result<Option<Value>> {
+    pub fn setting(&self, user: &str, name: &str) -> Result<Option<Value>> {
         Ok(self
-            .row(Entity::Setting, name)?
+            .row(user, Entity::Setting, name)?
             .and_then(|row| row.data.get("value").cloned()))
     }
 
-    /// The live timer state, if a phase is in progress.
-    pub fn current_timer(&self) -> Result<Option<Map<String, Value>>> {
+    /// The user's live timer state, if a phase is in progress.
+    pub fn current_timer(&self, user: &str) -> Result<Option<Map<String, Value>>> {
         Ok(self
-            .row(Entity::Timer, "current")?
+            .row(user, Entity::Timer, "current")?
             .filter(|r| !r.is_deleted())
             .map(|r| r.data))
     }
+
+    // ---- server-wide ----
 
     pub fn meta(&self, key: &str) -> Result<Option<String>> {
         Ok(self
@@ -202,35 +355,21 @@ impl Db {
             .optional()?)
     }
 
-    fn meta_get_or_create(&self, key: &str, make: impl FnOnce() -> String) -> Result<String> {
-        if let Some(value) = self.meta(key)? {
+    /// This server's device id, used for events the server itself writes. Created on first use.
+    pub fn device_id(&self) -> Result<String> {
+        if let Some(value) = self.meta("device_id")? {
             return Ok(value);
         }
-        let value = make();
+        let value = uuid::Uuid::new_v4().to_string();
         self.conn.execute(
-            "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, ?2)",
-            params![key, value],
+            "INSERT OR IGNORE INTO meta (key, value) VALUES ('device_id', ?1)",
+            params![value],
         )?;
-        Ok(self.meta(key)?.unwrap_or(value))
+        Ok(self.meta("device_id")?.unwrap_or(value))
     }
 
-    /// This install's device id, created on first use.
-    pub fn device_id(&self) -> Result<String> {
-        self.meta_get_or_create("device_id", || uuid::Uuid::new_v4().to_string())
-    }
-
-    /// The per-install API token, created on first use.
-    pub fn token(&self) -> Result<String> {
-        self.meta_get_or_create("token", || {
-            format!(
-                "{}{}",
-                uuid::Uuid::new_v4().simple(),
-                uuid::Uuid::new_v4().simple()
-            )
-        })
-    }
-
-    /// An id generator that continues after the highest id this device already issued.
+    /// An id generator for server-written events, continuing after the highest id this server already issued
+    /// (across all users, so the sequence never goes backwards).
     pub fn id_gen(&self) -> Result<IdGen> {
         let device = self.device_id()?;
         let last: Option<String> = self
@@ -261,9 +400,31 @@ fn migrate(conn: &mut Connection) -> Result<()> {
     Ok(())
 }
 
-fn read_event(r: &rusqlite::Row<'_>) -> rusqlite::Result<Result<EventRecord>> {
-    let (id, entity, op, key, payload): (String, String, String, String, String) =
-        (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?);
+fn read_user(r: &rusqlite::Row<'_>) -> rusqlite::Result<Result<User>> {
+    let role: String = r.get(3)?;
+    let (id, username, password_hash, disabled, created_at) =
+        (r.get(0)?, r.get(1)?, r.get(2)?, r.get(4)?, r.get(5)?);
+    Ok(Role::from_code(&role)
+        .map(|role| User {
+            id,
+            username,
+            password_hash,
+            role,
+            disabled,
+            created_at,
+        })
+        .ok_or_else(|| DbError::Corrupt(format!("role {role}"))))
+}
+
+/// Read an event from columns `first..first + 5` (id, entity, op, key, payload).
+fn read_event(r: &rusqlite::Row<'_>, first: usize) -> rusqlite::Result<Result<EventRecord>> {
+    let (id, entity, op, key, payload): (String, String, String, String, String) = (
+        r.get(first)?,
+        r.get(first + 1)?,
+        r.get(first + 2)?,
+        r.get(first + 3)?,
+        r.get(first + 4)?,
+    );
     Ok((|| {
         Ok(EventRecord {
             id,
@@ -288,22 +449,23 @@ fn read_row(r: &rusqlite::Row<'_>, first: usize) -> rusqlite::Result<Result<Row>
     })())
 }
 
-fn load_row(conn: &Connection, entity: Entity, key: &str) -> Result<Option<Row>> {
+fn load_row(conn: &Connection, user: &str, entity: Entity, key: &str) -> Result<Option<Row>> {
     let found = conn
         .query_row(
-            "SELECT data, versions, tombstone FROM rows WHERE entity = ?1 AND key = ?2",
-            params![entity.code(), key],
+            "SELECT data, versions, tombstone FROM rows WHERE user_id = ?1 AND entity = ?2 AND key = ?3",
+            params![user, entity.code(), key],
             |r| read_row(r, 0),
         )
         .optional()?;
     found.transpose()
 }
 
-fn save_row(tx: &Transaction<'_>, entity: Entity, key: &str, row: &Row) -> Result<()> {
+fn save_row(tx: &Transaction<'_>, user: &str, entity: Entity, key: &str, row: &Row) -> Result<()> {
     tx.execute(
-        "INSERT INTO rows (entity, key, data, versions, tombstone) VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT (entity, key) DO UPDATE SET data = ?3, versions = ?4, tombstone = ?5",
+        "INSERT INTO rows (user_id, entity, key, data, versions, tombstone) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT (user_id, entity, key) DO UPDATE SET data = ?4, versions = ?5, tombstone = ?6",
         params![
+            user,
             entity.code(),
             key,
             serde_json::to_string(&row.data)?,
@@ -316,11 +478,11 @@ fn save_row(tx: &Transaction<'_>, entity: Entity, key: &str, row: &Row) -> Resul
 
 /// Apply one logged event to its row, remember it if it has to wait for its add, and replay waiting events
 /// after an add.
-fn project(tx: &Transaction<'_>, event: &EventRecord) -> Result<Applied> {
-    let existing = load_row(tx, event.entity, &event.key)?;
+fn project(tx: &Transaction<'_>, user: &str, event: &EventRecord) -> Result<Applied> {
+    let existing = load_row(tx, user, event.entity, &event.key)?;
     let applied = match decide(existing.as_ref(), event) {
         Decision::Write(row, applied) => {
-            save_row(tx, event.entity, &event.key, &row)?;
+            save_row(tx, user, event.entity, &event.key, &row)?;
             applied
         }
         Decision::Skip(applied) => applied,
@@ -328,35 +490,35 @@ fn project(tx: &Transaction<'_>, event: &EventRecord) -> Result<Applied> {
     match applied {
         Applied::Rejected(Reason::Missing) => {
             tx.execute(
-                "INSERT OR IGNORE INTO rejected_events (id, entity, key) VALUES (?1, ?2, ?3)",
-                params![event.id, event.entity.code(), event.key],
+                "INSERT OR IGNORE INTO rejected_events (user_id, id, entity, key) VALUES (?1, ?2, ?3, ?4)",
+                params![user, event.id, event.entity.code(), event.key],
             )?;
         }
-        Applied::Added => replay_waiting(tx, event.entity, &event.key)?,
+        Applied::Added => replay_waiting(tx, user, event.entity, &event.key)?,
         _ => {}
     }
     Ok(applied)
 }
 
-fn replay_waiting(tx: &Transaction<'_>, entity: Entity, key: &str) -> Result<()> {
+fn replay_waiting(tx: &Transaction<'_>, user: &str, entity: Entity, key: &str) -> Result<()> {
     let waiting = {
         let mut stmt = tx.prepare(
             "SELECT e.id, e.entity, e.op, e.key, e.payload FROM events e
-             JOIN rejected_events r ON r.id = e.id
-             WHERE r.entity = ?1 AND r.key = ?2 ORDER BY e.id",
+             JOIN rejected_events r ON r.user_id = e.user_id AND r.id = e.id
+             WHERE r.user_id = ?1 AND r.entity = ?2 AND r.key = ?3 ORDER BY e.id",
         )?;
-        stmt.query_map(params![entity.code(), key], read_event)?
+        stmt.query_map(params![user, entity.code(), key], |r| read_event(r, 0))?
             .collect::<std::result::Result<Vec<_>, _>>()?
     };
     tx.execute(
-        "DELETE FROM rejected_events WHERE entity = ?1 AND key = ?2",
-        params![entity.code(), key],
+        "DELETE FROM rejected_events WHERE user_id = ?1 AND entity = ?2 AND key = ?3",
+        params![user, entity.code(), key],
     )?;
     for event in waiting {
         let event = event?;
-        let existing = load_row(tx, entity, key)?;
+        let existing = load_row(tx, user, entity, key)?;
         if let Decision::Write(row, _) = decide(existing.as_ref(), &event) {
-            save_row(tx, entity, key, &row)?;
+            save_row(tx, user, entity, key, &row)?;
         }
     }
     Ok(())
@@ -368,6 +530,28 @@ mod tests {
     use crate::test_util::TempDir;
     use op_core::Store;
     use serde_json::json;
+
+    const ALICE: &str = "user-alice";
+    const BOB: &str = "user-bob";
+
+    fn user(id: &str, name: &str) -> User {
+        User {
+            id: id.to_string(),
+            username: name.to_string(),
+            password_hash: "hash".to_string(),
+            role: Role::User,
+            disabled: false,
+            created_at: 1,
+        }
+    }
+
+    /// An in-memory database with accounts for Alice and Bob.
+    fn db() -> Db {
+        let db = Db::open_in_memory().expect("db");
+        db.insert_user(&user(ALICE, "alice")).expect("alice");
+        db.insert_user(&user(BOB, "bob")).expect("bob");
+        db
+    }
 
     fn ev(id: &str, entity: Entity, op: Op, key: &str, payload: Value) -> EventRecord {
         EventRecord {
@@ -383,9 +567,13 @@ mod tests {
         ev(id, Entity::Session, op, key, payload)
     }
 
-    fn log_len(db: &Db) -> i64 {
+    fn count(db: &Db, table: &str, user_id: &str) -> i64 {
         db.conn
-            .query_row("SELECT COUNT(*) FROM events", [], |r| r.get(0))
+            .query_row(
+                &format!("SELECT COUNT(*) FROM {table} WHERE user_id = ?1"),
+                params![user_id],
+                |r| r.get(0),
+            )
             .expect("count")
     }
 
@@ -426,35 +614,92 @@ mod tests {
         ));
     }
 
+    // ---- users ----
+
+    #[test]
+    fn users_round_trip_and_usernames_are_unique_ignoring_case() {
+        let db = Db::open_in_memory().expect("db");
+        db.insert_user(&user("u1", "Alice")).expect("insert");
+        assert_eq!(
+            db.user_by_name("alice").expect("by name").map(|u| u.id),
+            Some("u1".to_string())
+        );
+        assert_eq!(
+            db.user_by_id("u1").expect("by id").map(|u| u.username),
+            Some("Alice".to_string())
+        );
+        assert!(matches!(
+            db.insert_user(&user("u2", "ALICE")),
+            Err(DbError::UsernameTaken)
+        ));
+        assert_eq!(db.count_users().expect("count"), 1);
+        assert_eq!(db.user_by_name("nobody").expect("none"), None);
+    }
+
+    #[test]
+    fn user_updates_and_listing() {
+        let db = db();
+        assert!(db.set_password_hash(ALICE, "new-hash").expect("set"));
+        assert!(db.set_disabled(BOB, true).expect("disable"));
+        assert!(!db.set_disabled("missing", true).expect("missing"));
+        let users = db.list_users().expect("list");
+        assert_eq!(users.len(), 2);
+        assert_eq!(
+            db.user_by_id(ALICE).expect("a").map(|u| u.password_hash),
+            Some("new-hash".to_string())
+        );
+        assert!(db.user_by_id(BOB).expect("b").is_some_and(|u| u.disabled));
+    }
+
+    #[test]
+    fn events_for_an_unknown_user_are_refused() {
+        let mut db = db();
+        assert!(
+            db.apply_event("ghost", &session("1", Op::Add, "s1", json!({"n": 1})))
+                .is_err()
+        );
+    }
+
+    // ---- events and rows ----
+
     #[test]
     fn add_edit_delete_round_trip() {
-        let mut db = Db::open_in_memory().expect("db");
+        let mut db = db();
         assert_eq!(
-            db.apply_event(&session(
-                "1",
-                Op::Add,
-                "s1",
-                json!({"intent": "write", "started_at": 100})
-            ))
+            db.apply_event(
+                ALICE,
+                &session(
+                    "1",
+                    Op::Add,
+                    "s1",
+                    json!({"intent": "write", "started_at": 100})
+                )
+            )
             .expect("add"),
             Applied::Added
         );
         assert_eq!(
-            db.apply_event(&session("2", Op::Edit, "s1", json!({"mood": "focused"})))
-                .expect("edit"),
+            db.apply_event(
+                ALICE,
+                &session("2", Op::Edit, "s1", json!({"mood": "focused"}))
+            )
+            .expect("edit"),
             Applied::Edited
         );
-        let row = db.row(Entity::Session, "s1").expect("row").expect("exists");
+        let row = db
+            .row(ALICE, Entity::Session, "s1")
+            .expect("row")
+            .expect("exists");
         assert_eq!(row.data.get("intent"), Some(&json!("write")));
         assert_eq!(row.data.get("mood"), Some(&json!("focused")));
         assert_eq!(
-            db.apply_event(&session("3", Op::Delete, "s1", Value::Null))
+            db.apply_event(ALICE, &session("3", Op::Delete, "s1", Value::Null))
                 .expect("delete"),
             Applied::Deleted
         );
-        assert!(db.rows(Entity::Session).expect("rows").is_empty());
+        assert!(db.rows(ALICE, Entity::Session).expect("rows").is_empty());
         assert!(
-            db.row(Entity::Session, "s1")
+            db.row(ALICE, Entity::Session, "s1")
                 .expect("row")
                 .is_some_and(|r| r.is_deleted())
         );
@@ -462,57 +707,64 @@ mod tests {
 
     #[test]
     fn repeating_an_event_changes_nothing() {
-        let mut db = Db::open_in_memory().expect("db");
+        let mut db = db();
         let e = session("1", Op::Add, "s1", json!({"n": 1}));
-        assert_eq!(db.apply_event(&e).expect("first"), Applied::Added);
-        assert_eq!(db.apply_event(&e).expect("second"), Applied::Duplicate);
-        assert_eq!(log_len(&db), 1);
+        assert_eq!(db.apply_event(ALICE, &e).expect("first"), Applied::Added);
+        assert_eq!(
+            db.apply_event(ALICE, &e).expect("second"),
+            Applied::Duplicate
+        );
+        assert_eq!(count(&db, "events", ALICE), 1);
     }
 
     #[test]
     fn edit_before_add_waits_then_replays() {
-        let mut db = Db::open_in_memory().expect("db");
+        let mut db = db();
         let applied = db
-            .apply_event(&session("3", Op::Edit, "s1", json!({"mood": "focused"})))
+            .apply_event(
+                ALICE,
+                &session("3", Op::Edit, "s1", json!({"mood": "focused"})),
+            )
             .expect("edit");
         assert_eq!(applied, Applied::Rejected(Reason::Missing));
-        let waiting: i64 = db
-            .conn
-            .query_row("SELECT COUNT(*) FROM rejected_events", [], |r| r.get(0))
-            .expect("n");
-        assert_eq!(waiting, 1);
-        db.apply_event(&session("1", Op::Add, "s1", json!({"intent": "write"})))
-            .expect("add");
-        let row = db.row(Entity::Session, "s1").expect("row").expect("exists");
+        assert_eq!(count(&db, "rejected_events", ALICE), 1);
+        db.apply_event(
+            ALICE,
+            &session("1", Op::Add, "s1", json!({"intent": "write"})),
+        )
+        .expect("add");
+        let row = db
+            .row(ALICE, Entity::Session, "s1")
+            .expect("row")
+            .expect("exists");
         assert_eq!(row.data.get("mood"), Some(&json!("focused")));
-        let waiting: i64 = db
-            .conn
-            .query_row("SELECT COUNT(*) FROM rejected_events", [], |r| r.get(0))
-            .expect("n");
-        assert_eq!(waiting, 0);
-        assert_eq!(log_len(&db), 2, "the log keeps both events");
+        assert_eq!(count(&db, "rejected_events", ALICE), 0);
+        assert_eq!(count(&db, "events", ALICE), 2, "the log keeps both events");
     }
 
     #[test]
     fn sessions_between_filters_and_sorts_by_start() {
-        let mut db = Db::open_in_memory().expect("db");
+        let mut db = db();
         for (i, (key, started)) in [("c", 300), ("a", 100), ("b", 200), ("d", 400)]
             .into_iter()
             .enumerate()
         {
             let id = format!("{}", i + 1);
-            db.apply_event(&session(
-                &id,
-                Op::Add,
-                key,
-                json!({"started_at": started, "kind": "focus"}),
-            ))
+            db.apply_event(
+                ALICE,
+                &session(
+                    &id,
+                    Op::Add,
+                    key,
+                    json!({"started_at": started, "kind": "focus"}),
+                ),
+            )
             .expect("add");
         }
-        db.apply_event(&session("9", Op::Delete, "b", Value::Null))
+        db.apply_event(ALICE, &session("9", Op::Delete, "b", Value::Null))
             .expect("delete");
         let keys: Vec<_> = db
-            .sessions_between(100, 400)
+            .sessions_between(ALICE, 100, 400)
             .expect("range")
             .into_iter()
             .map(|(k, _)| k)
@@ -526,50 +778,170 @@ mod tests {
 
     #[test]
     fn setting_and_current_timer_readers() {
-        let mut db = Db::open_in_memory().expect("db");
-        assert_eq!(db.setting("focus_min").expect("get"), None);
-        db.apply_event(&ev(
-            "1",
-            Entity::Setting,
-            Op::Add,
-            "focus_min",
-            json!({"value": 30}),
-        ))
+        let mut db = db();
+        assert_eq!(db.setting(ALICE, "focus_min").expect("get"), None);
+        db.apply_event(
+            ALICE,
+            &ev(
+                "1",
+                Entity::Setting,
+                Op::Add,
+                "focus_min",
+                json!({"value": 30}),
+            ),
+        )
         .expect("set");
-        assert_eq!(db.setting("focus_min").expect("get"), Some(json!(30)));
+        assert_eq!(
+            db.setting(ALICE, "focus_min").expect("get"),
+            Some(json!(30))
+        );
 
-        assert_eq!(db.current_timer().expect("get"), None);
-        db.apply_event(&ev(
-            "2",
-            Entity::Timer,
-            Op::Add,
-            "current",
-            json!({"state": "session", "start": 5}),
-        ))
+        assert_eq!(db.current_timer(ALICE).expect("get"), None);
+        db.apply_event(
+            ALICE,
+            &ev(
+                "2",
+                Entity::Timer,
+                Op::Add,
+                "current",
+                json!({"state": "session", "start": 5}),
+            ),
+        )
         .expect("t");
         assert_eq!(
-            db.current_timer()
+            db.current_timer(ALICE)
                 .expect("get")
                 .and_then(|m| m.get("state").cloned()),
             Some(json!("session"))
         );
-        db.apply_event(&ev("3", Entity::Timer, Op::Delete, "current", Value::Null))
-            .expect("clear");
-        assert_eq!(db.current_timer().expect("get"), None);
+        db.apply_event(
+            ALICE,
+            &ev("3", Entity::Timer, Op::Delete, "current", Value::Null),
+        )
+        .expect("clear");
+        assert_eq!(db.current_timer(ALICE).expect("get"), None);
+    }
+
+    // ---- isolation ----
+
+    #[test]
+    fn users_never_see_each_others_rows() {
+        let mut db = db();
+        db.apply_event(
+            ALICE,
+            &session(
+                "1",
+                Op::Add,
+                "s1",
+                json!({"started_at": 100, "intent": "secret"}),
+            ),
+        )
+        .expect("a");
+        db.apply_event(
+            ALICE,
+            &ev(
+                "2",
+                Entity::Setting,
+                Op::Add,
+                "theme",
+                json!({"value": "dark"}),
+            ),
+        )
+        .expect("a");
+        db.apply_event(
+            ALICE,
+            &ev(
+                "3",
+                Entity::Timer,
+                Op::Add,
+                "current",
+                json!({"state": "session"}),
+            ),
+        )
+        .expect("a");
+
+        assert_eq!(db.row(BOB, Entity::Session, "s1").expect("row"), None);
+        assert!(db.rows(BOB, Entity::Session).expect("rows").is_empty());
+        assert!(
+            db.sessions_between(BOB, 0, 1_000)
+                .expect("range")
+                .is_empty()
+        );
+        assert_eq!(db.setting(BOB, "theme").expect("setting"), None);
+        assert_eq!(db.current_timer(BOB).expect("timer"), None);
+        assert_eq!(db.rows(ALICE, Entity::Session).expect("rows").len(), 1);
     }
 
     #[test]
-    fn device_id_and_token_are_stable_across_restarts() {
+    fn the_same_event_id_and_key_can_exist_for_two_users() {
+        let mut db = db();
+        let e = session("1", Op::Add, "s1", json!({"intent": "alice"}));
+        assert_eq!(db.apply_event(ALICE, &e).expect("a"), Applied::Added);
+        // Bob sending Alice's event id is not a duplicate and cannot probe whether it exists.
+        let theirs = session("1", Op::Add, "s1", json!({"intent": "bob"}));
+        assert_eq!(db.apply_event(BOB, &theirs).expect("b"), Applied::Added);
+        let a = db
+            .row(ALICE, Entity::Session, "s1")
+            .expect("row")
+            .expect("a");
+        let b = db.row(BOB, Entity::Session, "s1").expect("row").expect("b");
+        assert_eq!(a.data.get("intent"), Some(&json!("alice")));
+        assert_eq!(b.data.get("intent"), Some(&json!("bob")));
+    }
+
+    #[test]
+    fn a_waiting_event_is_replayed_only_for_its_own_user() {
+        let mut db = db();
+        db.apply_event(
+            ALICE,
+            &session("3", Op::Edit, "s1", json!({"mood": "focused"})),
+        )
+        .expect("waits");
+        db.apply_event(BOB, &session("1", Op::Add, "s1", json!({"intent": "bob"})))
+            .expect("bob adds");
+        let bob = db
+            .row(BOB, Entity::Session, "s1")
+            .expect("row")
+            .expect("exists");
+        assert_eq!(
+            bob.data.get("mood"),
+            None,
+            "Alice's waiting edit must not land on Bob's row"
+        );
+        assert_eq!(count(&db, "rejected_events", ALICE), 1);
+    }
+
+    #[test]
+    fn deleting_a_user_removes_everything_of_theirs_and_nothing_else() {
+        let mut db = db();
+        db.apply_event(ALICE, &session("1", Op::Add, "s1", json!({"n": 1})))
+            .expect("a");
+        db.apply_event(ALICE, &session("9", Op::Edit, "missing", json!({"n": 1})))
+            .expect("waits");
+        db.apply_event(BOB, &session("1", Op::Add, "s1", json!({"n": 2})))
+            .expect("b");
+        assert!(db.delete_user(ALICE).expect("delete"));
+        for table in ["events", "rows", "rejected_events"] {
+            assert_eq!(count(&db, table, ALICE), 0, "{table}");
+        }
+        assert_eq!(db.rows(BOB, Entity::Session).expect("rows").len(), 1);
+        assert_eq!(db.user_by_id(ALICE).expect("gone"), None);
+    }
+
+    // ---- server device id ----
+
+    #[test]
+    fn device_id_is_stable_across_restarts() {
         let dir = TempDir::new();
         let path = dir.path().join("op.db");
-        let (device, token) = {
-            let db = Db::open(&path).expect("open");
-            (db.device_id().expect("device"), db.token().expect("token"))
-        };
-        let db = Db::open(&path).expect("reopen");
-        assert_eq!(db.device_id().expect("device"), device);
-        assert_eq!(db.token().expect("token"), token);
-        assert!(token.len() >= 64);
+        let device = Db::open(&path).expect("open").device_id().expect("device");
+        assert_eq!(
+            Db::open(&path)
+                .expect("reopen")
+                .device_id()
+                .expect("device"),
+            device
+        );
     }
 
     #[test]
@@ -578,9 +950,10 @@ mod tests {
         let path = dir.path().join("op.db");
         let first_id = {
             let mut db = Db::open(&path).expect("open");
+            db.insert_user(&user(ALICE, "alice")).expect("alice");
             let mut id_gen = db.id_gen().expect("gen");
             let id = id_gen.next(9_000_000);
-            db.apply_event(&session(&id, Op::Add, "s1", json!({"n": 1})))
+            db.apply_event(ALICE, &session(&id, Op::Add, "s1", json!({"n": 1})))
                 .expect("add");
             id
         };
@@ -589,9 +962,11 @@ mod tests {
         assert!(next > first_id, "{next} should sort after {first_id}");
     }
 
+    // ---- convergence ----
+
     #[test]
     fn rebuilding_the_projection_matches_incremental_application() {
-        let mut db = Db::open_in_memory().expect("db");
+        let mut db = db();
         let events = [
             session("3", Op::Edit, "a", json!({"y": 3})),
             session("1", Op::Add, "a", json!({"x": 1})),
@@ -600,19 +975,21 @@ mod tests {
             session("5", Op::Edit, "a", json!({"x": 5})),
         ];
         for e in &events {
-            db.apply_event(e).expect("apply");
+            db.apply_event(ALICE, e).expect("apply");
+            db.apply_event(BOB, e).expect("apply");
         }
-        let before = (
-            db.row(Entity::Session, "a").expect("a"),
-            db.row(Entity::Session, "b").expect("b"),
-        );
+        let snapshot = |db: &Db| {
+            [ALICE, BOB].map(|u| {
+                (
+                    db.row(u, Entity::Session, "a").expect("a"),
+                    db.row(u, Entity::Session, "b").expect("b"),
+                )
+            })
+        };
+        let before = snapshot(&db);
         db.rebuild_projection().expect("rebuild");
-        let after = (
-            db.row(Entity::Session, "a").expect("a"),
-            db.row(Entity::Session, "b").expect("b"),
-        );
-        assert_eq!(before, after);
-        assert!(after.1.is_some_and(|r| r.is_deleted()));
+        assert_eq!(before, snapshot(&db));
+        assert!(before[0].1.as_ref().is_some_and(|r| r.is_deleted()));
     }
 
     #[test]
@@ -635,12 +1012,12 @@ mod tests {
             .collect();
         orders.push((0..events.len()).rev().collect());
         for order in orders {
-            let mut db = Db::open_in_memory().expect("db");
+            let mut db = db();
             for &i in &order {
-                db.apply_event(&events[i]).expect("apply");
+                db.apply_event(ALICE, &events[i]).expect("apply");
             }
             assert_eq!(
-                db.row(Entity::Session, "a").expect("row"),
+                db.row(ALICE, Entity::Session, "a").expect("row"),
                 expected,
                 "order {order:?}"
             );
