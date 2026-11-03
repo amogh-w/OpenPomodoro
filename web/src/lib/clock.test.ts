@@ -30,4 +30,12 @@ describe("ServerClock", () => {
     clock.sync(10_000, 2_000, 1_000);
     expect(clock.now(1_000)).toBe(10_000);
   });
+
+  it("always answers in whole milliseconds, even after an odd round trip", () => {
+    const clock = new ServerClock();
+    clock.sync(10_000, 1_000, 1_001); // half a millisecond of latency
+    for (const device of [1_001, 1_500, 99_999]) expect(Number.isInteger(clock.now(device)), String(device)).toBe(true);
+    clock.setOffset(12.5);
+    expect(Number.isInteger(clock.now(1_000))).toBe(true);
+  });
 });

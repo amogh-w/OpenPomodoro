@@ -1,12 +1,21 @@
 // The signed-in user's live data: the timer, settings and categories as the server last said them, the
-// server's clock, and a WebSocket that says when to fetch again. Timer logic itself lives in timer.ts and
-// machine.ts; this only keeps the state and talks to the server.
+// server's clock, and a WebSocket that says when to fetch again.
+//
+// It also keeps the app useful when the server cannot be reached. What the server last said is saved locally; an
+// action taken while offline is worked out here with the same planner the server uses (so the timer keeps going
+// and the screen answers at once), saved in the outbox, and sent when the server is back. Timer logic itself
+// lives in planner.ts, timer.ts and machine.ts; this only keeps the state and talks to the server.
 import { reconnectDelay } from "./backoff";
 import { api, ApiError } from "./api";
 import { createIdSource } from "./clientIds";
 import { ServerClock } from "./clock";
+import { t } from "./i18n";
+import { kvDelete, kvGet, kvSet, outboxAdd, outboxClear, outboxList, outboxStore } from "./idb";
+import { flush } from "./outbox";
+import { plan } from "./planner";
 import { type TimerView, rulesOf, viewOf } from "./timerView";
-import type { Category, CommandInput, ServerState, Settings, TimerData } from "./types";
+import type { Category, CommandInput, EventInput, ServerState, Settings, TimerData } from "./types";
+import { leader } from "../platform/leader.svelte";
 
 export const app = $state<{
   ready: boolean;
@@ -14,7 +23,11 @@ export const app = $state<{
   timer: TimerData | null;
   settings: Settings | null;
   categories: Category[];
-}>({ ready: false, online: true, timer: null, settings: null, categories: [] });
+  /** Things done offline that have not reached the server yet. */
+  pending: number;
+  /** A message to show once, such as "a change made offline could not be applied". */
+  notice: string | null;
+}>({ ready: false, online: true, timer: null, settings: null, categories: [], pending: 0, notice: null });
 
 const clock = new ServerClock();
 
@@ -31,12 +44,14 @@ export function setUnauthorizedHandler(handler: () => void): void {
   onUnauthorized = handler;
 }
 
+// Ids for commands and events. The device part is per tab (session storage): two tabs acting in the same second
+// must not make the same id, because the server would take the second for a repeat of the first.
 let ids: ReturnType<typeof createIdSource> | null = null;
 function nextId(): string {
   if (ids === null) {
     let store: Storage | null = null;
     try {
-      store = localStorage;
+      store = sessionStorage;
     } catch {
       store = null;
     }
@@ -45,14 +60,63 @@ function nextId(): string {
   return ids.next(serverNow());
 }
 
-function apply(state: ServerState, sentAt: number, receivedAt: number): void {
-  clock.sync(state.server_time_ms, sentAt, receivedAt);
+// ---- what is remembered locally ----
+
+type Cached = ServerState & { offset_ms: number };
+
+let userId: string | null = null;
+const stateKey = (id: string): string => `state:${id}`;
+
+const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("op-sync");
+
+function setFromState(state: ServerState): void {
   app.timer = state.timer;
   app.settings = state.settings;
   app.categories = state.categories;
   app.ready = true;
-  app.online = true;
 }
+
+/** Remember the current state (the server's, or ours after an offline action) for the next load. */
+function persistState(): void {
+  if (!userId || !app.timer || !app.settings) return;
+  // The reactive state is a proxy, which IndexedDB cannot copy; store plain snapshots.
+  const cached: Cached = {
+    server_time_ms: serverNow(),
+    timer: $state.snapshot(app.timer),
+    settings: $state.snapshot(app.settings),
+    categories: $state.snapshot(app.categories),
+    offset_ms: clock.offsetMs,
+  };
+  void kvSet(stateKey(userId), cached).catch((error: unknown) => console.warn("could not save state locally", error));
+}
+
+async function loadLocal(): Promise<void> {
+  if (!userId) return;
+  const cached = await kvGet<Cached>(stateKey(userId)).catch(() => undefined);
+  if (cached) {
+    clock.setOffset(cached.offset_ms);
+    setFromState(cached);
+  }
+  app.pending = (await outboxList(userId).catch(() => [])).length;
+}
+
+/** Forget everything kept for this user on this device (sign-out, deleted account). */
+export async function discardLocal(id: string): Promise<void> {
+  await Promise.all([outboxClear(id), kvDelete(stateKey(id)), kvDelete("user")]).catch(() => {});
+}
+
+export const pendingCount = (): number => app.pending;
+
+// ---- talking to the server ----
+
+function applyServerState(state: ServerState, sentAt: number, receivedAt: number): void {
+  clock.sync(state.server_time_ms, sentAt, receivedAt);
+  setFromState(state);
+  app.online = true;
+  persistState();
+}
+
+const unreachable = (error: ApiError): boolean => error.isNetwork || error.status >= 500;
 
 /** Returns true when the error was handled here (signed out, or the server is unreachable). */
 function handleFailure(error: unknown): boolean {
@@ -61,37 +125,92 @@ function handleFailure(error: unknown): boolean {
     onUnauthorized();
     return true;
   }
-  if (error.isNetwork || error.status >= 500) {
+  if (unreachable(error)) {
     app.online = false;
     return true;
   }
   return false;
 }
 
+let flushing = false;
+
+/** Send what was queued offline. True when nothing is left waiting. Only the leader tab sends. */
+export async function flushOutbox(): Promise<boolean> {
+  if (!userId || app.pending === 0) return true;
+  if (!leader.isLeader || flushing) return false;
+  flushing = true;
+  try {
+    const result = await flush(userId, outboxStore, api);
+    app.pending = (await outboxList(userId)).length;
+    for (const d of result.dropped) console.warn("the server refused something done offline:", d.code, d.item);
+    if (result.dropped.length > 0) app.notice = t("common.dropped");
+    if (result.unauthorized) onUnauthorized();
+    else if (!result.complete) app.online = false;
+    if (result.sent + result.dropped.length > 0) channel?.postMessage({ type: "synced", userId });
+    return app.pending === 0;
+  } finally {
+    flushing = false;
+  }
+}
+
 export async function refresh(): Promise<void> {
+  if (userId && app.pending > 0) {
+    if (leader.isLeader) {
+      if (!(await flushOutbox())) return; // still waiting: keep showing what we worked out locally
+    } else {
+      app.pending = (await outboxList(userId).catch(() => [])).length;
+      if (app.pending > 0) return; // the leader tab is sending it
+    }
+  }
   const sentAt = Date.now();
   try {
-    apply(await api.state(), sentAt, Date.now());
+    applyServerState(await api.state(), sentAt, Date.now());
   } catch (error) {
     if (!handleFailure(error)) throw error;
   }
 }
 
-export type CommandOutcome = { ok: true; status: "applied" | "duplicate" } | { ok: false; code: string };
+export type CommandOutcome =
+  | { ok: true; status: "applied" | "duplicate" | "queued" }
+  | { ok: false; code: string };
 
-/** Send a timer command. The server decides; the answer carries the new state. */
+/** Work an action out here, show it at once, and keep it for sending when the server is back. */
+async function queueCommand(id: string, input: CommandInput, at: number): Promise<CommandOutcome> {
+  if (!userId || !app.timer || !app.settings) return { ok: false, code: "offline" };
+  const planned = plan(app.timer, input, at, app.settings);
+  if (!planned.ok) return { ok: false, code: planned.error.replace(":", "_") };
+
+  app.timer = planned.next;
+  await outboxAdd({ userId, kind: "command", id, input: { ...input, at }, createdAt: Date.now() });
+  app.pending += 1;
+  persistState();
+  channel?.postMessage({ type: "local", userId });
+  return { ok: true, status: "queued" };
+}
+
+/**
+ * Send a timer command. The server decides; the answer carries the new state. When the server cannot be reached
+ * the command is worked out locally and queued, with the same id, so if the server did get it the replay is
+ * recognised as a repeat.
+ */
 export async function sendCommand(input: CommandInput): Promise<CommandOutcome> {
+  const id = nextId();
+  const at = serverNow();
+  if (app.pending > 0 || !app.online) return queueCommand(id, input, at);
+
   const sentAt = Date.now();
   try {
-    const res = await api.command(nextId(), input);
-    apply(res.state, sentAt, Date.now());
+    const res = await api.command(id, input);
+    applyServerState(res.state, sentAt, Date.now());
     return { ok: true, status: res.status };
   } catch (error) {
-    if (error instanceof ApiError) {
-      handleFailure(error);
-      return { ok: false, code: error.code };
+    if (!(error instanceof ApiError)) throw error;
+    if (unreachable(error)) {
+      app.online = false;
+      return queueCommand(id, input, at);
     }
-    throw error;
+    handleFailure(error);
+    return { ok: false, code: error.code };
   }
 }
 
@@ -100,6 +219,7 @@ export async function sendCommand(input: CommandInput): Promise<CommandOutcome> 
 let socket: WebSocket | null = null;
 let attempt = 0;
 let retry: ReturnType<typeof setTimeout> | undefined;
+let watchdog: ReturnType<typeof setInterval> | undefined;
 let running = false;
 
 function connect(): void {
@@ -130,26 +250,53 @@ function onVisible(): void {
   if (document.visibilityState === "visible" && running) void refresh().catch(() => {});
 }
 
-/** Start keeping state fresh for the signed-in user. */
-export function start(): void {
+function onOnline(): void {
+  if (running) void refresh().catch(() => {});
+}
+
+function onChannel(event: MessageEvent<{ type?: string; userId?: string }>): void {
+  if (!running || event.data.userId !== userId) return;
+  // Another tab queued something or sent the queue: take its view of the world.
+  if (event.data.type === "local") void loadLocal();
+  else if (event.data.type === "synced") void loadLocal().then(() => refresh()).catch(() => {});
+}
+
+/** Start keeping state fresh for the signed-in user. `offline` means the server was already found unreachable. */
+export function start(id: string, options: { offline?: boolean } = {}): void {
   if (running) return;
   running = true;
+  userId = id;
   attempt = 0;
   document.addEventListener("visibilitychange", onVisible);
+  addEventListener("online", onOnline);
+  channel?.addEventListener("message", onChannel);
   tick.now = serverNow();
   ticker = setInterval(() => {
     tick.now = serverNow();
   }, 250);
-  void refresh().catch(() => {});
+  // While the server is unreachable or something is waiting to be sent, keep trying.
+  watchdog = setInterval(() => {
+    if (!app.online || app.pending > 0) void refresh().catch(() => {});
+  }, 10_000);
+
+  void (async () => {
+    await loadLocal(); // show what we last knew straight away, even with no connection
+    if (options.offline) app.online = false;
+    await refresh().catch(() => {});
+  })();
   connect();
 }
 
-/** Stop, and forget everything about the user (sign-out, session lost). */
+/** Stop, and forget what is on screen (sign-out, session lost). What is saved on the device stays. */
 export function stop(): void {
   running = false;
+  userId = null;
   clearTimeout(retry);
   clearInterval(ticker);
+  clearInterval(watchdog);
   document.removeEventListener("visibilitychange", onVisible);
+  removeEventListener("online", onOnline);
+  channel?.removeEventListener("message", onChannel);
   socket?.close();
   socket = null;
   app.ready = false;
@@ -157,22 +304,39 @@ export function stop(): void {
   app.timer = null;
   app.settings = null;
   app.categories = [];
+  app.pending = 0;
+  app.notice = null;
 }
 
 export type SettingName = keyof Settings;
 
+async function queueEvents(events: EventInput[]): Promise<boolean> {
+  if (!userId) return false;
+  await outboxAdd({ userId, kind: "events", events, createdAt: Date.now() });
+  app.pending += 1;
+  persistState();
+  channel?.postMessage({ type: "local", userId });
+  return true;
+}
+
 /** Save one setting. The screen changes at once; the server confirms (or the old value comes back). */
 export async function saveSetting(name: SettingName, value: number | boolean): Promise<boolean> {
   const previous = app.settings;
+  const event: EventInput = { id: nextId(), entity: "setting", op: "add", key: name, payload: { value } };
   if (previous) app.settings = { ...previous, [name]: value };
+
+  if (app.pending > 0 || !app.online) return queueEvents([event]);
   try {
-    const { results } = await api.events([
-      { id: nextId(), entity: "setting", op: "add", key: name, payload: { value } },
-    ]);
+    const { results } = await api.events([event]);
     const accepted = results[0]?.result !== "invalid";
-    if (!accepted) app.settings = previous;
+    if (accepted) persistState();
+    else app.settings = previous;
     return accepted;
   } catch (error) {
+    if (error instanceof ApiError && unreachable(error)) {
+      app.online = false;
+      return queueEvents([event]);
+    }
     app.settings = previous;
     if (handleFailure(error)) return false;
     throw error;

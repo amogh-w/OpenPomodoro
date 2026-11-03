@@ -1,7 +1,8 @@
 <script lang="ts">
   import { api } from "./api";
   import { errorMessage } from "./errors";
-  import { t } from "./i18n";
+  import { t, tn } from "./i18n";
+  import { app } from "./appState.svelte";
   import { accountGone, session, signOut } from "./session.svelte";
 
   let current = $state("");
@@ -9,6 +10,7 @@
   let changing = $state(false);
   let notice = $state<{ tone: "success" | "danger"; text: string } | null>(null);
 
+  let signOutDialog: HTMLDialogElement | undefined = $state();
   let dialog: HTMLDialogElement | undefined = $state();
   let deletePassword = $state("");
   let deleteError = $state<string | null>(null);
@@ -27,6 +29,16 @@
     } finally {
       changing = false;
     }
+  }
+
+  /** Signs out; if something done offline has not been sent, asks first. */
+  async function trySignOut(): Promise<void> {
+    if ((await signOut()) === "pending") signOutDialog?.showModal();
+  }
+
+  async function forceSignOut(): Promise<void> {
+    signOutDialog?.close();
+    await signOut(true);
   }
 
   async function deleteAccount(event: SubmitEvent): Promise<void> {
@@ -78,7 +90,7 @@
   </form>
 
   <div class="grid gap-2">
-    <button class="btn btn-gray" onclick={signOut}>{t("account.signOut")}</button>
+    <button class="btn btn-gray" onclick={trySignOut}>{t("account.signOut")}</button>
     <button class="btn btn-danger" onclick={() => dialog?.showModal()}>{t("account.delete")}</button>
   </div>
 </section>
@@ -102,4 +114,15 @@
       <button class="btn btn-danger" type="submit" disabled={deleting}>{t("account.deleteForever")}</button>
     </div>
   </form>
+</dialog>
+
+<dialog bind:this={signOutDialog} class="modal" aria-labelledby="signout-title">
+  <div class="grid gap-3 p-5">
+    <h2 id="signout-title" class="t-title3">{t("account.pendingTitle")}</h2>
+    <p class="text-subtext1">{tn("account.pendingWarning", app.pending)}</p>
+    <div class="grid grid-cols-2 gap-2">
+      <button class="btn btn-gray" onclick={() => signOutDialog?.close()}>{t("account.stayHere")}</button>
+      <button class="btn btn-danger" onclick={forceSignOut}>{t("account.signOutAnyway")}</button>
+    </div>
+  </div>
 </dialog>

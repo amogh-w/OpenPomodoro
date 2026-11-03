@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { t } from "./lib/i18n";
+  import { t, tn } from "./lib/i18n";
   import { app, currentView } from "./lib/appState.svelte";
   import { formatElapsed, formatRemaining, minutesLeft } from "./lib/format";
   import { phaseClass } from "./lib/timerView";
@@ -74,7 +74,22 @@
     {#if !app.online}
       <div class="alert tone-warn mb-3" role="status">
         <svg class="size-5 shrink-0"><use href="/icons.svg#triangle-alert" /></svg>
-        <div>{t("common.offline")}</div>
+        <div>
+          {t("common.offline")}
+          {#if app.pending > 0}<div class="mt-1 font-semibold">{tn("common.pending", app.pending)}</div>{/if}
+        </div>
+      </div>
+    {:else if app.pending > 0}
+      <div class="alert tone-info mb-3" role="status">
+        <svg class="size-5 shrink-0"><use href="/icons.svg#info" /></svg>
+        <div>{tn("common.pending", app.pending)}</div>
+      </div>
+    {/if}
+    {#if app.notice}
+      <div class="alert tone-warn mb-3" role="status">
+        <svg class="size-5 shrink-0"><use href="/icons.svg#triangle-alert" /></svg>
+        <div class="flex-1">{app.notice}</div>
+        <button class="btn btn-gray btn-sm" onclick={() => (app.notice = null)}>{t("common.dismiss")}</button>
       </div>
     {/if}
     <main>

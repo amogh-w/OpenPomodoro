@@ -14,9 +14,15 @@ export class ServerClock {
     this.offset = serverTime + latency - receivedAt;
   }
 
+  /** Restore an offset learned in an earlier page load (so a reload while offline keeps agreeing with the server). */
+  setOffset(offsetMs: number): void {
+    this.offset = offsetMs;
+  }
+
   /** The server's current time, as best we know it. */
   now(deviceNow: number = Date.now()): number {
-    return deviceNow + this.offset;
+    // Whole milliseconds: this goes into ids and into the `at` the server reads as an integer.
+    return Math.round(deviceNow + this.offset);
   }
 
   get offsetMs(): number {

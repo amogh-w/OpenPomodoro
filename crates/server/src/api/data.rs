@@ -410,6 +410,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_command_time_must_be_a_whole_number_of_milliseconds() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        let id = me.ids.clone().next(app.state.now_ms());
+        let body = json!({"id": id, "name": "init_focus", "at": app.state.now_ms() as f64 + 0.5});
+        let res = app
+            .post("/api/commands", Some(body))
+            .cookie(&me.cookie)
+            .send()
+            .await;
+        assert_eq!(
+            (res.status, res.json()["error"].clone()),
+            (StatusCode::BAD_REQUEST, json!("invalid_json"))
+        );
+        assert_eq!(
+            me.state(&app).await["timer"]["state"],
+            "idle",
+            "nothing was started"
+        );
+    }
+
+    #[tokio::test]
     async fn strict_mode_is_enforced_by_the_server() {
         let app = TestApp::new();
         let mut me = admin(&app).await;
