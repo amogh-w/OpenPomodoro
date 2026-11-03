@@ -9,17 +9,20 @@
     "css": "tailwindcss -i ui/kit.css -o src/app.css --minify",
     "sync": "cp ui/theme.js ui/ui.js public/",
     "build": "npm run icons && npm run sync && npm run css && vite build",
-    "check": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/cli": "^4.1.11",
     "@tsconfig/svelte": "^5.0.8",
+    "@types/node": "^26.6.6",
     "lucide-static": "^0.540.0",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
     "tailwindcss": "^4.1.11",
     "typescript": "^6.0.3",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

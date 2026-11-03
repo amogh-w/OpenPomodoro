@@ -1,8 +1,31 @@
 <script lang="ts">
-  const name = "OpenPomodoro";
+  import { t } from "./lib/i18n";
+  import { router } from "./lib/router.svelte";
+  import { applyUpdate, sw } from "./platform/serviceWorker.svelte";
+  import TabBar from "./lib/TabBar.svelte";
+  import Timer from "./screens/Timer.svelte";
+  import History from "./screens/History.svelte";
+  import Settings from "./screens/Settings.svelte";
 </script>
 
-<main class="mx-auto flex min-h-dvh max-w-[480px] flex-col items-center justify-center gap-4 px-4">
-  <h1 class="text-2xl font-semibold">{name}</h1>
-  <p class="text-subtext0">Scaffold running.</p>
-</main>
+<div class="mx-auto min-h-dvh max-w-[480px] px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
+  {#if sw.updateReady}
+    <div class="alert tone-info mb-3" role="status">
+      <svg class="size-5 shrink-0"><use href="/icons.svg#info" /></svg>
+      <div class="flex-1">{t("sw.updateReady")}</div>
+      <button class="btn btn-filled btn-sm" onclick={applyUpdate}>{t("sw.updateNow")}</button>
+    </div>
+  {/if}
+
+  <main>
+    {#if router.route === "timer"}
+      <Timer />
+    {:else if router.route === "history"}
+      <History />
+    {:else}
+      <Settings />
+    {/if}
+  </main>
+</div>
+
+<TabBar />

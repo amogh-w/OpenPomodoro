@@ -183,7 +183,7 @@ Any other `(state, event)` pair is rejected and logged. The full table is tested
 ### Phase 0: scaffold
 - [~] 0.1 Cargo workspace (`core`, `server`); `web/` created as Svelte 5 + Vite + TS and initialised with the cuppa-ui kit (`init` script, Tailwind + icon sprite scripts, `theme.js`, `ui.js`); check script running fmt, clippy, tests, `svelte-check` and build (`scripts/check.sh`). Done except the kit lint: it needs this project registered in the cuppa plugin's `harness.json`, which lives outside this repo.
 - [x] 0.2 `server` serves `web/dist` and `/api/health`; binds `127.0.0.1`; `Host`/`Origin` checks in place from the start.
-- [ ] 0.2b PWA skeleton: manifest, icons (original artwork), service worker (shell cache only), install prompt, app shell with tab bar, hash router, theme/flavor/accent settings wired to the kit hooks, i18n catalog and `t()` helper (no literal UI strings from here on). Offline after first load.
+- [x] 0.2b PWA skeleton: manifest, icons (original artwork), service worker (shell cache only), install prompt, app shell with tab bar, hash router, theme/flavor/accent settings wired to the kit hooks, i18n catalog and `t()` helper (no literal UI strings from here on). Offline after first load.
 - [x] 0.3 Docs skeleton: README, CONTRIBUTING, LICENSE. License: **MIT**.
 
 ### Phase 1 (P1)

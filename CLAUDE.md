@@ -49,7 +49,7 @@ PLAN.md           feature list and phases
 ```
 cargo test --workspace
 cargo run -p op-server         # serves web/dist on 127.0.0.1:3000 (OP_PORT, OP_WEB_DIR)
-scripts/check.sh               # fmt, clippy, tests, svelte-check, web build
+scripts/check.sh               # fmt, clippy, tests, svelte-check, web tests, web build
 npm --prefix web run dev       # Vite dev server (proxies /api to the Rust server)
 npm --prefix web run build     # icons sprite + Tailwind css + Vite build into web/dist
 npm --prefix web run check     # svelte-check + tsc
