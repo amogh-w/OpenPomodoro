@@ -1,0 +1,12 @@
+.git
+.github
+target
+data
+ref
+web/node_modules
+web/dist
+web/src/app.css
+web/public/icons.svg
+web/public/theme.js
+web/public/ui.js
+**/.DS_Store

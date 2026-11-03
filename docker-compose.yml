@@ -1,0 +1,22 @@
+# Run OpenPomodoro behind your own reverse proxy (see docs/self-hosting.md).
+#
+#   OP_PUBLIC_URL=https://pomodoro.example.com docker compose up -d
+#
+# The container listens on 127.0.0.1:3000 of the host only; the proxy in front of it handles TLS.
+services:
+  openpomodoro:
+    build: .
+    image: openpomodoro:0.1
+    restart: unless-stopped
+    environment:
+      # The address people type in their browser. Required.
+      OP_PUBLIC_URL: ${OP_PUBLIC_URL:?set OP_PUBLIC_URL, for example https://pomodoro.example.com}
+      # A reverse proxy sits in front, so trust the client address it reports (used for sign-in rate limits).
+      OP_TRUST_PROXY: "true"
+    volumes:
+      - data:/data
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  data:

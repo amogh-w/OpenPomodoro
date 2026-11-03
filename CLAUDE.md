@@ -48,7 +48,8 @@ PLAN.md           feature list and phases
 ## Commands (fill in as they come to exist)
 ```
 cargo test --workspace
-cargo run -p op-server         # serves web/dist on 127.0.0.1:3000; env: OP_BIND, OP_PORT, OP_PUBLIC_URL, OP_DB, OP_WEB_DIR, OP_TRUST_PROXY
+cargo run -p op-server         # 127.0.0.1:3000; serves the embedded web app, else web/dist; env: OP_BIND, OP_PORT, OP_PUBLIC_URL, OP_DB, OP_WEB_DIR, OP_TRUST_PROXY
+scripts/build-release.sh       # web app + release server in one file: target/release/op-server
 scripts/check.sh               # fmt, clippy, tests, svelte-check, web tests, web build
 npm --prefix web run dev       # Vite dev server (proxies /api to the Rust server)
 npm --prefix web run build     # icons sprite + Tailwind css + Vite build into web/dist
