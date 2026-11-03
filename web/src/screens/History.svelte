@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import AddSession from "../lib/AddSession.svelte";
   import DayTimeline from "../lib/DayTimeline.svelte";
+  import Insights from "../lib/Insights.svelte";
   import SessionEditor from "../lib/SessionEditor.svelte";
   import { ApiError, api } from "../lib/api";
   import { app, serverNow, tick } from "../lib/appState.svelte";
@@ -10,6 +11,7 @@
   import { formatSpan } from "../lib/format";
   import { t, tn } from "../lib/i18n";
   import { refreshRecent } from "../lib/recentStore.svelte";
+  import { computeInsights, daysOfMonth } from "../lib/insights";
   import { computeStats } from "../lib/stats";
   import type { DayTotal, SessionRecord } from "../lib/types";
 
@@ -19,6 +21,9 @@
   const first = new Date(serverNow());
   let view = $state({ year: first.getFullYear(), month0: first.getMonth() });
   let sessions = $state<SessionRecord[]>([]);
+  let earlier = $state<SessionRecord[]>([]);
+  let notesOnly = $state(false);
+  let categoryFilter = $state("");
   let totals = $state<DayTotal[]>([]);
   let expanded = $state<string | null>(null);
   let offline = $state(false);
@@ -26,7 +31,11 @@
 
   const todayKey = $derived(localDayKey(tick.now));
   const stats = $derived(computeStats(totals, todayKey));
-  const days = $derived(groupByDay(sessions));
+  const shown = $derived(
+    sessions.filter((s) => (!notesOnly || (s.notes ?? "").trim() !== "") && (categoryFilter === "" || s.category === categoryFilter)),
+  );
+  const days = $derived(groupByDay(shown));
+  const insights = $derived(computeInsights(sessions, earlier, daysOfMonth(view.year, view.month0)));
   const isCurrentMonth = $derived(view.year === first.getFullYear() && view.month0 === first.getMonth());
   const monthLabel = $derived(new Date(view.year, view.month0, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" }));
   const categoryColor = (id: string | null | undefined): string => {
@@ -37,8 +46,14 @@
   async function load(): Promise<void> {
     const { from, to } = monthBounds(view.year, view.month0);
     try {
-      const [month, summary] = await Promise.all([api.history(from, to), api.summary(-new Date().getTimezoneOffset())]);
+      const before = monthBounds(view.year, view.month0 - 1);
+      const [month, last, summary] = await Promise.all([
+        api.history(from, to),
+        api.history(before.from, before.to),
+        api.summary(-new Date().getTimezoneOffset()),
+      ]);
       sessions = month.sessions;
+      earlier = last.sessions;
       totals = summary.days;
       offline = false;
       if (expanded === null || !days.some((d) => d.day === expanded)) expanded = days.find((d) => d.day === todayKey)?.day ?? days[0]?.day ?? null;
@@ -115,7 +130,22 @@
   </button>
 </div>
 
-<section class="mt-3 grid gap-2 lg:grid-cols-2 lg:items-start">
+<div class="mt-3 grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
+  <Insights data={insights} categories={app.categories} />
+
+  <div class="grid content-start gap-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="chip" aria-pressed={notesOnly} onclick={() => (notesOnly = !notesOnly)}>{t("history.notesOnly")}</button>
+      {#if app.categories.length > 0}
+        <select class="field !h-9 w-auto" aria-label={t("history.filter")} bind:value={categoryFilter}>
+          <option value="">{t("history.allCategories")}</option>
+          {#each app.categories as category (category.id)}
+            <option value={category.id}>{category.name}</option>
+          {/each}
+        </select>
+      {/if}
+    </div>
+<section class="grid content-start gap-2" aria-label={t("history.title")}>
   {#each days as day (day.day)}
     {@const open = expanded === day.day}
     <div class="card overflow-hidden">
@@ -164,6 +194,8 @@
     {#if loaded && !offline}<p class="text-subtext1">{t("history.none")}</p>{/if}
   {/each}
 </section>
+  </div>
+</div>
 
 <section class="card mt-6 grid gap-3 p-4" aria-labelledby="export-title">
   <h2 id="export-title" class="t-title3">{t("history.export")}</h2>
