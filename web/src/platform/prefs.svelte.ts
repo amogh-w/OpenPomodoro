@@ -4,6 +4,7 @@ import { type AlertPrefs, parseAlertPrefs } from "../lib/alertPrefs";
 
 const KEEP_AWAKE = "op_keep_awake";
 const ALERTS = "op_alerts";
+const ALLOW_LINKS = "op_allow_links";
 
 function read(key: string): string | null {
   try {
@@ -30,11 +31,17 @@ function readJson(key: string): unknown {
   }
 }
 
-export const prefs = $state({ keepAwake: read(KEEP_AWAKE) === "1" });
+export const prefs = $state({ keepAwake: read(KEEP_AWAKE) === "1", allowLinks: read(ALLOW_LINKS) === "1" });
 
 export function setKeepAwake(on: boolean): void {
   prefs.keepAwake = on;
   write(KEEP_AWAKE, on ? "1" : "0");
+}
+
+/** Let links such as `#/start` act without asking each time. Off by default: any page can open a link. */
+export function setAllowLinks(on: boolean): void {
+  prefs.allowLinks = on;
+  write(ALLOW_LINKS, on ? "1" : "0");
 }
 
 /** Sound, notification, warning and quiet-hours choices for this device. */

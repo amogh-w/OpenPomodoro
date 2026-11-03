@@ -12,6 +12,7 @@
   import { router } from "./lib/router.svelte";
   import { bootstrap, session } from "./lib/session.svelte";
   import { applyUpdate, sw } from "./platform/serviceWorker.svelte";
+  import LinkHandler from "./lib/LinkHandler.svelte";
   import TabBar from "./lib/TabBar.svelte";
   import Admin from "./screens/Admin.svelte";
   import Auth from "./screens/Auth.svelte";
@@ -116,4 +117,5 @@
 
 {#if session.status === "signed_in"}
   <TabBar />
+  <LinkHandler />
 {/if}

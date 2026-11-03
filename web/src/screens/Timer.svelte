@@ -8,6 +8,7 @@
   import { t } from "../lib/i18n";
   import { parseIntention } from "../lib/intention";
   import { recentIntentions } from "../lib/recent";
+  import { actionFor } from "../lib/shortcuts";
   import { recent, refreshRecent } from "../lib/recentStore.svelte";
   import { shouldSendTimerEnds } from "../lib/timerView";
   import type { CommandInput } from "../lib/types";
@@ -78,8 +79,7 @@
     }
   }
 
-  async function start(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
+  async function startSession(): Promise<void> {
     const started = await run({
       name: "init_focus",
       intention: parsed.text,
@@ -88,6 +88,51 @@
     });
     // The next session starts with a blank field; the earlier text is one tap away in the suggestions.
     if (started) intention = "";
+  }
+
+  function start(event: SubmitEvent): void {
+    event.preventDefault();
+    void startSession();
+  }
+
+  let intentionField: HTMLInputElement | undefined = $state();
+
+  /** Keyboard shortcuts for the timer; the rules about when they apply live in shortcuts.ts. */
+  function onKey(event: KeyboardEvent): void {
+    const action = actionFor(
+      { key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey, target: event.target as HTMLElement | null },
+      { dialogOpen: document.querySelector("dialog[open]") !== null },
+    );
+    if (action === null || !view) return;
+    const act = (go: () => void): void => {
+      event.preventDefault();
+      go();
+    };
+    switch (action) {
+      case "cancel":
+        (document.activeElement as HTMLElement | null)?.blur();
+        break;
+      case "focus_input":
+        if (view.phase === "idle") act(() => intentionField?.focus());
+        break;
+      case "toggle_pause":
+        if (view.can.toggle_pause) act(() => void run({ name: "toggle_pause" }));
+        break;
+      case "start":
+        if (view.can.init_focus) act(() => void startSession());
+        break;
+      case "extend":
+      case "shrink":
+        if (view.can.extend) act(() => void run({ name: "extend", delta_ms: action === "extend" ? STEP_MS : -STEP_MS }));
+        break;
+      case "finish":
+        if (view.phase === "focus" && view.can.stop) act(() => void run({ name: "stop" }));
+        break;
+      case "break":
+        if (view.phase === "reflect" && view.can.take_rest) act(() => void endReflect("take_rest"));
+        else if (view.phase === "idle" && view.can.take_rest) act(() => void run({ name: "take_rest" }));
+        break;
+    }
   }
 
   // When the time is up the server has to be told once. A failed try waits a few seconds before the next.
@@ -126,6 +171,8 @@
   }
 </script>
 
+<svelte:window onkeydown={onKey} />
+
 {#if !app.ready || !view}
   <p class="mt-8 text-center text-subtext0" role="status">{t("common.loading")}</p>
 {:else if view.phase === "idle"}
@@ -136,6 +183,7 @@
       <span class="t-foot text-subtext0">{t("timer.intention.label")}</span>
       <input
         class="field"
+        bind:this={intentionField}
         bind:value={intention}
         placeholder={t("timer.intention.placeholder")}
         maxlength="200"

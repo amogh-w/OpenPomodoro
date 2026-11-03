@@ -17,6 +17,10 @@ describe("parseHash", () => {
     expect(parseHash("#/nope")).toBe("timer");
   });
 
+  it("accepts analytics as another name for history", () => {
+    expect(parseHash("#/analytics")).toBe("history");
+  });
+
   it("round-trips with hashFor", () => {
     for (const route of routes) expect(parseHash(hashFor(route))).toBe(route);
   });

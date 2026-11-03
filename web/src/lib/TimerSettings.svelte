@@ -2,7 +2,7 @@
   import { app, saveSetting, type SettingName } from "./appState.svelte";
   import { t } from "./i18n";
   import { stepMinutes } from "./stepper";
-  import { prefs, setKeepAwake } from "../platform/prefs.svelte";
+  import { prefs, setAllowLinks, setKeepAwake } from "../platform/prefs.svelte";
   import { wakeLockSupported } from "../platform/wakeLock";
 
   const MIN = 60_000;
@@ -96,6 +96,16 @@
           disabled={!wakeLockSupported()}
           onchange={(e) => setKeepAwake(e.currentTarget.checked)}
         />
+      </span>
+    </label>
+
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>
+        <span class="block">{t("settings.links")}</span>
+        <span class="t-foot text-subtext0">{t("settings.links.hint")}</span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={prefs.allowLinks} onchange={(e) => setAllowLinks(e.currentTarget.checked)} />
       </span>
     </label>
   </section>

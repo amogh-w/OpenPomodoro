@@ -22,7 +22,7 @@ function durationOf(token: string): number | null {
 const normal = (s: string): string => s.toLowerCase().replace(/\s+/g, "");
 
 /** An exact name match, else a name that starts with what was typed (only if that is unambiguous). */
-function matchCategory(typed: string, categories: Category[]): Category | null {
+export function matchCategory(typed: string, categories: Category[]): Category | null {
   const wanted = normal(typed);
   if (wanted === "") return null;
   const exact = categories.find((c) => normal(c.name) === wanted);
