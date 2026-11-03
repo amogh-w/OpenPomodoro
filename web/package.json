@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "icons": "node ui/icons.mjs --list ui/icons.txt --out public/icons.svg",
-    "css": "tailwindcss -i ui/kit.css -o src/app.css --minify",
+    "css": "tailwindcss -i src/app.src.css -o src/app.css --minify",
     "sync": "cp ui/theme.js ui/ui.js public/",
     "build": "npm run icons && npm run sync && npm run css && vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit -p tsconfig.node.json",

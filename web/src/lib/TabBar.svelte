@@ -13,7 +13,7 @@
   const active = (route: Route): boolean => router.route === route || (route === "settings" && router.route === "admin");
 </script>
 
-<nav aria-label={t("nav.label")} class="fixed inset-x-0 bottom-0 mx-auto max-w-[480px]">
+<nav aria-label={t("nav.label")} class="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[480px]">
   <div class="tabbar">
     {#each tabs as tab (tab.route)}
       <!-- aria-selected is the kit's styling hook for .tab; aria-current is what assistive tech reads. -->

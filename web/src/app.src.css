@@ -1,0 +1,34 @@
+/* The kit first, then what is specific to this app: the whole-screen tint for each timer state.
+   Colours come from the Catppuccin role tokens, mixed into the page base so they read in every flavor. */
+@import "../ui/kit.css";
+
+@layer components {
+  .phase-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    animation: phase-in 500ms var(--ease) both;
+  }
+  .phase-breathe { background: color-mix(in oklab, var(--ctp-sky) 14%, var(--ctp-base)); }
+  .phase-focus { background: color-mix(in oklab, var(--ctp-red) 11%, var(--ctp-base)); }
+  .phase-overflow { background: color-mix(in oklab, var(--ctp-yellow) 18%, var(--ctp-base)); }
+  .phase-break { background: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base)); }
+  .phase-break-overflow { background: color-mix(in oklab, var(--ctp-teal) 18%, var(--ctp-base)); }
+  .phase-reflect { background: color-mix(in oklab, var(--ctp-lavender) 14%, var(--ctp-base)); }
+
+  /* The breathing guide: only transform and opacity move. */
+  .breathe-circle {
+    animation: breathe 8s ease-in-out infinite;
+  }
+}
+
+@keyframes phase-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(0.72); opacity: 0.7; }
+  50% { transform: scale(1); opacity: 1; }
+}

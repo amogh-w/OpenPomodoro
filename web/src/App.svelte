@@ -1,7 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t } from "./lib/i18n";
-  import { app } from "./lib/appState.svelte";
+  import { app, currentView } from "./lib/appState.svelte";
+  import { formatElapsed, formatRemaining, minutesLeft } from "./lib/format";
+  import { phaseClass } from "./lib/timerView";
+  import { prefs } from "./platform/prefs.svelte";
+  import { setBadge } from "./platform/badge";
+  import { holdAwake, releaseAwake } from "./platform/wakeLock";
   import { router } from "./lib/router.svelte";
   import { bootstrap, session } from "./lib/session.svelte";
   import { applyUpdate, sw } from "./platform/serviceWorker.svelte";
@@ -13,9 +18,46 @@
   import Timer from "./screens/Timer.svelte";
 
   onMount(bootstrap);
+
+  const view = $derived(currentView());
+  const tint = $derived(view ? phaseClass(view.state) : "");
+
+  // Time left in the page title and on the app icon (A-08), so it shows when the tab is in the background.
+  $effect(() => {
+    const name = t("app.name");
+    if (!view || view.phase === "idle" || view.phase === "reflect") {
+      document.title = name;
+    } else {
+      const time = view.overflow ? `+${formatElapsed(view.overflowMs)}` : formatRemaining(view.remainingMs);
+      document.title = `${time} · ${name}`;
+    }
+  });
+
+  $effect(() => {
+    const running = view && (view.phase === "focus" || view.phase === "break") && !view.paused && !view.overflow;
+    setBadge(running ? minutesLeft(view.remainingMs) : null);
+  });
+
+  // Keep the screen on while a phase runs, if the user asked for it. The browser drops the lock when the
+  // page is hidden, so it is taken again when the page comes back.
+  let visible = $state(document.visibilityState === "visible");
+  onMount(() => {
+    const onChange = () => (visible = document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  });
+  $effect(() => {
+    const active = view !== null && view.phase !== "idle" && view.phase !== "reflect" && !view.paused;
+    if (prefs.keepAwake && active && visible) void holdAwake();
+    else void releaseAwake();
+  });
 </script>
 
-<div class="mx-auto min-h-dvh max-w-[480px] px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
+{#key tint}
+  {#if tint}<div class="phase-layer {tint}" aria-hidden="true"></div>{/if}
+{/key}
+
+<div class="relative z-10 mx-auto min-h-dvh max-w-[480px] px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
   {#if sw.updateReady}
     <div class="alert tone-info mb-3" role="status">
       <svg class="size-5 shrink-0"><use href="/icons.svg#info" /></svg>

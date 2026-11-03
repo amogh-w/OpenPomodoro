@@ -5,6 +5,7 @@ import { reconnectDelay } from "./backoff";
 import { api, ApiError } from "./api";
 import { createIdSource } from "./clientIds";
 import { ServerClock } from "./clock";
+import { type TimerView, rulesOf, viewOf } from "./timerView";
 import type { Category, CommandInput, ServerState, Settings, TimerData } from "./types";
 
 export const app = $state<{
@@ -16,6 +17,10 @@ export const app = $state<{
 }>({ ready: false, online: true, timer: null, settings: null, categories: [] });
 
 const clock = new ServerClock();
+
+/** The server's time, refreshed several times a second while signed in, so screens can count live. */
+export const tick = $state({ now: Date.now() });
+let ticker: ReturnType<typeof setInterval> | undefined;
 
 /** The server's current time in Unix ms, as best this device can tell. */
 export const serverNow = (): number => clock.now();
@@ -131,6 +136,10 @@ export function start(): void {
   running = true;
   attempt = 0;
   document.addEventListener("visibilitychange", onVisible);
+  tick.now = serverNow();
+  ticker = setInterval(() => {
+    tick.now = serverNow();
+  }, 250);
   void refresh().catch(() => {});
   connect();
 }
@@ -139,6 +148,7 @@ export function start(): void {
 export function stop(): void {
   running = false;
   clearTimeout(retry);
+  clearInterval(ticker);
   document.removeEventListener("visibilitychange", onVisible);
   socket?.close();
   socket = null;
@@ -147,4 +157,29 @@ export function stop(): void {
   app.timer = null;
   app.settings = null;
   app.categories = [];
+}
+
+export type SettingName = keyof Settings;
+
+/** Save one setting. The screen changes at once; the server confirms (or the old value comes back). */
+export async function saveSetting(name: SettingName, value: number | boolean): Promise<boolean> {
+  const previous = app.settings;
+  if (previous) app.settings = { ...previous, [name]: value };
+  try {
+    const { results } = await api.events([
+      { id: nextId(), entity: "setting", op: "add", key: name, payload: { value } },
+    ]);
+    const accepted = results[0]?.result !== "invalid";
+    if (!accepted) app.settings = previous;
+    return accepted;
+  } catch (error) {
+    app.settings = previous;
+    if (handleFailure(error)) return false;
+    throw error;
+  }
+}
+
+/** The timer view for the signed-in user right now, or null before the first answer from the server. */
+export function currentView(): TimerView | null {
+  return app.timer && app.settings ? viewOf(app.timer, tick.now, rulesOf(app.settings)) : null;
 }
