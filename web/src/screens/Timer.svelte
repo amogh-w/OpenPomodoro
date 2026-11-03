@@ -332,7 +332,7 @@
       {isBreak ? t("timer.startBreak") : t("timer.start")}
     </button>
     <p class="t-foot text-center text-subtext1 2xl:col-start-2">
-      {t("timer.round", { n: (app.timer?.rounds ?? 0) + 1, total: app.settings?.rounds_before_long ?? 4 })}
+      {t("timer.round", { n: ((app.timer?.rounds ?? 0) % (app.settings?.rounds_before_long ?? 4)) + 1, total: app.settings?.rounds_before_long ?? 4 })}
     </p>
   </form>
 {:else if view.phase === "breathe"}
@@ -397,7 +397,7 @@
       <button class="btn btn-plain btn-sm -mt-3" onclick={() => editDialog?.show()}>{t("timer.editSession")}</button>
     {/if}
 
-    <div class="relative size-64 lg:size-[min(24rem,40vh)]" role="timer" aria-label={t("timer.remaining")}>
+    <div class="relative size-64 [container-type:inline-size] lg:size-[min(24rem,40vh)]" role="timer" aria-label={t("timer.remaining")}>
       <svg class="size-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
         <circle cx="100" cy="100" r={R} fill="none" class="stroke-surface1" stroke-width="12" />
         <circle
@@ -413,7 +413,7 @@
         />
       </svg>
       <div class="absolute inset-0 grid place-content-center gap-1">
-        <div class="{clockText.length > 5 ? 'text-5xl lg:text-7xl' : 'text-6xl lg:text-8xl'} font-bold tabular-nums">{clockText}</div>
+        <div class="font-bold leading-none tabular-nums" style="font-size: {clockText.length > 5 ? 15 : 21}cqw">{clockText}</div>
         {#if view.paused}<div class="text-subtext1">{t("timer.phase.paused")}</div>{/if}
       </div>
     </div>
