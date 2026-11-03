@@ -1,0 +1,204 @@
+{
+ "description": "Shared id generator vectors. Ops: new{device}, restore{device,ids}, next{at (Unix ms),expect}. Rust (crates/core/tests/id_vectors.rs) and TypeScript (web/src/lib/ids.test.ts) must both pass every case.",
+ "cases": [
+  {
+   "name": "first_id_uses_the_current_second",
+   "ops": [
+    {
+     "op": "new",
+     "device": "dev-a"
+    },
+    {
+     "op": "next",
+     "at": 1000000000500,
+     "expect": "20010909014640.00000@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "same_second_bumps_seq",
+   "ops": [
+    {
+     "op": "new",
+     "device": "dev-a"
+    },
+    {
+     "op": "next",
+     "at": 5000,
+     "expect": "19700101000005.00000@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 5999,
+     "expect": "19700101000005.00001@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 5000,
+     "expect": "19700101000005.00002@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "new_second_resets_seq",
+   "ops": [
+    {
+     "op": "new",
+     "device": "dev-a"
+    },
+    {
+     "op": "next",
+     "at": 5000,
+     "expect": "19700101000005.00000@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 5100,
+     "expect": "19700101000005.00001@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 6000,
+     "expect": "19700101000006.00000@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "clock_back_keeps_time_and_bumps_seq",
+   "ops": [
+    {
+     "op": "new",
+     "device": "dev-a"
+    },
+    {
+     "op": "next",
+     "at": 9000,
+     "expect": "19700101000009.00000@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 1000,
+     "expect": "19700101000009.00001@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 2000,
+     "expect": "19700101000009.00002@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 10000,
+     "expect": "19700101000010.00000@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "seq_overflow_moves_to_next_second",
+   "ops": [
+    {
+     "op": "restore",
+     "device": "dev-a",
+     "ids": [
+      "19700101000140.99999@dev-a"
+     ]
+    },
+    {
+     "op": "next",
+     "at": 100000,
+     "expect": "19700101000141.00000@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 100000,
+     "expect": "19700101000141.00001@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "restore_uses_this_devices_max",
+   "ops": [
+    {
+     "op": "restore",
+     "device": "dev-a",
+     "ids": [
+      "19700101000050.00002@dev-a",
+      "19700101000110.00009@dev-a",
+      "19700101000100.00001@dev-a"
+     ]
+    },
+    {
+     "op": "next",
+     "at": 0,
+     "expect": "19700101000110.00010@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "restore_ignores_other_devices_and_junk",
+   "ops": [
+    {
+     "op": "restore",
+     "device": "dev-a",
+     "ids": [
+      "19700426174639.00000@dev-b",
+      "junk",
+      "19700101000820.00003@dev-a"
+     ]
+    },
+    {
+     "op": "next",
+     "at": 0,
+     "expect": "19700101000820.00004@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "restore_with_nothing_starts_fresh",
+   "ops": [
+    {
+     "op": "restore",
+     "device": "dev-a",
+     "ids": []
+    },
+    {
+     "op": "next",
+     "at": 7000,
+     "expect": "19700101000007.00000@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "leap_day_and_year_end",
+   "ops": [
+    {
+     "op": "new",
+     "device": "dev-a"
+    },
+    {
+     "op": "next",
+     "at": 951782400000,
+     "expect": "20000229000000.00000@dev-a"
+    },
+    {
+     "op": "next",
+     "at": 1798761599000,
+     "expect": "20261231235959.00000@dev-a"
+    }
+   ]
+  },
+  {
+   "name": "epoch_and_negative_clamp",
+   "ops": [
+    {
+     "op": "new",
+     "device": "dev-a"
+    },
+    {
+     "op": "next",
+     "at": -5000,
+     "expect": "19700101000000.00000@dev-a"
+    }
+   ]
+  }
+ ]
+}
