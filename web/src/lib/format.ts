@@ -24,3 +24,11 @@ export function formatElapsed(ms: number): string {
 export function minutesLeft(ms: number): number {
   return Math.ceil(Math.max(0, ms) / 60_000);
 }
+
+/** Longer spans for totals: `3h 25m`, `45m`, `0m`. Minutes are rounded to the nearest. */
+export function formatSpan(ms: number): string {
+  const minutes = Math.round(Math.max(0, ms) / 60_000);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}

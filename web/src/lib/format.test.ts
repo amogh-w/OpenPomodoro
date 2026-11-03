@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatElapsed, formatRemaining, minutesLeft } from "./format";
+import { formatElapsed, formatRemaining, formatSpan, minutesLeft } from "./format";
 
 describe("formatRemaining", () => {
   it("shows the full time during the first second and rounds up after", () => {
@@ -32,5 +32,20 @@ describe("formatElapsed", () => {
 describe("minutesLeft", () => {
   it("rounds up", () => {
     expect([0, 1, 60_000, 60_001, 25 * 60_000].map(minutesLeft)).toEqual([0, 1, 1, 2, 25]);
+  });
+});
+
+describe("formatSpan", () => {
+  it("writes hours and minutes, dropping hours when there are none", () => {
+    expect(formatSpan(0)).toBe("0m");
+    expect(formatSpan(45 * 60_000)).toBe("45m");
+    expect(formatSpan(60 * 60_000)).toBe("1h 0m");
+    expect(formatSpan((3 * 60 + 25) * 60_000)).toBe("3h 25m");
+  });
+
+  it("rounds to the nearest minute and never goes negative", () => {
+    expect(formatSpan(29_000)).toBe("0m");
+    expect(formatSpan(31_000)).toBe("1m");
+    expect(formatSpan(-5000)).toBe("0m");
   });
 });

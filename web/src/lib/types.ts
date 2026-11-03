@@ -74,6 +74,15 @@ export interface SessionRecord {
   mood?: "focused" | "neutral" | "distracted" | null;
 }
 
+/** One local day of recorded time, from `/api/summary`. */
+export interface DayTotal {
+  /** `YYYY-MM-DD`. */
+  day: string;
+  focus_ms: number;
+  break_ms: number;
+  focus_count: number;
+}
+
 export interface CommandInput {
   name: string;
   at?: number;

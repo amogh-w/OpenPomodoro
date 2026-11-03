@@ -2,6 +2,7 @@
 // the server requires for anything that changes data.
 import type {
   CommandInput,
+  DayTotal,
   CommandResponse,
   EventInput,
   EventResult,
@@ -82,6 +83,7 @@ export const api = {
   command: (id: string, input: CommandInput) =>
     request<CommandResponse>("POST", "/api/commands", { id, ...input }),
   events: (events: EventInput[]) => request<{ results: EventResult[] }>("POST", "/api/events", { events }),
+  summary: (tzOffsetMinutes: number) => request<{ days: DayTotal[] }>("GET", `/api/summary?tz=${tzOffsetMinutes}`),
   history: (from: number, to: number) =>
     request<{ sessions: SessionRecord[]; truncated: boolean }>("GET", `/api/history?from=${from}&to=${to}`),
 };

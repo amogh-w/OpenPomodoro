@@ -4,6 +4,8 @@
   import { t } from "./i18n";
   import { refreshRecent } from "./recentStore.svelte";
 
+  let { onsaved }: { onsaved?: () => void } = $props();
+
   type Mood = "focused" | "neutral" | "distracted";
   const moods: Mood[] = ["focused", "neutral", "distracted"];
 
@@ -51,6 +53,7 @@
       if (saved) {
         dialog?.close();
         void refreshRecent();
+        onsaved?.();
       } else {
         problem = t("history.add.failed");
       }
