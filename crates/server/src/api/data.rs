@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 
 use super::{ApiJson, AuthUser};
 use crate::error::ApiError;
+use crate::hub::CHANGED;
 use crate::settings::Settings;
 use crate::state::Shared;
 use crate::timer_service::{self, Command, CommandError, CommandResult, TimerState};
@@ -87,7 +88,10 @@ async fn post_command(
         match timer_service::apply_command(&mut db, &user, &cmd, state.now_ms(), &mut ids)
             .map_err(command_error)?
         {
-            CommandResult::Applied(timer) => ("applied", timer),
+            CommandResult::Applied(timer) => {
+                state.hub.publish(&user, CHANGED);
+                ("applied", timer)
+            }
             CommandResult::Duplicate => ("duplicate", TimerState::load(&db, &user)?),
         }
     };
@@ -135,6 +139,7 @@ async fn post_events(
     }
     let now = state.now_ms();
     let mut results = Vec::with_capacity(batch.events.len());
+    let mut changed = false;
     for event in &batch.events {
         let result = match validate::check_client_event(event, now) {
             Err(error) => EventResult {
@@ -144,6 +149,7 @@ async fn post_events(
             },
             Ok(()) => {
                 let applied = state.db().apply_event(&auth.user.id, event)?;
+                changed |= matches!(applied, Applied::Added | Applied::Edited | Applied::Deleted);
                 EventResult {
                     id: event.id.clone(),
                     result: applied_name(applied),
@@ -152,6 +158,9 @@ async fn post_events(
             }
         };
         results.push(result);
+    }
+    if changed {
+        state.hub.publish(&auth.user.id, CHANGED);
     }
     Ok(Json(json!({ "results": results })))
 }

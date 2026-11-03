@@ -7,11 +7,13 @@ use op_core::{Clock, IdGen};
 use crate::accounts::Accounts;
 use crate::config::Config;
 use crate::db::Db;
+use crate::hub::Hub;
 
 pub struct AppState {
     db: Mutex<Db>,
     ids: Mutex<IdGen>,
     pub accounts: Accounts,
+    pub hub: Hub,
     pub config: Arc<Config>,
     pub clock: Arc<dyn Clock + Send + Sync>,
 }
@@ -31,6 +33,7 @@ impl AppState {
             db: Mutex::new(db),
             ids: Mutex::new(ids),
             accounts,
+            hub: Hub::default(),
             config: Arc::new(config),
             clock,
         }))

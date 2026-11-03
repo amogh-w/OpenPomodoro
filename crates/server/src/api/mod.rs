@@ -12,9 +12,10 @@ use crate::state::Shared;
 
 pub mod auth;
 pub mod data;
+pub mod ws;
 
 pub fn router() -> Router<Shared> {
-    auth::router().merge(data::router())
+    auth::router().merge(data::router()).merge(ws::router())
 }
 
 /// JSON body that answers with the API's own error shape when it does not parse.

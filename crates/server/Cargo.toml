@@ -20,5 +20,7 @@ tower-http = { version = "0.7.1", features = ["fs"] }
 uuid = { version = "1.26.1", features = ["v4"] }
 
 [dev-dependencies]
+futures-util = "0.3.34"
 http-body-util = "0.1.5"
+tokio-tungstenite = "0.30.0"
 tower = "0.5.3"
