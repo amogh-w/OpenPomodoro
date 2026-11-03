@@ -51,7 +51,7 @@
         {mode === "setup" ? t("auth.setup.title") : mode === "register" ? t("auth.register.title") : t("auth.signin.title")}
       </h1>
       {#if mode === "setup"}
-        <p class="mt-2 text-subtext0">{t("auth.setup.intro")}</p>
+        <p class="mt-2 text-subtext1">{t("auth.setup.intro")}</p>
       {/if}
     </div>
 
@@ -64,7 +64,7 @@
 
     <div class="grid gap-3">
       <label class="grid gap-1.5">
-        <span class="t-foot text-subtext0">{t("auth.username")}</span>
+        <span class="t-foot text-subtext1">{t("auth.username")}</span>
         <input
           class="field"
           bind:value={username}
@@ -75,7 +75,7 @@
         />
       </label>
       <label class="grid gap-1.5">
-        <span class="t-foot text-subtext0">{t("auth.password")}</span>
+        <span class="t-foot text-subtext1">{t("auth.password")}</span>
         <input
           class="field"
           type="password"
@@ -86,7 +86,7 @@
       </label>
       {#if creating}
         <label class="grid gap-1.5">
-          <span class="t-foot text-subtext0">{t("auth.confirm")}</span>
+          <span class="t-foot text-subtext1">{t("auth.confirm")}</span>
           <input class="field" type="password" bind:value={confirm} autocomplete="new-password" required />
         </label>
       {/if}

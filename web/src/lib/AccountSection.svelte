@@ -61,7 +61,7 @@
 <section class="card mt-4 grid gap-4 p-4" aria-labelledby="account">
   <div>
     <h2 id="account" class="t-title3">{t("account.title")}</h2>
-    <p class="mt-1 text-subtext0">{t("account.signedInAs", { name: session.user?.username ?? "" })}</p>
+    <p class="mt-1 text-subtext1">{t("account.signedInAs", { name: session.user?.username ?? "" })}</p>
   </div>
 
   {#if session.user?.role === "admin"}
@@ -71,11 +71,11 @@
   <form class="grid gap-3" onsubmit={changePassword}>
     <h3 class="t-headline">{t("account.changePassword")}</h3>
     <label class="grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("account.currentPassword")}</span>
+      <span class="t-foot text-subtext1">{t("account.currentPassword")}</span>
       <input class="field" type="password" bind:value={current} autocomplete="current-password" required />
     </label>
     <label class="grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("account.newPassword")}</span>
+      <span class="t-foot text-subtext1">{t("account.newPassword")}</span>
       <input class="field" type="password" bind:value={next} autocomplete="new-password" required />
     </label>
     {#if notice}
@@ -100,7 +100,7 @@
     <h2 id="delete-title" class="t-title3">{t("account.delete")}</h2>
     <p class="text-subtext1">{t("account.deleteWarning")}</p>
     <label class="grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("account.deleteConfirm")}</span>
+      <span class="t-foot text-subtext1">{t("account.deleteConfirm")}</span>
       <input class="field" type="password" bind:value={deletePassword} autocomplete="current-password" required />
     </label>
     {#if deleteError}

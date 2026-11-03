@@ -22,7 +22,7 @@
   ></textarea>
   {#if suggestions.length > 0}
     <div class="mt-3 grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("timer.notes.recent")}</span>
+      <span class="t-foot text-subtext1">{t("timer.notes.recent")}</span>
       {#each suggestions as note (note.at)}
         <p class="t-foot line-clamp-2 border-l-2 border-surface1 pl-2 text-subtext1">{note.text}</p>
       {/each}

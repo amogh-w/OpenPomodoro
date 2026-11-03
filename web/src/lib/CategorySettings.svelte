@@ -34,7 +34,7 @@
   <h2 id="categories-title" class="t-title3">{t("categories.title")}</h2>
 
   {#if app.categories.length === 0}
-    <p class="text-subtext0">{t("categories.empty")}</p>
+    <p class="text-subtext1">{t("categories.empty")}</p>
   {/if}
 
   {#each app.categories as category (category.id)}
@@ -50,7 +50,7 @@
       </div>
       {#if editing === category.id}
         <label class="grid gap-1.5">
-          <span class="t-foot text-subtext0">{t("categories.name")}</span>
+          <span class="t-foot text-subtext1">{t("categories.name")}</span>
           <input
             class="field"
             value={category.name}
@@ -62,7 +62,7 @@
           />
         </label>
         <div class="grid gap-1.5">
-          <span class="t-foot text-subtext0">{t("categories.color")}</span>
+          <span class="t-foot text-subtext1">{t("categories.color")}</span>
           <div class="grid grid-cols-6 gap-2">
             {#each accents as color (color)}
               <button
@@ -83,7 +83,7 @@
   <form class="grid gap-3 border-t border-surface0 pt-3" onsubmit={add}>
     <h3 class="t-headline">{t("categories.add")}</h3>
     <label class="grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("categories.name")}</span>
+      <span class="t-foot text-subtext1">{t("categories.name")}</span>
       <input class="field" bind:value={adding.name} maxlength="40" required />
     </label>
     <div class="grid grid-cols-6 gap-2" role="group" aria-label={t("categories.color")}>

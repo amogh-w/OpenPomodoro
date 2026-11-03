@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+node scripts/check-strings.mjs
 npm --prefix web run check
 npm --prefix web test
 npm --prefix web run build

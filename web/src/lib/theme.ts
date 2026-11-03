@@ -23,3 +23,9 @@ export function setTheme(pref: ThemePref, value: string): void {
 export function syncThemeButtons(): void {
   applyTheme();
 }
+
+/** Put back one look setting from a restored backup (the key is `ui-flavor`, `ui-accent` or `ui-radius`). */
+export function applyThemeKey(key: string, value: string): void {
+  store.set(key, value);
+  applyTheme();
+}

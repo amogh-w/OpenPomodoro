@@ -26,7 +26,7 @@
 
 <section class="card mt-4 grid gap-4 p-4" aria-labelledby="alert-settings">
   <h2 id="alert-settings" class="t-title3">{t("settings.alerts")}</h2>
-  <p class="t-foot text-subtext0">{t("settings.alerts.openOnly")}</p>
+  <p class="t-foot text-subtext1">{t("settings.alerts.openOnly")}</p>
 
   <label class="flex min-h-11 items-center justify-between gap-3">
     <span>{t("settings.sound")}</span>
@@ -38,7 +38,7 @@
   <label class="grid gap-1.5">
     <span class="flex justify-between">
       <span>{t("settings.volume")}</span>
-      <span class="text-subtext0 tabular-nums">{alertPrefs.volume}%</span>
+      <span class="text-subtext1 tabular-nums">{alertPrefs.volume}%</span>
     </span>
     <input
       class="range"
@@ -57,9 +57,9 @@
     <span>
       <span class="block">{t("settings.notify")}</span>
       {#if !notificationsSupported()}
-        <span class="t-foot text-subtext0">{t("settings.notifyUnsupported")}</span>
+        <span class="t-foot text-subtext1">{t("settings.notifyUnsupported")}</span>
       {:else if perm === "denied"}
-        <span class="t-foot text-subtext0">{t("settings.notifyBlocked")}</span>
+        <span class="t-foot text-subtext1">{t("settings.notifyBlocked")}</span>
       {/if}
     </span>
     <span class="switch">
@@ -98,7 +98,7 @@
     <label class="flex min-h-11 items-center justify-between gap-3">
       <span>
         <span class="block">{t("settings.quiet")}</span>
-        <span class="t-foot text-subtext0">{t("settings.quiet.hint")}</span>
+        <span class="t-foot text-subtext1">{t("settings.quiet.hint")}</span>
       </span>
       <span class="switch">
         <input type="checkbox" checked={alertPrefs.quietEnabled} onchange={(e) => updateAlertPrefs({ quietEnabled: e.currentTarget.checked })} />
@@ -107,11 +107,11 @@
     {#if alertPrefs.quietEnabled}
       <div class="grid grid-cols-2 gap-3">
         <label class="grid gap-1.5">
-          <span class="t-foot text-subtext0">{t("settings.quiet.from")}</span>
+          <span class="t-foot text-subtext1">{t("settings.quiet.from")}</span>
           <input class="field" type="time" value={alertPrefs.quietStart} onchange={(e) => updateAlertPrefs({ quietStart: e.currentTarget.value })} />
         </label>
         <label class="grid gap-1.5">
-          <span class="t-foot text-subtext0">{t("settings.quiet.to")}</span>
+          <span class="t-foot text-subtext1">{t("settings.quiet.to")}</span>
           <input class="field" type="time" value={alertPrefs.quietEnd} onchange={(e) => updateAlertPrefs({ quietEnd: e.currentTarget.value })} />
         </label>
       </div>
@@ -125,6 +125,6 @@
         <button class="btn btn-gray btn-sm" onclick={() => preview(kind)}>{t(`settings.sounds.${kind}`)}</button>
       {/each}
     </div>
-    {#if locked}<p class="t-foot text-subtext0">{t("settings.audioLocked")}</p>{/if}
+    {#if locked}<p class="t-foot text-subtext1">{t("settings.audioLocked")}</p>{/if}
   </div>
 </section>

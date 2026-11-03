@@ -12,6 +12,9 @@ const messages: Record<string, MessageKey> = {
   self_action: "error.self_action",
   forbidden: "error.forbidden",
   not_found: "error.not_found",
+  bad_backup: "error.bad_backup",
+  backup_too_large: "error.backup_too_large",
+  payload_too_large: "error.payload_too_large",
 };
 
 /** A sentence a person can read for whatever went wrong. */

@@ -62,12 +62,12 @@
 
     {#if session?.kind === "focus"}
       <label class="grid gap-1.5">
-        <span class="t-foot text-subtext0">{t("timer.intention.label")}</span>
+        <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
         <input class="field" bind:value={intention} maxlength="200" autocomplete="off" />
       </label>
       {#if app.categories.length > 0}
         <label class="grid gap-1.5">
-          <span class="t-foot text-subtext0">{t("timer.category")}</span>
+          <span class="t-foot text-subtext1">{t("timer.category")}</span>
           <select class="field" bind:value={categoryId}>
             <option value="">{t("timer.category.none")}</option>
             {#each app.categories as category (category.id)}
@@ -78,12 +78,12 @@
       {/if}
     {/if}
     <label class="grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("timer.notes")}</span>
+      <span class="t-foot text-subtext1">{t("timer.notes")}</span>
       <textarea class="field min-h-24" bind:value={notes} maxlength="4000"></textarea>
     </label>
     {#if session?.kind === "focus"}
       <div class="grid gap-1.5">
-        <span class="t-foot text-subtext0">{t("timer.mood")}</span>
+        <span class="t-foot text-subtext1">{t("timer.mood")}</span>
         <div class="flex flex-wrap gap-2" role="group" aria-label={t("timer.mood")}>
           {#each moods as option (option)}
             <button class="chip" type="button" aria-pressed={mood === option} onclick={() => (mood = mood === option ? null : option)}>

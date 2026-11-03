@@ -174,13 +174,13 @@
 <svelte:window onkeydown={onKey} />
 
 {#if !app.ready || !view}
-  <p class="mt-8 text-center text-subtext0" role="status">{t("common.loading")}</p>
+  <p class="mt-8 text-center text-subtext1" role="status">{t("common.loading")}</p>
 {:else if view.phase === "idle"}
   <form class="grid gap-5" onsubmit={start}>
     <h1 class="t-large">{t("timer.title")}</h1>
 
     <label class="grid gap-1.5">
-      <span class="t-foot text-subtext0">{t("timer.intention.label")}</span>
+      <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
       <input
         class="field"
         bind:this={intentionField}
@@ -212,11 +212,11 @@
         touchedLength = true;
       }}
     />
-    {#if fromText}<p class="t-foot -mt-3 text-center text-subtext0">{t("timer.dial.fromText")}</p>{/if}
+    {#if fromText}<p class="t-foot -mt-3 text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
 
     {#if app.categories.length > 0}
       <label class="grid gap-1.5">
-        <span class="t-foot text-subtext0">{t("timer.category")}</span>
+        <span class="t-foot text-subtext1">{t("timer.category")}</span>
         <select class="field" bind:value={categoryId} disabled={parsed.categoryId !== null}>
           <option value="">{t("timer.category.none")}</option>
           {#each app.categories as category (category.id)}
@@ -229,7 +229,7 @@
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
 
     <button class="btn btn-filled btn-lg w-full" type="submit" disabled={busy}>{t("timer.start")}</button>
-    <p class="t-foot text-center text-subtext0">
+    <p class="t-foot text-center text-subtext1">
       {t("timer.round", { n: (app.timer?.rounds ?? 0) + 1, total: app.settings?.rounds_before_long ?? 4 })}
     </p>
   </form>
@@ -254,7 +254,7 @@
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
     <div class="grid gap-2">
-      <span class="t-foot text-subtext0">{t("timer.mood")}</span>
+      <span class="t-foot text-subtext1">{t("timer.mood")}</span>
       <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.mood")}>
         {#each moods as option (option)}
           <button class="chip" aria-pressed={mood === option} onclick={() => (mood = mood === option ? null : option)}>

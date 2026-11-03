@@ -5,6 +5,7 @@
   import AccountSection from "../lib/AccountSection.svelte";
   import AlertSettings from "../lib/AlertSettings.svelte";
   import CategorySettings from "../lib/CategorySettings.svelte";
+  import DataSection from "../lib/DataSection.svelte";
   import TimerSettings from "../lib/TimerSettings.svelte";
   import { SHORTCUT_HELP } from "../lib/shortcuts";
   import { install, promptInstall } from "../platform/install.svelte";
@@ -19,7 +20,7 @@
   <h2 id="appearance" class="t-title3">{t("settings.appearance")}</h2>
 
   <div>
-    <div class="t-foot mb-2 text-subtext0">{t("settings.theme")}</div>
+    <div class="t-foot mb-2 text-subtext1">{t("settings.theme")}</div>
     <div class="flex flex-wrap gap-2">
       {#each flavors as flavor (flavor)}
         <button class="chip" data-flavor={flavor} onclick={() => setTheme("flavor", flavor)}>
@@ -30,7 +31,7 @@
   </div>
 
   <div>
-    <div class="t-foot mb-2 text-subtext0">{t("settings.accent")}</div>
+    <div class="t-foot mb-2 text-subtext1">{t("settings.accent")}</div>
     <div class="grid grid-cols-6 gap-2">
       {#each accents as accent (accent)}
         <button
@@ -45,7 +46,7 @@
   </div>
 
   <div>
-    <div class="t-foot mb-2 text-subtext0">{t("settings.radius")}</div>
+    <div class="t-foot mb-2 text-subtext1">{t("settings.radius")}</div>
     <div class="flex flex-wrap gap-2">
       {#each radii as radius (radius)}
         <button class="chip" data-radius={radius} onclick={() => setTheme("radius", radius)}>
@@ -65,13 +66,15 @@
 <section class="card mt-4 grid gap-3 p-4" aria-labelledby="app">
   <h2 id="app" class="t-title3">{t("settings.app")}</h2>
   {#if install.installed}
-    <p class="text-subtext0">{t("install.installed")}</p>
+    <p class="text-subtext1">{t("install.installed")}</p>
   {:else if install.available}
     <button class="btn btn-filled" onclick={promptInstall}>{t("install.button")}</button>
   {:else}
-    <p class="text-subtext0">{t("install.unavailable")}</p>
+    <p class="text-subtext1">{t("install.unavailable")}</p>
   {/if}
 </section>
+
+<DataSection />
 
 <AccountSection />
 

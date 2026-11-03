@@ -102,7 +102,7 @@
   <label class="flex items-center justify-between gap-3">
     <span>
       <span class="block">{t("admin.registration")}</span>
-      <span class="t-foot text-subtext0">{t("admin.registrationHint")}</span>
+      <span class="t-foot text-subtext1">{t("admin.registrationHint")}</span>
     </span>
     <span class="switch"><input type="checkbox" checked={open} onchange={toggleRegistration} /></span>
   </label>
@@ -115,9 +115,9 @@
         <div class="min-w-0">
           <div class="truncate t-headline">
             {user.username}
-            {#if user.id === session.user?.id}<span class="t-foot text-subtext0">({t("admin.you")})</span>{/if}
+            {#if user.id === session.user?.id}<span class="t-foot text-subtext1">({t("admin.you")})</span>{/if}
           </div>
-          <div class="t-foot text-subtext0">
+          <div class="t-foot text-subtext1">
             {user.role === "admin" ? t("admin.role.admin") : t("admin.role.user")}
             {#if user.disabled}· {t("admin.disabled")}{/if}
           </div>
@@ -156,14 +156,19 @@
   {/each}
 </section>
 
+<section class="card mt-4 grid gap-2 p-4">
+  <a class="btn btn-gray" href="/api/admin/backup" download>{t("admin.backup")}</a>
+  <p class="t-foot text-subtext1">{t("admin.backup.hint")}</p>
+</section>
+
 <form class="card mt-4 grid gap-3 p-4" onsubmit={createUser}>
   <h2 class="t-title3">{t("admin.add")}</h2>
   <label class="grid gap-1.5">
-    <span class="t-foot text-subtext0">{t("auth.username")}</span>
+    <span class="t-foot text-subtext1">{t("auth.username")}</span>
     <input class="field" bind:value={newName} autocomplete="off" autocapitalize="none" spellcheck="false" required />
   </label>
   <label class="grid gap-1.5">
-    <span class="t-foot text-subtext0">{t("auth.password")}</span>
+    <span class="t-foot text-subtext1">{t("auth.password")}</span>
     <input class="field" type="password" bind:value={newPassword} autocomplete="new-password" required />
   </label>
   <div class="flex flex-wrap gap-2" role="group" aria-label={t("admin.add")}>

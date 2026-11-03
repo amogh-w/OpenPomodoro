@@ -34,6 +34,21 @@ const clock = new ServerClock();
 /** The server's time, refreshed several times a second while signed in, so screens can count live. */
 export const tick = $state({ now: Date.now() });
 let ticker: ReturnType<typeof setInterval> | undefined;
+let tickMs = 250;
+
+function runTicker(): void {
+  clearInterval(ticker);
+  tick.now = serverNow();
+  ticker = setInterval(() => {
+    tick.now = serverNow();
+  }, tickMs);
+}
+
+/** Change how often the clock refreshes (slower saves power). Takes effect at once if the app is running. */
+export function setTickRate(ms: number): void {
+  tickMs = ms;
+  if (running) runTicker();
+}
 
 /** The server's current time in Unix ms, as best this device can tell. */
 export const serverNow = (): number => clock.now();
@@ -270,10 +285,7 @@ export function start(id: string, options: { offline?: boolean } = {}): void {
   document.addEventListener("visibilitychange", onVisible);
   addEventListener("online", onOnline);
   channel?.addEventListener("message", onChannel);
-  tick.now = serverNow();
-  ticker = setInterval(() => {
-    tick.now = serverNow();
-  }, 250);
+  runTicker();
   // While the server is unreachable or something is waiting to be sent, keep trying.
   watchdog = setInterval(() => {
     if (!app.online || app.pending > 0) void refresh().catch(() => {});

@@ -5,6 +5,7 @@
   import SessionEditor from "../lib/SessionEditor.svelte";
   import { ApiError, api } from "../lib/api";
   import { app, serverNow, tick } from "../lib/appState.svelte";
+  import { downloadBackup } from "../lib/backupFile";
   import { dayStartMs, groupByDay, localDayKey, monthBounds } from "../lib/days";
   import { formatSpan } from "../lib/format";
   import { t, tn } from "../lib/i18n";
@@ -66,27 +67,7 @@
   const spentOf = (s: SessionRecord): number => s.duration_ms ?? Math.max(0, s.ended_at - s.started_at);
   const kindLabel = (s: SessionRecord): string => (s.intention && s.intention !== "" ? s.intention : t(`timer.phase.${s.kind}`));
 
-  /** Download the JSON backup, with this browser's look (theme, accent, corner radius) added to it. */
-  async function downloadBackup(): Promise<void> {
-    const res = await fetch("/api/export?format=json", { credentials: "same-origin" });
-    if (!res.ok) return;
-    const data = (await res.json()) as Record<string, unknown>;
-    const ui: Record<string, string> = {};
-    for (const key of ["ui-flavor", "ui-accent", "ui-radius"]) {
-      try {
-        const value = localStorage.getItem(key);
-        if (value !== null) ui[key] = value;
-      } catch {
-        // Storage blocked: nothing to add.
-      }
-    }
-    const blob = new Blob([JSON.stringify({ ...data, ui }, null, 2)], { type: "application/json" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `openpomodoro-${localDayKey(Date.now()).replaceAll("-", "")}.json`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  }
+  const backup = (): Promise<boolean> => downloadBackup(localDayKey(Date.now()).replaceAll("-", ""));
 
   onMount(() => void load());
 </script>
@@ -105,22 +86,22 @@
 
 <section class="mt-4 grid grid-cols-2 gap-3" aria-label={t("history.title")}>
   <div class="card p-3">
-    <div class="t-foot text-subtext0">{t("history.today")}</div>
+    <div class="t-foot text-subtext1">{t("history.today")}</div>
     <div class="t-title2 tabular-nums">{formatSpan(stats.todayMs)}</div>
   </div>
   <div class="card p-3">
-    <div class="t-foot text-subtext0">{t("history.week")}</div>
+    <div class="t-foot text-subtext1">{t("history.week")}</div>
     <div class="t-title2 tabular-nums">{formatSpan(stats.weekMs)}</div>
   </div>
   <div class="card p-3">
-    <div class="t-foot text-subtext0">{t("history.allTime")}</div>
+    <div class="t-foot text-subtext1">{t("history.allTime")}</div>
     <div class="t-title2 tabular-nums">{formatSpan(stats.allTimeMs)}</div>
-    <div class="t-foot text-subtext0">{tn("history.sessions", stats.sessions)}</div>
+    <div class="t-foot text-subtext1">{tn("history.sessions", stats.sessions)}</div>
   </div>
   <div class="card p-3">
-    <div class="t-foot text-subtext0">{t("history.streak.title")}</div>
+    <div class="t-foot text-subtext1">{t("history.streak.title")}</div>
     <div class="t-title2">{tn("history.streak", stats.currentStreak)}</div>
-    <div class="t-foot text-subtext0">{t("history.longest", { n: stats.longestStreak })}</div>
+    <div class="t-foot text-subtext1">{t("history.longest", { n: stats.longestStreak })}</div>
   </div>
 </section>
 
@@ -145,7 +126,7 @@
       >
         <span>
           <span class="block t-headline">{dayLabel(day.day)}</span>
-          <span class="t-foot text-subtext0">{tn("history.sessions", day.focusCount)}</span>
+          <span class="t-foot text-subtext1">{tn("history.sessions", day.focusCount)}</span>
         </span>
         <span class="tabular-nums text-subtext1">{formatSpan(day.focusMs)}</span>
       </button>
@@ -167,7 +148,7 @@
                 ></span>
                 <span class="min-w-0 flex-1">
                   <span class="block truncate">{kindLabel(s)}</span>
-                  <span class="t-foot block text-subtext0">
+                  <span class="t-foot block text-subtext1">
                     {time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}
                   </span>
                   {#if s.notes}<span class="t-foot line-clamp-1 block text-subtext1">{s.notes}</span>{/if}
@@ -180,15 +161,15 @@
       {/if}
     </div>
   {:else}
-    {#if loaded && !offline}<p class="text-subtext0">{t("history.none")}</p>{/if}
+    {#if loaded && !offline}<p class="text-subtext1">{t("history.none")}</p>{/if}
   {/each}
 </section>
 
 <section class="card mt-6 grid gap-3 p-4" aria-labelledby="export-title">
   <h2 id="export-title" class="t-title3">{t("history.export")}</h2>
-  <p class="t-foot text-subtext0">{t("history.export.hint")}</p>
+  <p class="t-foot text-subtext1">{t("history.export.hint")}</p>
   <div class="grid gap-2 sm:grid-cols-3">
-    <button class="btn btn-gray" onclick={downloadBackup}>{t("history.export.json")}</button>
+    <button class="btn btn-gray" onclick={backup}>{t("history.export.json")}</button>
     <a class="btn btn-gray" href="/api/export?format=csv" download>{t("history.export.csv")}</a>
     <a class="btn btn-gray" href="/api/export?format=ics" download>{t("history.export.ics")}</a>
   </div>

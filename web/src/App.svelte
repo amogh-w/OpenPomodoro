@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import { t, tn } from "./lib/i18n";
   import { startAlerts } from "./lib/alerts.svelte";
-  import { app, currentView } from "./lib/appState.svelte";
+  import { app, currentView, setTickRate } from "./lib/appState.svelte";
+  import { tickInterval } from "./lib/motion";
   import { formatElapsed, formatRemaining, minutesLeft } from "./lib/format";
   import { phaseClass } from "./lib/timerView";
   import { prefs } from "./platform/prefs.svelte";
@@ -12,6 +13,7 @@
   import { router } from "./lib/router.svelte";
   import { bootstrap, session } from "./lib/session.svelte";
   import { applyUpdate, sw } from "./platform/serviceWorker.svelte";
+  import Announcer from "./lib/Announcer.svelte";
   import LinkHandler from "./lib/LinkHandler.svelte";
   import TabBar from "./lib/TabBar.svelte";
   import Admin from "./screens/Admin.svelte";
@@ -29,6 +31,12 @@
   });
 
   const view = $derived(currentView());
+
+  // "Reduce motion": a class that switches animations off, and a slower clock to save power.
+  $effect(() => {
+    document.documentElement.classList.toggle("reduce-motion", prefs.reduceMotion);
+    setTickRate(tickInterval(prefs.reduceMotion));
+  });
   const tint = $derived(view ? phaseClass(view.state) : "");
 
   // Time left in the page title and on the app icon (A-08), so it shows when the tab is in the background.
@@ -75,8 +83,16 @@
     </div>
   {/if}
 
+  {#if sw.offlineReady}
+    <div class="alert tone-success mb-3" role="status">
+      <svg class="size-5 shrink-0"><use href="/icons.svg#circle-check" /></svg>
+      <div class="flex-1">{t("sw.offlineReady")}</div>
+      <button class="btn btn-gray btn-sm" onclick={() => (sw.offlineReady = false)}>{t("common.dismiss")}</button>
+    </div>
+  {/if}
+
   {#if session.status === "loading"}
-    <p class="mt-8 text-center text-subtext0" role="status">{t("common.loading")}</p>
+    <p class="mt-8 text-center text-subtext1" role="status">{t("common.loading")}</p>
   {:else if session.status !== "signed_in"}
     <main class="pt-8"><Auth /></main>
   {:else}
@@ -102,20 +118,23 @@
       </div>
     {/if}
     <main>
-      {#if router.route === "timer"}
-        <Timer />
-      {:else if router.route === "history"}
-        <History />
-      {:else if router.route === "admin" && session.user?.role === "admin"}
-        <Admin />
-      {:else}
-        <Settings />
-      {/if}
+      <div id="screen" role="tabpanel" aria-labelledby="tab-{router.route === 'admin' ? 'settings' : router.route}">
+        {#if router.route === "timer"}
+          <Timer />
+        {:else if router.route === "history"}
+          <History />
+        {:else if router.route === "admin" && session.user?.role === "admin"}
+          <Admin />
+        {:else}
+          <Settings />
+        {/if}
+      </div>
     </main>
   {/if}
 </div>
 
 {#if session.status === "signed_in"}
+  <Announcer />
   <TabBar />
   <LinkHandler />
 {/if}

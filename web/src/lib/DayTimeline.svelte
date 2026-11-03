@@ -34,7 +34,7 @@
       <div class="absolute inset-y-0 w-0.5 bg-text" style="left: {marker}%"></div>
     {/if}
   </div>
-  <div class="t-foot flex justify-between text-subtext0 tabular-nums" aria-hidden="true">
+  <div class="t-foot flex justify-between text-subtext1 tabular-nums" aria-hidden="true">
     <span>0</span><span>6</span><span>12</span><span>18</span><span>24</span>
   </div>
 </div>

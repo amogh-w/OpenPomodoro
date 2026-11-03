@@ -32,3 +32,34 @@
   0%, 100% { transform: scale(0.72); opacity: 0.7; }
   50% { transform: scale(1); opacity: 1; }
 }
+
+/* "Reduce motion" (a device setting that starts from the system's): nothing animates, and the breathing guide
+   becomes a still circle. */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+html.reduce-motion .breathe-circle {
+  transform: scale(0.86);
+  opacity: 1;
+}
+
+/* Contrast. The kit puts light text on a mid-tone accent, which cannot reach WCAG AA (4.5:1) in the light flavor.
+   There, accent-filled surfaces become a soft tint of the accent with the flavor's dark text, and the few other
+   pairs that fall just short are nudged with tokens. Dark flavors are unchanged. */
+@layer components {
+  .tab:not([aria-selected="true"]) { color: var(--ctp-subtext1); }
+  html.latte .btn-filled,
+  html.latte .chip[aria-pressed="true"] {
+    background: color-mix(in oklab, var(--accent) 45%, var(--ctp-base));
+    color: var(--ctp-text);
+  }
+  html.latte .btn-danger { color: var(--ctp-base); }
+  /* Mixing toward the flavor's text colour darkens red on a light page and lightens it on a dark one. */
+  .btn-danger-tinted { color: color-mix(in oklab, var(--ctp-red) 45%, var(--ctp-text)); }
+  html.latte .tab[aria-selected="true"],
+  html.latte .btn-plain { color: color-mix(in oklab, var(--accent) 32%, var(--ctp-text)); }
+}

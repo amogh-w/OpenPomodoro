@@ -5,6 +5,7 @@ import { type AlertPrefs, parseAlertPrefs } from "../lib/alertPrefs";
 const KEEP_AWAKE = "op_keep_awake";
 const ALERTS = "op_alerts";
 const ALLOW_LINKS = "op_allow_links";
+const REDUCE_MOTION = "op_reduce_motion";
 
 function read(key: string): string | null {
   try {
@@ -31,7 +32,27 @@ function readJson(key: string): unknown {
   }
 }
 
-export const prefs = $state({ keepAwake: read(KEEP_AWAKE) === "1", allowLinks: read(ALLOW_LINKS) === "1" });
+/** Until the person chooses, follow the system's "reduce motion" setting. */
+function initialReduceMotion(): boolean {
+  const stored = read(REDUCE_MOTION);
+  if (stored !== null) return stored === "1";
+  try {
+    return matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
+export const prefs = $state({
+  keepAwake: read(KEEP_AWAKE) === "1",
+  allowLinks: read(ALLOW_LINKS) === "1",
+  reduceMotion: initialReduceMotion(),
+});
+
+export function setReduceMotion(on: boolean): void {
+  prefs.reduceMotion = on;
+  write(REDUCE_MOTION, on ? "1" : "0");
+}
 
 export function setKeepAwake(on: boolean): void {
   prefs.keepAwake = on;

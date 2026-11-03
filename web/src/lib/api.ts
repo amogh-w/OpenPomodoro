@@ -66,6 +66,9 @@ export const api = {
   me: () => request<User>("GET", "/api/me"),
   changePassword: (current: string, next: string) =>
     request<void>("POST", "/api/me/password", { current, new: next }),
+  wipeData: (password: string) => request<void>("POST", "/api/me/wipe", { password }),
+  importBackup: (backup: unknown) =>
+    request<{ imported: { categories: number; sessions: number; settings: number }; skipped: number }>("POST", "/api/me/import", backup),
   deleteAccount: (password: string) => request<void>("DELETE", "/api/me", { password }),
 
   adminUsers: () => request<User[]>("GET", "/api/admin/users"),

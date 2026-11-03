@@ -2,7 +2,7 @@
   import { app, saveSetting, type SettingName } from "./appState.svelte";
   import { t } from "./i18n";
   import { stepMinutes } from "./stepper";
-  import { prefs, setAllowLinks, setKeepAwake } from "../platform/prefs.svelte";
+  import { prefs, setAllowLinks, setKeepAwake, setReduceMotion } from "../platform/prefs.svelte";
   import { wakeLockSupported } from "../platform/wakeLock";
 
   const MIN = 60_000;
@@ -87,7 +87,7 @@
     <label class="flex min-h-11 items-center justify-between gap-3">
       <span>
         <span class="block">{t("settings.keepAwake")}</span>
-        {#if !wakeLockSupported()}<span class="t-foot text-subtext0">{t("settings.keepAwakeUnsupported")}</span>{/if}
+        {#if !wakeLockSupported()}<span class="t-foot text-subtext1">{t("settings.keepAwakeUnsupported")}</span>{/if}
       </span>
       <span class="switch">
         <input
@@ -102,10 +102,20 @@
     <label class="flex min-h-11 items-center justify-between gap-3">
       <span>
         <span class="block">{t("settings.links")}</span>
-        <span class="t-foot text-subtext0">{t("settings.links.hint")}</span>
+        <span class="t-foot text-subtext1">{t("settings.links.hint")}</span>
       </span>
       <span class="switch">
         <input type="checkbox" checked={prefs.allowLinks} onchange={(e) => setAllowLinks(e.currentTarget.checked)} />
+      </span>
+    </label>
+
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>
+        <span class="block">{t("settings.reduceMotion")}</span>
+        <span class="t-foot text-subtext1">{t("settings.reduceMotion.hint")}</span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={prefs.reduceMotion} onchange={(e) => setReduceMotion(e.currentTarget.checked)} />
       </span>
     </label>
   </section>

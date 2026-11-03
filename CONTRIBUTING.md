@@ -15,6 +15,14 @@ Rust (stable) and Node.js. Then `npm --prefix web install` and `scripts/check.sh
 - **Accessible:** 44px targets, labels, keyboard use, and a look that works in both Latte and Mocha.
 - **Docs:** short and factual. Mark guesses as such. Update the `PLAN.md` status table when a step finishes.
 
+## Accessibility check
+
+`axe-core` is a dev dependency. To audit a screen: build (`npm --prefix web run build`), copy
+`web/node_modules/axe-core/axe.min.js` into `web/dist/`, run the server, open the app, load `/axe.min.js` in the
+page, and run `axe.run()` once per theme (set `ui-flavor` in local storage and call `applyTheme()`). Screens are
+expected to have no violations in all four themes. `scripts/check-strings.mjs` (part of `scripts/check.sh`) keeps
+every piece of text in the string catalog and the catalog free of unused keys.
+
 ## Before you open a PR
 
 Run `scripts/check.sh`. It must pass.
