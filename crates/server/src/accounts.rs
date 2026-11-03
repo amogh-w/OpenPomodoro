@@ -200,22 +200,21 @@ impl Accounts {
         Ok(db.count_users()? == 0)
     }
 
-    /// Create the first account, which becomes the admin. Only works on a fresh install.
+    /// Create the first account, which becomes the admin, and sign it in. Only works on a fresh install.
     pub fn setup_admin(
         &self,
         db: &Db,
         username: &str,
         password: &str,
         now_ms: i64,
-    ) -> Result<User> {
+    ) -> Result<Session> {
         let username = validate_username(username)?;
         validate_password(password, &username)?;
         let user = self.new_user(&username, password, Role::Admin, now_ms)?;
-        if db.insert_user_if_none(&user)? {
-            Ok(user)
-        } else {
-            Err(AccountError::SetupAlreadyDone)
+        if !db.insert_user_if_none(&user)? {
+            return Err(AccountError::SetupAlreadyDone);
         }
+        self.start_session(db, user, now_ms)
     }
 
     pub fn registration(&self, db: &Db) -> Result<Registration> {
@@ -485,7 +484,10 @@ mod tests {
     fn setup() -> (Accounts, Db, User) {
         let accounts = Accounts::new(Hasher::cheap());
         let db = Db::open_in_memory().expect("db");
-        let admin = accounts.setup_admin(&db, "admin", PW, T0).expect("setup");
+        let admin = accounts
+            .setup_admin(&db, "admin", PW, T0)
+            .expect("setup")
+            .user;
         (accounts, db, admin)
     }
 
@@ -499,12 +501,20 @@ mod tests {
         let accounts = Accounts::new(Hasher::cheap());
         let db = Db::open_in_memory().expect("db");
         assert!(accounts.needs_setup(&db).expect("needs"));
-        let admin = accounts.setup_admin(&db, "admin", PW, T0).expect("setup");
+        let session = accounts.setup_admin(&db, "admin", PW, T0).expect("setup");
+        let admin = session.user.clone();
         assert_eq!(admin.role, Role::Admin);
+        assert_eq!(
+            accounts
+                .user_for_session(&db, &session.token, T0)
+                .expect("lookup")
+                .map(|u| u.id),
+            Some(admin.id)
+        );
         assert!(!accounts.needs_setup(&db).expect("needs"));
         assert_eq!(
-            accounts.setup_admin(&db, "second", PW, T0),
-            Err(AccountError::SetupAlreadyDone)
+            accounts.setup_admin(&db, "second", PW, T0).err(),
+            Some(AccountError::SetupAlreadyDone)
         );
         assert_eq!(db.count_users().expect("count"), 1);
     }
@@ -531,8 +541,8 @@ mod tests {
             "ünïcode",
         ] {
             assert_eq!(
-                accounts.setup_admin(&db, bad, PW, T0),
-                Err(AccountError::InvalidUsername),
+                accounts.setup_admin(&db, bad, PW, T0).err(),
+                Some(AccountError::InvalidUsername),
                 "{bad:?}"
             );
         }
@@ -543,8 +553,8 @@ mod tests {
                 "alice"
             };
             assert_eq!(
-                accounts.setup_admin(&db, name, bad, T0),
-                Err(AccountError::InvalidPassword),
+                accounts.setup_admin(&db, name, bad, T0).err(),
+                Some(AccountError::InvalidPassword),
                 "{bad:?}"
             );
         }

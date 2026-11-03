@@ -1,9 +1,10 @@
 //! OpenPomodoro server: accounts, per-user data, JSON API, and the built PWA.
 
-use axum::{Json, Router, middleware, routing::get};
+use axum::{Json, Router, extract::DefaultBodyLimit, middleware, routing::get};
 use tower_http::services::{ServeDir, ServeFile};
 
 pub mod accounts;
+pub mod api;
 pub mod config;
 pub mod db;
 pub mod error;
@@ -26,7 +27,9 @@ pub fn app(state: Shared) -> Router {
     let config = state.config.clone();
     Router::new()
         .route("/api/health", get(health))
+        .merge(api::router())
         .fallback_service(files)
+        .layer(DefaultBodyLimit::max(1024 * 1024))
         .layer(middleware::from_fn(security::csrf))
         .layer(middleware::from_fn_with_state(
             config.clone(),
