@@ -6,6 +6,17 @@ const KEEP_AWAKE = "op_keep_awake";
 const ALERTS = "op_alerts";
 const ALLOW_LINKS = "op_allow_links";
 const REDUCE_MOTION = "op_reduce_motion";
+const DIAL_STEP = "op_dial_step";
+const ASK_REFLECTION = "op_ask_reflection";
+const FOCUS_ON_CATEGORY = "op_focus_on_category";
+
+/** Minutes the timer dial snaps to. */
+export const DIAL_STEPS = [1, 5, 10, 15] as const;
+export type DialStep = (typeof DIAL_STEPS)[number];
+const initialStep = (): DialStep => {
+  const n = Number(read(DIAL_STEP));
+  return (DIAL_STEPS as readonly number[]).includes(n) ? (n as DialStep) : 5;
+};
 
 function read(key: string): string | null {
   try {
@@ -47,7 +58,27 @@ export const prefs = $state({
   keepAwake: read(KEEP_AWAKE) === "1",
   allowLinks: read(ALLOW_LINKS) === "1",
   reduceMotion: initialReduceMotion(),
+  dialStep: initialStep(),
+  /** Show the reflect screen (mood, notes) when a focus session is finished. */
+  askReflection: read(ASK_REFLECTION) !== "0",
+  /** Move to the intention field after choosing a category. */
+  focusOnCategory: read(FOCUS_ON_CATEGORY) === "1",
 });
+
+export function setDialStep(step: DialStep): void {
+  prefs.dialStep = step;
+  write(DIAL_STEP, String(step));
+}
+
+export function setAskReflection(on: boolean): void {
+  prefs.askReflection = on;
+  write(ASK_REFLECTION, on ? "1" : "0");
+}
+
+export function setFocusOnCategory(on: boolean): void {
+  prefs.focusOnCategory = on;
+  write(FOCUS_ON_CATEGORY, on ? "1" : "0");
+}
 
 export function setReduceMotion(on: boolean): void {
   prefs.reduceMotion = on;

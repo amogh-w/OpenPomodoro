@@ -283,6 +283,39 @@ mod tests {
     }
 
     #[test]
+    fn editing_the_running_session_changes_what_is_recorded() {
+        let mut h = Harness::new();
+        let mut start = h.cmd("init_focus");
+        start.intention = Some("draft".into());
+        h.apply(&start);
+        h.advance(10 * MIN);
+        let mut edit = h.cmd("edit_session");
+        edit.intention = Some("final report".into());
+        edit.category = Some("work".into());
+        let s = h.apply(&edit);
+        assert_eq!(s.state, State::Session);
+        assert_eq!(s.timer.as_ref().map(|t| t.total()), Some(25 * MIN));
+        h.advance(15 * MIN);
+        h.run("timer_ends");
+        h.run("stop");
+        h.run("done");
+        let rows = h.db.rows(ALICE, Entity::Session).expect("rows");
+        let (_, row) = rows.first().expect("one session");
+        assert_eq!(row.data["intention"], "final report");
+        assert_eq!(row.data["category"], "work");
+    }
+
+    #[test]
+    fn a_break_can_be_started_with_its_own_length() {
+        let mut h = Harness::new();
+        let mut rest = h.cmd("take_rest");
+        rest.duration_ms = Some(12 * MIN);
+        let s = h.apply(&rest);
+        assert_eq!(s.state, State::Rest);
+        assert_eq!(s.timer.as_ref().map(|t| t.total()), Some(12 * MIN));
+    }
+
+    #[test]
     fn a_full_cycle_records_focus_and_break_sessions() {
         let mut h = Harness::new();
         h.run("init_focus");

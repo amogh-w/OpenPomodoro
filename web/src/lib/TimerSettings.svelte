@@ -2,7 +2,7 @@
   import { app, saveSetting, type SettingName } from "./appState.svelte";
   import { t } from "./i18n";
   import { stepMinutes } from "./stepper";
-  import { prefs, setAllowLinks, setKeepAwake, setReduceMotion } from "../platform/prefs.svelte";
+  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setKeepAwake, setReduceMotion } from "../platform/prefs.svelte";
   import { wakeLockSupported } from "../platform/wakeLock";
 
   const MIN = 60_000;
@@ -83,6 +83,33 @@
         </span>
       </label>
     {/each}
+
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span class="block">{t("settings.askReflection")}
+        <span class="t-foot block text-subtext1">{t("settings.askReflection.hint")}</span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={prefs.askReflection} onchange={(e) => setAskReflection(e.currentTarget.checked)} />
+      </span>
+    </label>
+
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>{t("settings.focusOnCategory")}</span>
+      <span class="switch">
+        <input type="checkbox" checked={prefs.focusOnCategory} onchange={(e) => setFocusOnCategory(e.currentTarget.checked)} />
+      </span>
+    </label>
+
+    <div class="grid gap-2">
+      <span>{t("settings.dialStep")}</span>
+      <div class="flex flex-wrap gap-2" role="group" aria-label={t("settings.dialStep")}>
+        {#each DIAL_STEPS as step (step)}
+          <button class="chip" aria-pressed={prefs.dialStep === step} onclick={() => setDialStep(step)}>
+            {t("settings.dialStep.minutes", { n: step })}
+          </button>
+        {/each}
+      </div>
+    </div>
 
     <label class="flex min-h-11 items-center justify-between gap-3">
       <span>

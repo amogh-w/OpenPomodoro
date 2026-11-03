@@ -1,8 +1,9 @@
 // Plays the alerts while the app is open: asks the pure planner what is due on every tick and does the sounds and
 // notifications. Only the leader tab does this, so several open tabs make one sound, not several.
-import { inQuietHours } from "./alertPrefs";
+import { dailyReminderDue, inQuietHours } from "./alertPrefs";
 import { type AlertInput, type AlertMemory, emptyMemory, nextAlerts } from "./alertPlan";
 import { app, currentView } from "./appState.svelte";
+import { localDayKey } from "./days";
 import { t } from "./i18n";
 import type { AlertKind } from "./sounds";
 import { leader } from "../platform/leader.svelte";
@@ -76,6 +77,30 @@ export function startAlerts(): () => void {
     });
   });
 
+  // The daily nudge: once a day, on the chosen days and time, if nothing is running. Checked twice a minute.
+  const DAILY_KEY = "op_daily_last";
+  const lastDaily = (): string | null => {
+    try {
+      return localStorage.getItem(DAILY_KEY);
+    } catch {
+      return null;
+    }
+  };
+  const dailyTimer = setInterval(() => {
+    const prefs = $state.snapshot(alertPrefs);
+    const now = new Date();
+    const view = currentView();
+    if (!leader.isLeader || !view || view.phase !== "idle") return;
+    if (!dailyReminderDue(now, prefs, lastDaily()) || inQuietHours(now, prefs)) return;
+    try {
+      localStorage.setItem(DAILY_KEY, localDayKey(now.getTime()));
+    } catch {
+      // Without storage it may show again after a reload within the grace minutes.
+    }
+    if (prefs.sound) playAlert("focus_reminder", prefs.volume);
+    if (prefs.notify) void notify(t("alerts.daily.title"), t("alerts.daily.body"), "op-daily");
+  }, 30_000);
+
   // Coming back after a while: say if a phase ended while we were not looking (the sound was skipped on purpose).
   let hiddenAt = 0;
   const onVisibility = (): void => {
@@ -100,6 +125,7 @@ export function startAlerts(): () => void {
 
   return () => {
     stopEffect();
+    clearInterval(dailyTimer);
     document.removeEventListener("visibilitychange", onVisibility);
   };
 }

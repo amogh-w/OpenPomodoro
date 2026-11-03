@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayStartMs, groupByDay, localDayKey, monthBounds, timelineBlocks } from "./days";
+import { dayStartMs, groupByDay, localDayKey, monthBounds, moodTally, timelineBlocks } from "./days";
 import type { SessionRecord } from "./types";
 
 const MIN = 60_000;
@@ -86,5 +86,20 @@ describe("timelineBlocks", () => {
   it("carries the kind and category for colouring", () => {
     const [b] = timelineBlocks([s({ started_at: at(2026, 11, 3, 9), kind: "long_break", category: "c1" })], day);
     expect(b).toMatchObject({ kind: "long_break", category: "c1" });
+  });
+});
+
+describe("moodTally", () => {
+  it("counts rated focus sessions only", () => {
+    const base = { id: "x", started_at: 0, ended_at: 1 };
+    expect(
+      moodTally([
+        { ...base, kind: "focus", mood: "focused" },
+        { ...base, kind: "focus", mood: "focused" },
+        { ...base, kind: "focus", mood: "distracted" },
+        { ...base, kind: "focus" },
+        { ...base, kind: "short_break", mood: "neutral" },
+      ]),
+    ).toEqual({ focused: 2, neutral: 0, distracted: 1 });
   });
 });

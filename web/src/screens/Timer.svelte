@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import Dial from "../lib/Dial.svelte";
   import NotesPane from "../lib/NotesPane.svelte";
+  import NotesColumn from "../lib/NotesColumn.svelte";
   import TodayPanel from "../lib/TodayPanel.svelte";
   import { app, currentView, sendCommand } from "../lib/appState.svelte";
   import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
@@ -338,7 +339,7 @@
 
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
 
-    {#if view.phase === "focus"}<NotesPane />{/if}
+    {#if view.phase === "focus"}<div class="w-full xl:hidden"><NotesPane /></div>{/if}
 
     <div class="flex flex-wrap items-center justify-center gap-2">
       {#if view.phase === "focus"}
@@ -362,5 +363,7 @@
   </div>
 {/if}
 </div>
-<aside class="hidden xl:block" aria-label={t("today.title")}><TodayPanel /></aside>
+<aside class="hidden xl:block" aria-label={t("today.title")}>
+  {#if view?.phase === "focus"}<NotesColumn />{:else}<TodayPanel />{/if}
+</aside>
 </div>

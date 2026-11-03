@@ -16,6 +16,12 @@ export interface AlertPrefs {
   /** "HH:MM", local time. Quiet hours may cross midnight. */
   quietStart: string;
   quietEnd: string;
+  /** A once-a-day nudge to start working, while the app is open. */
+  dailyEnabled: boolean;
+  /** "HH:MM", local time. */
+  dailyTime: string;
+  /** Monday first: which weekdays the nudge is for. */
+  dailyDays: boolean[];
 }
 
 export const defaultAlertPrefs: AlertPrefs = {
@@ -27,6 +33,9 @@ export const defaultAlertPrefs: AlertPrefs = {
   quietEnabled: false,
   quietStart: "22:00",
   quietEnd: "07:00",
+  dailyEnabled: false,
+  dailyTime: "09:00",
+  dailyDays: [true, true, true, true, true, false, false],
 };
 
 /** Most overtime reminders for one phase, however long it runs. */
@@ -52,6 +61,12 @@ export function parseAlertPrefs(raw: unknown): AlertPrefs {
     quietEnabled: flag(o.quietEnabled, d.quietEnabled),
     quietStart: time(o.quietStart, d.quietStart),
     quietEnd: time(o.quietEnd, d.quietEnd),
+    dailyEnabled: flag(o.dailyEnabled, d.dailyEnabled),
+    dailyTime: time(o.dailyTime, d.dailyTime),
+    dailyDays:
+      Array.isArray(o.dailyDays) && o.dailyDays.length === 7
+        ? o.dailyDays.map((v, i) => flag(v, d.dailyDays[i] ?? false))
+        : [...d.dailyDays],
   };
 }
 
@@ -68,4 +83,26 @@ export function inQuietHours(date: Date, prefs: Pick<AlertPrefs, "quietEnabled" 
   const now = date.getHours() * 60 + date.getMinutes();
   if (start === end) return false;
   return start < end ? now >= start && now < end : now >= start || now < end;
+}
+
+/** How long after the chosen time the daily nudge may still appear (the app may have been opened a little late). */
+export const DAILY_GRACE_MIN = 10;
+
+/**
+ * Is the daily nudge due at `date`? It is for the chosen weekdays, from the chosen time until a few minutes after,
+ * and only once a day (`lastDay` is the local day it last showed, `YYYY-MM-DD`).
+ */
+export function dailyReminderDue(
+  date: Date,
+  prefs: Pick<AlertPrefs, "dailyEnabled" | "dailyTime" | "dailyDays">,
+  lastDay: string | null,
+): boolean {
+  if (!prefs.dailyEnabled) return false;
+  const weekdayFromMonday = (date.getDay() + 6) % 7;
+  if (!prefs.dailyDays[weekdayFromMonday]) return false;
+  const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  if (lastDay === day) return false;
+  const now = date.getHours() * 60 + date.getMinutes();
+  const at = minutesOf(prefs.dailyTime);
+  return now >= at && now < at + DAILY_GRACE_MIN;
 }

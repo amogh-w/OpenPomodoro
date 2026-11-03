@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatElapsed, formatRemaining, formatSpan, minutesLeft } from "./format";
+import { formatAgo, formatElapsed, formatRemaining, formatSpan, minutesLeft } from "./format";
 
 describe("formatRemaining", () => {
   it("shows the full time during the first second and rounds up after", () => {
@@ -47,5 +47,15 @@ describe("formatSpan", () => {
     expect(formatSpan(29_000)).toBe("0m");
     expect(formatSpan(31_000)).toBe("1m");
     expect(formatSpan(-5000)).toBe("0m");
+  });
+});
+
+describe("formatAgo", () => {
+  const now = 10 * 86_400_000;
+  it("uses the largest whole unit", () => {
+    expect(formatAgo(now - 5 * 60_000, now, "en")).toBe("5 minutes ago");
+    expect(formatAgo(now - 3 * 3_600_000, now, "en")).toBe("3 hours ago");
+    expect(formatAgo(now - 86_400_000, now, "en")).toBe("yesterday");
+    expect(formatAgo(now - 10_000, now, "en")).toBe("now");
   });
 });

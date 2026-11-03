@@ -23,7 +23,7 @@ pub struct Action {
     pub name: String,
     pub intention: Option<String>,
     pub category: Option<String>,
-    /// Focus length for `init_focus` / `start_focus`; the user's setting when omitted.
+    /// Focus length for `init_focus` / `start_focus`, or break length for `take_rest`; the user's setting when omitted.
     pub duration_ms: Option<i64>,
     /// Extend (positive) or shrink (negative) by whole 5-minute steps.
     pub delta_ms: Option<i64>,
@@ -516,6 +516,12 @@ fn build_next(
                 }
             });
             begin_break(&mut next, kind, at, settings);
+            if let Some(length) = cmd.duration_ms {
+                if !(MIN_PHASE_MS..=MAX_PHASE_MS).contains(&length) {
+                    return Err(PlanError::Invalid("bad_args"));
+                }
+                next.timer = Timer::new(at, length).ok();
+            }
         }
         Event::Done => {
             next = prev.cleared();
@@ -548,6 +554,23 @@ pub struct Plan {
     pub records: Vec<Record>,
 }
 
+/// Change what the focus session in progress is about (its intention and category) without touching its clock.
+/// Allowed while a focus runs (also in overtime or paused) and on the reflect screen; both fields are replaced, and
+/// an empty one clears it.
+fn edit_session(prev: &TimerState, action: &Action) -> Result<Plan, PlanError> {
+    let running_focus = prev.kind == Some(PhaseKind::Focus) && prev.timer.is_some();
+    if !running_focus && prev.state != State::Reflect {
+        return Err(PlanError::Rejected("unknown"));
+    }
+    let mut next = prev.clone();
+    next.intention = clean(&action.intention, 200)?;
+    next.category = clean(&action.category, 64)?;
+    Ok(Plan {
+        next,
+        records: Vec::new(),
+    })
+}
+
 /// Decide what `action`, taken at time `at`, does to the timer.
 pub fn plan(
     prev: &TimerState,
@@ -555,6 +578,9 @@ pub fn plan(
     at: i64,
     settings: &PlanSettings,
 ) -> Result<Plan, PlanError> {
+    if action.name == "edit_session" {
+        return edit_session(prev, action);
+    }
     let event = if action.name == "extend" {
         let delta = action.delta_ms.unwrap_or(0);
         let step_ok = delta != 0

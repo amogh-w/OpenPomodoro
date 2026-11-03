@@ -73,3 +73,16 @@ export function timelineBlocks(sessions: SessionRecord[], dayStart: number, dayL
   }
   return blocks;
 }
+
+export interface MoodTally {
+  focused: number;
+  neutral: number;
+  distracted: number;
+}
+
+/** How many focus sessions were reflected on as focused, neutral and distracted (unrated ones are not counted). */
+export function moodTally(sessions: SessionRecord[]): MoodTally {
+  const tally: MoodTally = { focused: 0, neutral: 0, distracted: 0 };
+  for (const s of sessions) if (s.kind === "focus" && s.mood) tally[s.mood] += 1;
+  return tally;
+}

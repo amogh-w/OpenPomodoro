@@ -38,3 +38,10 @@ export function recentNotes(sessions: SessionRecord[], intention: string | null,
   const rest = notes.filter((n) => !same.includes(n));
   return [...same, ...rest].slice(0, limit);
 }
+
+/** Every focus session that has notes, newest first; `category` narrows it to one category (null means all). */
+export function notesFeed(sessions: SessionRecord[], category: string | null, limit = 20): SessionRecord[] {
+  return focusOnly(sessions)
+    .filter((s) => s.notes && s.notes.trim() !== "" && (category === null || s.category === category))
+    .slice(0, limit);
+}

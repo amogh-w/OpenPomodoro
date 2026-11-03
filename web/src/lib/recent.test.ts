@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recentIntentions, recentNotes } from "./recent";
+import { notesFeed, recentIntentions, recentNotes } from "./recent";
 import type { SessionRecord } from "./types";
 
 let n = 0;
@@ -65,5 +65,24 @@ describe("recentNotes", () => {
     expect(texts).not.toContain("break note");
     expect(texts).not.toContain("");
     expect(texts).toHaveLength(4);
+  });
+});
+
+describe("notesFeed", () => {
+  const sessions = [
+    session({ notes: "first", category: "a" }),
+    session({ notes: "  ", category: "a" }),
+    session({ notes: "second", category: "b" }),
+    session({ kind: "short_break", notes: "break note" }),
+    session({ notes: "third", category: "a" }),
+  ];
+
+  it("lists sessions with notes, newest first", () => {
+    expect(notesFeed(sessions, null).map((s) => s.notes)).toEqual(["third", "second", "first"]);
+  });
+
+  it("can be narrowed to one category and limited", () => {
+    expect(notesFeed(sessions, "a").map((s) => s.notes)).toEqual(["third", "first"]);
+    expect(notesFeed(sessions, null, 1)).toHaveLength(1);
   });
 });

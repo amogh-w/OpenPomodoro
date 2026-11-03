@@ -313,6 +313,10 @@ function buildNext(
       if (fromReflect) keepFocus(next, records, focusRecordFromReflect(prev, extrasOf(action)));
       // The cycle picks the break after a kept focus round; an unscheduled break is a short one.
       beginBreak(next, explicit ?? (fromReflect ? breakAfter(next.rounds, s) : "short_break"), at, s);
+      if (action.duration_ms !== undefined && action.duration_ms !== null) {
+        if (action.duration_ms < MIN_PHASE_MS || action.duration_ms > MAX_PHASE_MS) throw invalid("bad_args");
+        next.total = action.duration_ms;
+      }
       break;
     }
     case "done": {
@@ -339,9 +343,24 @@ function buildNext(
   return { next, records };
 }
 
+/**
+ * Change what the focus session in progress is about (intention and category) without touching its clock. Allowed
+ * while a focus runs (also in overtime or paused) and on the reflect screen; an empty field clears it.
+ */
+function editSession(prev: TimerData, action: Action): PlanResult {
+  const runningFocus = prev.kind === "focus" && prev.start !== null;
+  if (!runningFocus && prev.state !== "reflect") throw rejected("unknown");
+  return {
+    ok: true,
+    next: { ...prev, intention: clean(action.intention, 200), category: clean(action.category, 64) },
+    records: [],
+  };
+}
+
 /** Decide what `action`, taken at time `at`, does to the timer. */
 export function plan(prev: TimerData, action: Action, at: number, settings: Settings): PlanResult {
   try {
+    if (action.name === "edit_session") return editSession(prev, action);
     const name = EVENT_NAMES.find((n) => n === action.name);
     if (name === undefined) throw invalid("unknown_command");
 

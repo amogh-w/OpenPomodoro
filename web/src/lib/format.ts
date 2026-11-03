@@ -32,3 +32,18 @@ export function formatSpan(ms: number): string {
   const m = minutes % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
+
+/** How long ago, in the reader's language: "5 minutes ago", "yesterday". */
+export function formatAgo(thenMs: number, nowMs: number, locale?: string): string {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const seconds = Math.round((thenMs - nowMs) / 1000);
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["day", 86_400],
+    ["hour", 3_600],
+    ["minute", 60],
+  ];
+  for (const [unit, size] of steps) {
+    if (Math.abs(seconds) >= size) return rtf.format(Math.trunc(seconds / size), unit);
+  }
+  return rtf.format(0, "second");
+}

@@ -119,6 +119,38 @@
   </div>
 
   <div class="grid gap-2">
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>
+        <span class="block">{t("alerts.daily")}</span>
+        <span class="t-foot text-subtext1">{t("alerts.daily.hint")}</span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={alertPrefs.dailyEnabled} onchange={(e) => updateAlertPrefs({ dailyEnabled: e.currentTarget.checked })} />
+      </span>
+    </label>
+    {#if alertPrefs.dailyEnabled}
+      <label class="grid gap-1.5">
+        <span class="t-foot text-subtext1">{t("alerts.daily.time")}</span>
+        <input class="field" type="time" value={alertPrefs.dailyTime} onchange={(e) => updateAlertPrefs({ dailyTime: e.currentTarget.value })} />
+      </label>
+      <div class="grid gap-1.5">
+        <span class="t-foot text-subtext1">{t("alerts.daily.days")}</span>
+        <div class="flex flex-wrap gap-2" role="group" aria-label={t("alerts.daily.days")}>
+          {#each alertPrefs.dailyDays as on, i (i)}
+            <button
+              class="chip"
+              aria-pressed={on}
+              onclick={() => updateAlertPrefs({ dailyDays: alertPrefs.dailyDays.map((v, j) => (j === i ? !v : v)) })}
+            >
+              {new Date(2026, 10, 2 + i).toLocaleDateString(undefined, { weekday: "short" })}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <div class="grid gap-2">
     <span>{t("settings.preview")}</span>
     <div class="flex flex-wrap gap-2">
       {#each ALERT_KINDS as kind (kind)}

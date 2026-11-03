@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultAlertPrefs, inQuietHours, parseAlertPrefs } from "./alertPrefs";
+import { dailyReminderDue, defaultAlertPrefs, inQuietHours, parseAlertPrefs } from "./alertPrefs";
 
 const at = (h: number, m = 0): Date => new Date(2026, 10, 3, h, m);
 const quiet = (start: string, end: string, enabled = true) => ({ quietEnabled: enabled, quietStart: start, quietEnd: end });
@@ -11,7 +11,26 @@ describe("parseAlertPrefs", () => {
 
   it("keeps valid values", () => {
     const p = parseAlertPrefs({ sound: false, volume: 30, notify: true, warnMin: 2, reminderMin: 10, quietEnabled: true, quietStart: "23:30", quietEnd: "06:15" });
-    expect(p).toEqual({ sound: false, volume: 30, notify: true, warnMin: 2, reminderMin: 10, quietEnabled: true, quietStart: "23:30", quietEnd: "06:15" });
+    expect(p).toEqual({
+      sound: false,
+      volume: 30,
+      notify: true,
+      warnMin: 2,
+      reminderMin: 10,
+      quietEnabled: true,
+      quietStart: "23:30",
+      quietEnd: "06:15",
+      dailyEnabled: false,
+      dailyTime: "09:00",
+      dailyDays: [true, true, true, true, true, false, false],
+    });
+  });
+
+  it("keeps the daily reminder choices and repairs bad ones", () => {
+    const p = parseAlertPrefs({ dailyEnabled: true, dailyTime: "07:45", dailyDays: [true, false, true, false, true, false, true] });
+    expect([p.dailyEnabled, p.dailyTime, p.dailyDays]).toEqual([true, "07:45", [true, false, true, false, true, false, true]]);
+    const bad = parseAlertPrefs({ dailyTime: "nine", dailyDays: [true, true] });
+    expect([bad.dailyTime, bad.dailyDays]).toEqual([defaultAlertPrefs.dailyTime, defaultAlertPrefs.dailyDays]);
   });
 
   it("clamps numbers and falls back field by field", () => {
@@ -49,5 +68,24 @@ describe("inQuietHours", () => {
 
   it("treats equal start and end as no quiet time", () => {
     expect(inQuietHours(at(5), quiet("08:00", "08:00"))).toBe(false);
+  });
+});
+
+describe("dailyReminderDue", () => {
+  const prefs = { dailyEnabled: true, dailyTime: "09:00", dailyDays: [true, true, true, true, true, false, false] };
+  const monday = (h: number, m: number): Date => new Date(2026, 10, 2, h, m); // 2 November 2026 is a Monday
+
+  it("is due from the chosen time for a few minutes, once", () => {
+    expect(dailyReminderDue(monday(8, 59), prefs, null)).toBe(false);
+    expect(dailyReminderDue(monday(9, 0), prefs, null)).toBe(true);
+    expect(dailyReminderDue(monday(9, 9), prefs, null)).toBe(true);
+    expect(dailyReminderDue(monday(9, 10), prefs, null)).toBe(false);
+    expect(dailyReminderDue(monday(9, 1), prefs, "2026-11-02")).toBe(false);
+    expect(dailyReminderDue(monday(9, 1), prefs, "2026-11-01")).toBe(true);
+  });
+
+  it("respects the weekdays and the switch", () => {
+    expect(dailyReminderDue(new Date(2026, 10, 7, 9, 1), prefs, null)).toBe(false); // Saturday
+    expect(dailyReminderDue(monday(9, 1), { ...prefs, dailyEnabled: false }, null)).toBe(false);
   });
 });
