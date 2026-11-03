@@ -175,6 +175,16 @@ pub struct User {
     pub created_at: i64,
 }
 
+/// One local day of recorded time.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct DayTotal {
+    /// `YYYY-MM-DD`.
+    pub day: String,
+    pub focus_ms: i64,
+    pub break_ms: i64,
+    pub focus_count: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthSession {
     pub user_id: String,
@@ -533,6 +543,51 @@ impl Db {
         })?;
         rows.map(|r| r.map_err(DbError::from).and_then(|(k, row)| Ok((k, row?))))
             .collect()
+    }
+
+    /// Focus and break time per local day, over everything the user has ever recorded. `tz_offset_min` is minutes
+    /// east of UTC (the browser's offset); a session counts for the day it started.
+    pub fn daily_totals(&self, user: &str, tz_offset_min: i32) -> Result<Vec<DayTotal>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT strftime('%Y-%m-%d', json_extract(data, '$.started_at') / 1000 + ?2 * 60, 'unixepoch') AS day,
+                    json_extract(data, '$.kind') AS kind,
+                    COUNT(*),
+                    COALESCE(SUM(json_extract(data, '$.duration_ms')), 0)
+             FROM rows
+             WHERE user_id = ?1 AND entity = 'session' AND tombstone IS NULL
+               AND json_extract(data, '$.started_at') IS NOT NULL
+             GROUP BY day, kind ORDER BY day",
+        )?;
+        let rows = stmt.query_map(params![user, tz_offset_min], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, Option<String>>(1)?,
+                r.get::<_, i64>(2)?,
+                r.get::<_, i64>(3)?,
+            ))
+        })?;
+        let mut days: Vec<DayTotal> = Vec::new();
+        for row in rows {
+            let (day, kind, count, ms) = row?;
+            if days.last().is_none_or(|d| d.day != day) {
+                days.push(DayTotal {
+                    day,
+                    focus_ms: 0,
+                    break_ms: 0,
+                    focus_count: 0,
+                });
+            }
+            let Some(entry) = days.last_mut() else {
+                continue;
+            };
+            if kind.as_deref() == Some("focus") {
+                entry.focus_ms += ms;
+                entry.focus_count += count;
+            } else {
+                entry.break_ms += ms;
+            }
+        }
+        Ok(days)
     }
 
     /// A setting's value (stored as the `value` field of its row).
@@ -1031,6 +1086,65 @@ mod tests {
             keys,
             ["a", "c"],
             "b is deleted, d starts at the excluded end"
+        );
+    }
+
+    #[test]
+    fn daily_totals_group_by_local_day_and_kind() {
+        let mut db = db();
+        let ms = |y: i32, mo: u32, d: u32, h: u32| -> i64 {
+            // Unix ms for a UTC date, via the id module's civil-time maths.
+            let secs = op_core::ids::parse(&format!("{y:04}{mo:02}{d:02}{h:02}0000.00000@x"))
+                .expect("parse")
+                .secs;
+            secs * 1000
+        };
+        let sessions = [
+            ("a", "focus", ms(2026, 11, 3, 10), 25 * 60_000),
+            ("b", "focus", ms(2026, 11, 3, 11), 10 * 60_000),
+            ("c", "short_break", ms(2026, 11, 3, 12), 5 * 60_000),
+            ("d", "focus", ms(2026, 11, 4, 9), 30 * 60_000),
+            // 23:30 UTC on the 4th is already the 5th in UTC+2.
+            ("e", "focus", ms(2026, 11, 4, 23) + 30 * 60_000, 20 * 60_000),
+        ];
+        for (i, (key, kind, started, duration)) in sessions.iter().enumerate() {
+            db.apply_event(
+                ALICE,
+                &session(&format!("{}", i + 1), Op::Add, key, json!({"kind": kind, "started_at": started, "ended_at": started + duration, "duration_ms": duration})),
+            )
+            .expect("add");
+        }
+        db.apply_event(ALICE, &session("9", Op::Delete, "b", Value::Null))
+            .expect("deleted sessions are not counted");
+
+        let utc = db.daily_totals(ALICE, 0).expect("utc");
+        let shape = |d: &DayTotal| {
+            (
+                d.day.clone(),
+                d.focus_ms / 60_000,
+                d.break_ms / 60_000,
+                d.focus_count,
+            )
+        };
+        assert_eq!(
+            utc.iter().map(shape).collect::<Vec<_>>(),
+            [
+                ("2026-11-03".to_string(), 25, 5, 1),
+                ("2026-11-04".to_string(), 50, 0, 2)
+            ]
+        );
+        let east = db.daily_totals(ALICE, 120).expect("utc+2");
+        assert_eq!(
+            east.iter().map(shape).collect::<Vec<_>>(),
+            [
+                ("2026-11-03".to_string(), 25, 5, 1),
+                ("2026-11-04".to_string(), 30, 0, 1),
+                ("2026-11-05".to_string(), 20, 0, 1)
+            ]
+        );
+        assert!(
+            db.daily_totals(BOB, 0).expect("bob").is_empty(),
+            "another user's days are not mine"
         );
     }
 

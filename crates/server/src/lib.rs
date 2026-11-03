@@ -8,6 +8,7 @@ pub mod api;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod export;
 pub mod hub;
 pub mod security;
 pub mod settings;

@@ -1,17 +1,21 @@
 //! The signed-in user's data: current state, timer commands, event intake and history.
 
+use std::collections::HashMap;
+
 use axum::{
     Json, Router,
     extract::{Query, State},
-    http::StatusCode,
+    http::{HeaderValue, StatusCode, header},
+    response::{IntoResponse, Response},
     routing::{get, post},
 };
-use op_core::{Applied, Entity, EventRecord, Reason, Row};
+use op_core::{Applied, Entity, EventRecord, Reason, Row, ids::format_ts};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{ApiJson, AuthUser};
 use crate::error::ApiError;
+use crate::export;
 use crate::hub::CHANGED;
 use crate::settings::Settings;
 use crate::state::Shared;
@@ -30,6 +34,8 @@ pub fn router() -> Router<Shared> {
         .route("/api/commands", post(post_command))
         .route("/api/events", post(post_events))
         .route("/api/history", get(get_history))
+        .route("/api/summary", get(get_summary))
+        .route("/api/export", get(get_export))
 }
 
 fn row_json(key: &str, row: &Row) -> Value {
@@ -186,6 +192,103 @@ async fn get_history(
     Ok(Json(
         json!({ "sessions": sessions, "truncated": truncated }),
     ))
+}
+
+#[derive(Deserialize)]
+struct SummaryQuery {
+    /// Minutes east of UTC, as the browser reports it.
+    tz: i32,
+}
+
+/// Focus and break time per local day for everything ever recorded, so all-time totals and streaks do not need
+/// every session sent to the browser.
+async fn get_summary(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    Query(q): Query<SummaryQuery>,
+) -> Result<Json<Value>, ApiError> {
+    if !(-14 * 60..=14 * 60).contains(&q.tz) {
+        return Err(ApiError::bad_request("bad_tz"));
+    }
+    let days = state.db().daily_totals(&auth.user.id, q.tz)?;
+    Ok(Json(json!({ "days": days })))
+}
+
+#[derive(Deserialize)]
+struct ExportQuery {
+    format: String,
+}
+
+fn download(body: String, content_type: &'static str, filename: &str) -> Response {
+    let mut res = body.into_response();
+    let headers = res.headers_mut();
+    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+    if let Ok(value) = HeaderValue::from_str(&format!("attachment; filename=\"{filename}\"")) {
+        headers.insert(header::CONTENT_DISPOSITION, value);
+    }
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    res
+}
+
+/// Everything the signed-in user has recorded, as JSON (the full backup), CSV or ICS. Only their own data.
+async fn get_export(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    Query(q): Query<ExportQuery>,
+) -> Result<Response, ApiError> {
+    let user = &auth.user.id;
+    let now = state.now_ms();
+    let (sessions, categories, settings) = {
+        let db = state.db();
+        (
+            db.rows(user, Entity::Session)?,
+            db.rows(user, Entity::Category)?,
+            Settings::load(&db, user)?,
+        )
+    };
+    let names: HashMap<String, String> = categories
+        .iter()
+        .filter_map(|(id, row)| {
+            row.data
+                .get("name")
+                .and_then(Value::as_str)
+                .map(|n| (id.clone(), n.to_string()))
+        })
+        .collect();
+    let day = format_ts(now.div_euclid(1000))
+        .chars()
+        .take(8)
+        .collect::<String>();
+
+    match q.format.as_str() {
+        "csv" => Ok(download(
+            export::csv(&sessions, &names),
+            "text/csv; charset=utf-8",
+            &format!("openpomodoro-{day}.csv"),
+        )),
+        "ics" => Ok(download(
+            export::ics(&sessions, &names, now),
+            "text/calendar; charset=utf-8",
+            &format!("openpomodoro-{day}.ics"),
+        )),
+        "json" => {
+            let body = json!({
+                "app": "openpomodoro",
+                "version": 1,
+                "exported_at": now,
+                "username": auth.user.username,
+                "settings": settings.to_json(),
+                "categories": categories.iter().map(|(k, r)| row_json(k, r)).collect::<Vec<_>>(),
+                "sessions": export::sorted(&sessions).into_iter().map(|(k, r)| row_json(k, r)).collect::<Vec<_>>(),
+            });
+            Ok(download(
+                body.to_string(),
+                "application/json",
+                &format!("openpomodoro-{day}.json"),
+            ))
+        }
+        _ => Err(ApiError::bad_request("bad_format")),
+    }
 }
 
 #[cfg(test)]
@@ -696,5 +799,211 @@ mod tests {
                 .status,
             StatusCode::UNAUTHORIZED
         );
+    }
+
+    // ---- summary and export ----
+
+    /// Record `n` finished focus sessions by running the real commands, each on its own clock tick.
+    async fn work(app: &TestApp, who: &mut Client, intentions: &[&str]) {
+        for name in intentions {
+            who.command(app, "init_focus", json!({"intention": name}))
+                .await;
+            app.clock.advance(25 * MIN);
+            who.command(app, "timer_ends", json!({})).await;
+            who.command(app, "stop", json!({})).await;
+            who.command(app, "done", json!({"notes": format!("notes for {name}")}))
+                .await;
+            app.clock.advance(MIN);
+        }
+    }
+
+    #[tokio::test]
+    async fn summary_needs_a_session_and_a_sane_offset() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        assert_eq!(
+            app.get("/api/summary?tz=0").send().await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        for tz in ["tz=900", "tz=-900"] {
+            let res = app
+                .get(&format!("/api/summary?{tz}"))
+                .cookie(&me.cookie)
+                .send()
+                .await;
+            assert_eq!(
+                (res.status, res.json()["error"].clone()),
+                (StatusCode::BAD_REQUEST, json!("bad_tz")),
+                "{tz}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn summary_adds_up_each_day_for_that_user_only() {
+        let app = TestApp::new();
+        let boss = admin(&app).await;
+        let mut alice = user(&app, &boss, "alice").await;
+        let mut bob = user(&app, &boss, "bob").await;
+        work(&app, &mut alice, &["one", "two"]).await;
+        work(&app, &mut bob, &["bobs"]).await;
+
+        let res = app
+            .get("/api/summary?tz=0")
+            .cookie(&alice.cookie)
+            .send()
+            .await;
+        assert_eq!(res.status, StatusCode::OK, "{}", res.text);
+        let days = res.json()["days"].as_array().expect("days").clone();
+        let focus: i64 = days
+            .iter()
+            .map(|d| d["focus_ms"].as_i64().expect("ms"))
+            .sum();
+        let count: i64 = days
+            .iter()
+            .map(|d| d["focus_count"].as_i64().expect("count"))
+            .sum();
+        assert_eq!(
+            (count, focus),
+            (2, 2 * 25 * MIN),
+            "two sessions of 25 minutes, and none of Bob's"
+        );
+        assert!(
+            days.iter()
+                .all(|d| d["day"].as_str().is_some_and(|s| s.len() == 10))
+        );
+    }
+
+    #[tokio::test]
+    async fn export_needs_a_session_and_a_known_format() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        assert_eq!(
+            app.get("/api/export?format=csv").send().await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        let res = app
+            .get("/api/export?format=pdf")
+            .cookie(&me.cookie)
+            .send()
+            .await;
+        assert_eq!(
+            (res.status, res.json()["error"].clone()),
+            (StatusCode::BAD_REQUEST, json!("bad_format"))
+        );
+    }
+
+    #[tokio::test]
+    async fn export_downloads_are_attachments_with_the_right_types() {
+        let app = TestApp::new();
+        let mut me = admin(&app).await;
+        work(&app, &mut me, &["write"]).await;
+        for (format, content_type, extension) in [
+            ("csv", "text/csv", ".csv"),
+            ("ics", "text/calendar", ".ics"),
+            ("json", "application/json", ".json"),
+        ] {
+            let res = app
+                .get(&format!("/api/export?format={format}"))
+                .cookie(&me.cookie)
+                .send()
+                .await;
+            assert_eq!(res.status, StatusCode::OK, "{format}");
+            assert!(
+                res.header("content-type")
+                    .is_some_and(|c| c.starts_with(content_type)),
+                "{format}"
+            );
+            let disposition = res.header("content-disposition").expect("disposition");
+            assert!(
+                disposition.starts_with("attachment; filename=\"openpomodoro-")
+                    && disposition.ends_with(&format!("{extension}\"")),
+                "{disposition}"
+            );
+            assert_eq!(res.header("cache-control").as_deref(), Some("no-store"));
+        }
+    }
+
+    #[tokio::test]
+    async fn the_json_export_is_a_full_backup_of_my_data() {
+        let app = TestApp::new();
+        let mut me = admin(&app).await;
+        let cat = me.id(&app);
+        let ev = json!([{"id": me.id(&app), "entity": "category", "op": "add", "key": cat, "payload": {"name": "Writing", "color": "peach"}}]);
+        me.events(&app, ev).await;
+        work(&app, &mut me, &["write"]).await;
+
+        let body = app
+            .get("/api/export?format=json")
+            .cookie(&me.cookie)
+            .send()
+            .await
+            .json();
+        assert_eq!(body["app"], "openpomodoro");
+        assert_eq!(body["version"], 1);
+        assert_eq!(body["username"], "admin");
+        assert_eq!(body["categories"][0]["name"], "Writing");
+        assert_eq!(body["settings"]["focus_ms"], 25 * MIN);
+        let sessions = body["sessions"].as_array().expect("sessions");
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(
+            (
+                sessions[0]["intention"].clone(),
+                sessions[0]["notes"].clone()
+            ),
+            (json!("write"), json!("notes for write"))
+        );
+    }
+
+    #[tokio::test]
+    async fn csv_and_ics_exports_contain_the_sessions() {
+        let app = TestApp::new();
+        let mut me = admin(&app).await;
+        work(&app, &mut me, &["write", "read"]).await;
+        let csv = app
+            .get("/api/export?format=csv")
+            .cookie(&me.cookie)
+            .send()
+            .await
+            .text;
+        assert_eq!(csv.lines().count(), 3, "header and two sessions");
+        assert!(
+            csv.contains(",write,") && csv.contains(",read,") && csv.contains("notes for write"),
+            "{csv}"
+        );
+        let ics = app
+            .get("/api/export?format=ics")
+            .cookie(&me.cookie)
+            .send()
+            .await
+            .text;
+        assert_eq!(ics.matches("BEGIN:VEVENT").count(), 2);
+        assert!(
+            ics.contains("SUMMARY:write") && ics.contains("SUMMARY:read"),
+            "{ics}"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_export_never_contains_another_users_data() {
+        let app = TestApp::new();
+        let boss = admin(&app).await;
+        let mut alice = user(&app, &boss, "alice").await;
+        let mut bob = user(&app, &boss, "bob").await;
+        work(&app, &mut alice, &["alice secret"]).await;
+        work(&app, &mut bob, &["bob secret"]).await;
+        for format in ["csv", "ics", "json"] {
+            let text = app
+                .get(&format!("/api/export?format={format}"))
+                .cookie(&bob.cookie)
+                .send()
+                .await
+                .text;
+            assert!(text.contains("bob secret"), "{format} has Bob's own data");
+            assert!(
+                !text.contains("alice secret"),
+                "{format} must not have Alice's"
+            );
+        }
     }
 }
