@@ -26,8 +26,8 @@ Non-goals for v1: accounts, cloud, native mobile apps, native app/window blockin
 ### Timer rule
 - Running: `elapsed = now - start - pause_buffer`. Paused: `elapsed = pause_ts - start - pause_buffer`. On resume: `pause_buffer += now - pause_ts`.
 - The phase ends when `elapsed >= total`.
-- Extend or shrink by `d` (T-05): in a running or paused phase `total += d`; if that makes `total <= elapsed`, the phase ends now. In overflow, extend sets `total = elapsed + d` (a fresh `d` countdown from now). `elapsed` is never reset, so recorded durations stay true.
-- If the clock moves backwards and `elapsed` would be negative, clamp it to 0 and write a diagnostic entry.
+- Extend or shrink by `d` (T-05): before the end, `total += d`; if that makes `total <= elapsed`, set `total = elapsed` (the phase ends now, with no overflow). At or past the end (overflow), a positive `d` sets `total = elapsed + d` (a fresh `d` countdown from now) and a shrink does nothing. `elapsed` is never reset, so recorded durations stay true. Pausing and extending can happen in any order.
+- If the clock moves backwards and `elapsed` would be negative, clamp it to 0 and write a diagnostic entry (the core exposes `clock_went_back` so the caller can log it). A resume after the clock moved back adds 0 to `pause_buffer`, never a negative span.
 
 ### Alerts and tabs (P1)
 - Sounds and notifications fire from an open page (foreground, or a background tab while the browser keeps it alive). Browsers offer no way to schedule a notification for later from a service worker, and they suspend idle workers, so P1 makes no promise for alerts while the app is closed. The UI says so next to the alert settings.
@@ -187,7 +187,7 @@ Any other `(state, event)` pair is rejected and logged. The full table is tested
 - [x] 0.3 Docs skeleton: README, CONTRIBUTING, LICENSE. License: **MIT**.
 
 ### Phase 1 (P1)
-- [ ] 1.1 **Timer core** (T-01..T-05): pure types, `Clock` trait, timer rule from section 2 (extend/shrink, overflow extend, backwards-clock clamp); tests for pause/resume/extend, clock jumps, sleep. Write the shared JSON test vectors for the timer.
+- [x] 1.1 **Timer core** (T-01..T-05): pure types, `Clock` trait, timer rule from section 2 (extend/shrink, overflow extend, backwards-clock clamp); tests for pause/resume/extend, clock jumps, sleep. Shared JSON vectors in `test-vectors/timer.json` (17 cases) pass in Rust and in the TS port `web/src/lib/timer.ts`. Config bounds (1 min to 12 h per phase, at most 12 rounds) are guesses.
 - [ ] 1.2 **State machine** (section 2 table): table-driven, reject unknown pairs, tests for every row, including breathe, overflow, rest, reflect, auto-start and strict-mode blocks. Shared JSON vectors for every row; TS port in `web/src/lib` checked against them.
 - [ ] 1.3 **Ids and event log** (D-02): per-device monotonic generator (backward clock, `seq` overflow, restore from this device's max id), events and projections, idempotent add, rejected-event table, tombstones.
 - [ ] 1.4 **SQLite layer** (D-01): migrations, repositories for sessions (focus and break), categories, settings, `current_timer`; one transaction per event.

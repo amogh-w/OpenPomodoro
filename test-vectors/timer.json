@@ -1,0 +1,528 @@
+{
+ "description": "Shared timer test vectors. Times are Unix milliseconds. Rust (crates/core/tests/vectors.rs) and TypeScript (web/src/lib/timer.test.ts) must both pass every case. Ops: start{at,total}, pause{at}, resume{at}, extend{at,delta}, expect{at,elapsed,remaining,overflow,ended,paused}. An op may carry error: the expected error code, in which case it must fail with that code and leave the timer unchanged.",
+ "cases": [
+  {
+   "name": "runs_and_ends",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 1500000
+    },
+    {
+     "op": "expect",
+     "at": 0,
+     "elapsed": 0,
+     "remaining": 1500000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 600000,
+     "elapsed": 600000,
+     "remaining": 900000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 1499999,
+     "elapsed": 1499999,
+     "remaining": 1,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 1500000,
+     "elapsed": 1500000,
+     "remaining": 0,
+     "overflow": 0,
+     "ended": true,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 1800000,
+     "elapsed": 1800000,
+     "remaining": 0,
+     "overflow": 300000,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "start_rejects_non_positive_total",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 0,
+     "error": "invalid_total"
+    },
+    {
+     "op": "start",
+     "at": 0,
+     "total": -5,
+     "error": "invalid_total"
+    }
+   ]
+  },
+  {
+   "name": "pause_and_resume",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 600000
+    },
+    {
+     "op": "pause",
+     "at": 180000
+    },
+    {
+     "op": "expect",
+     "at": 480000,
+     "elapsed": 180000,
+     "remaining": 420000,
+     "overflow": 0,
+     "ended": false,
+     "paused": true
+    },
+    {
+     "op": "resume",
+     "at": 480000
+    },
+    {
+     "op": "expect",
+     "at": 600000,
+     "elapsed": 300000,
+     "remaining": 300000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 900000,
+     "elapsed": 600000,
+     "remaining": 0,
+     "overflow": 0,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "pause_during_overflow",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 300000
+    },
+    {
+     "op": "pause",
+     "at": 420000
+    },
+    {
+     "op": "expect",
+     "at": 1200000,
+     "elapsed": 420000,
+     "remaining": 0,
+     "overflow": 120000,
+     "ended": true,
+     "paused": true
+    },
+    {
+     "op": "resume",
+     "at": 1200000
+    },
+    {
+     "op": "expect",
+     "at": 1260000,
+     "elapsed": 480000,
+     "remaining": 0,
+     "overflow": 180000,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "pause_state_errors",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 600000
+    },
+    {
+     "op": "resume",
+     "at": 60000,
+     "error": "not_paused"
+    },
+    {
+     "op": "pause",
+     "at": 60000
+    },
+    {
+     "op": "pause",
+     "at": 120000,
+     "error": "already_paused"
+    },
+    {
+     "op": "expect",
+     "at": 300000,
+     "elapsed": 60000,
+     "remaining": 540000,
+     "overflow": 0,
+     "ended": false,
+     "paused": true
+    }
+   ]
+  },
+  {
+   "name": "extend_running",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 1500000
+    },
+    {
+     "op": "extend",
+     "at": 600000,
+     "delta": 300000
+    },
+    {
+     "op": "expect",
+     "at": 600000,
+     "elapsed": 600000,
+     "remaining": 1200000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "shrink_running",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 1500000
+    },
+    {
+     "op": "extend",
+     "at": 600000,
+     "delta": -300000
+    },
+    {
+     "op": "expect",
+     "at": 600000,
+     "elapsed": 600000,
+     "remaining": 600000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "shrink_past_zero_ends_now",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 1500000
+    },
+    {
+     "op": "extend",
+     "at": 1200000,
+     "delta": -600000
+    },
+    {
+     "op": "expect",
+     "at": 1200000,
+     "elapsed": 1200000,
+     "remaining": 0,
+     "overflow": 0,
+     "ended": true,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 1500000,
+     "elapsed": 1500000,
+     "remaining": 0,
+     "overflow": 300000,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "extend_in_overflow_restarts_countdown",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 300000
+    },
+    {
+     "op": "extend",
+     "at": 480000,
+     "delta": 300000
+    },
+    {
+     "op": "expect",
+     "at": 480000,
+     "elapsed": 480000,
+     "remaining": 300000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 780000,
+     "elapsed": 780000,
+     "remaining": 0,
+     "overflow": 0,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "shrink_in_overflow_is_a_no_op",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 300000
+    },
+    {
+     "op": "extend",
+     "at": 480000,
+     "delta": -300000
+    },
+    {
+     "op": "expect",
+     "at": 480000,
+     "elapsed": 480000,
+     "remaining": 0,
+     "overflow": 180000,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "extend_at_exact_end",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 300000
+    },
+    {
+     "op": "extend",
+     "at": 300000,
+     "delta": 300000
+    },
+    {
+     "op": "expect",
+     "at": 300000,
+     "elapsed": 300000,
+     "remaining": 300000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "extend_while_paused",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 600000
+    },
+    {
+     "op": "pause",
+     "at": 240000
+    },
+    {
+     "op": "extend",
+     "at": 360000,
+     "delta": 300000
+    },
+    {
+     "op": "expect",
+     "at": 360000,
+     "elapsed": 240000,
+     "remaining": 660000,
+     "overflow": 0,
+     "ended": false,
+     "paused": true
+    },
+    {
+     "op": "resume",
+     "at": 360000
+    },
+    {
+     "op": "expect",
+     "at": 660000,
+     "elapsed": 540000,
+     "remaining": 360000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "shrink_past_zero_while_paused",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 600000
+    },
+    {
+     "op": "pause",
+     "at": 240000
+    },
+    {
+     "op": "extend",
+     "at": 360000,
+     "delta": -600000
+    },
+    {
+     "op": "expect",
+     "at": 360000,
+     "elapsed": 240000,
+     "remaining": 0,
+     "overflow": 0,
+     "ended": true,
+     "paused": true
+    }
+   ]
+  },
+  {
+   "name": "clock_before_start_clamps",
+   "ops": [
+    {
+     "op": "start",
+     "at": 1000000,
+     "total": 300000
+    },
+    {
+     "op": "expect",
+     "at": 900000,
+     "elapsed": 0,
+     "remaining": 300000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 1000000,
+     "elapsed": 0,
+     "remaining": 300000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "clock_back_while_paused_keeps_buffer",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 600000
+    },
+    {
+     "op": "pause",
+     "at": 100000
+    },
+    {
+     "op": "resume",
+     "at": 90000
+    },
+    {
+     "op": "expect",
+     "at": 90000,
+     "elapsed": 90000,
+     "remaining": 510000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    },
+    {
+     "op": "expect",
+     "at": 100000,
+     "elapsed": 100000,
+     "remaining": 500000,
+     "overflow": 0,
+     "ended": false,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "sleep_while_running",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 1500000
+    },
+    {
+     "op": "expect",
+     "at": 28800000,
+     "elapsed": 28800000,
+     "remaining": 0,
+     "overflow": 27300000,
+     "ended": true,
+     "paused": false
+    }
+   ]
+  },
+  {
+   "name": "sleep_while_paused",
+   "ops": [
+    {
+     "op": "start",
+     "at": 0,
+     "total": 1500000
+    },
+    {
+     "op": "pause",
+     "at": 600000
+    },
+    {
+     "op": "expect",
+     "at": 32400000,
+     "elapsed": 600000,
+     "remaining": 900000,
+     "overflow": 0,
+     "ended": false,
+     "paused": true
+    }
+   ]
+  }
+ ]
+}
