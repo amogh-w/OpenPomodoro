@@ -10,6 +10,9 @@ use op_server::{
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // `op-server healthcheck`: for container health checks. Exits 0 only if the running server is healthy.
+    let healthcheck = std::env::args().nth(1).as_deref() == Some("healthcheck");
+
     let config = match Config::from_env() {
         Ok(config) => config,
         Err(message) => {
@@ -17,6 +20,14 @@ async fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+
+    if healthcheck {
+        return if op_server::healthcheck::check(config.port) {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        };
+    }
 
     if let Some(dir) = config
         .db_path
@@ -44,10 +55,14 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let web = match (&config.web_dir, op_server::assets::embedded_available()) {
+        (Some(dir), _) => format!("folder {}", dir.display()),
+        (None, true) => "built into this program".to_string(),
+        (None, false) => "folder web/dist".to_string(),
+    };
     println!(
-        "OpenPomodoro on http://{addr} (database {}, web {})",
-        config.db_path.display(),
-        config.web_dir.display()
+        "OpenPomodoro on http://{addr} (database {}, web app {web})",
+        config.db_path.display()
     );
     if let Some(public) = &config.public {
         println!("public URL {}", public.origin);

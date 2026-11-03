@@ -61,7 +61,7 @@ impl TestApp {
         let web = TempDir::new();
         std::fs::write(web.path().join("index.html"), "<p>shell</p>").expect("write index");
         let mut config = Config::from_lookup(|_| None).expect("default config");
-        config.web_dir = web.path().to_path_buf();
+        config.web_dir = Some(web.path().to_path_buf());
         config.public = public.map(|p| PublicUrl::parse(p).expect("public url"));
         let clock = Arc::new(FakeClock::new(1_700_000_000_000));
         let state = AppState::new(

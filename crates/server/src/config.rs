@@ -42,7 +42,8 @@ pub struct Config {
     pub port: u16,
     pub public: Option<PublicUrl>,
     pub db_path: PathBuf,
-    pub web_dir: PathBuf,
+    /// Serve the web app from this folder instead of the copy built into the binary.
+    pub web_dir: Option<PathBuf>,
     /// Trust the `X-Forwarded-For` header from a reverse proxy in front of this server.
     pub trust_proxy: bool,
 }
@@ -85,7 +86,9 @@ impl Config {
             public,
             db_path: get("OP_DB")
                 .map_or_else(|| PathBuf::from("data/openpomodoro.db"), PathBuf::from),
-            web_dir: get("OP_WEB_DIR").map_or_else(|| PathBuf::from("web/dist"), PathBuf::from),
+            web_dir: get("OP_WEB_DIR")
+                .filter(|v| !v.trim().is_empty())
+                .map(PathBuf::from),
             trust_proxy: flag("OP_TRUST_PROXY"),
         })
     }
@@ -125,6 +128,10 @@ mod tests {
         assert_eq!(c.port, 3000);
         assert_eq!(c.public, None);
         assert_eq!(c.db_path, PathBuf::from("data/openpomodoro.db"));
+        assert_eq!(
+            c.web_dir, None,
+            "the web app comes from inside the binary unless OP_WEB_DIR says otherwise"
+        );
         assert!(!c.trust_proxy && !c.https());
         assert_eq!(c.session_cookie_name(), "op_session");
     }
@@ -175,6 +182,15 @@ mod tests {
         .expect("ok");
         assert!(c.https() && c.trust_proxy);
         assert_eq!(c.session_cookie_name(), "__Host-op_session");
+    }
+
+    #[test]
+    fn a_web_dir_can_be_set_and_blank_means_unset() {
+        assert_eq!(
+            cfg(&[("OP_WEB_DIR", "/srv/web")]).expect("ok").web_dir,
+            Some(PathBuf::from("/srv/web"))
+        );
+        assert_eq!(cfg(&[("OP_WEB_DIR", "  ")]).expect("ok").web_dir, None);
     }
 
     #[test]

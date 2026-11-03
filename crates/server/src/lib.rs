@@ -1,15 +1,25 @@
 //! OpenPomodoro server: accounts, per-user data, JSON API, and the built PWA.
 
-use axum::{Json, Router, extract::DefaultBodyLimit, middleware, routing::get};
+use std::path::Path;
+
+use axum::{
+    Json, Router,
+    extract::DefaultBodyLimit,
+    http::{Method, Uri},
+    middleware,
+    routing::get,
+};
 use tower_http::services::{ServeDir, ServeFile};
 
 pub mod accounts;
 pub mod api;
+pub mod assets;
 pub mod backup;
 pub mod config;
 pub mod db;
 pub mod error;
 pub mod export;
+pub mod healthcheck;
 pub mod hub;
 pub mod security;
 pub mod settings;
@@ -28,13 +38,20 @@ async fn health() -> Json<serde_json::Value> {
 /// Build the router: `/api/*` plus the built PWA (unknown paths fall back to `index.html`). Every request goes
 /// through the host/origin guard, the CSRF check and the security headers.
 pub fn app(state: Shared) -> Router {
-    let index = state.config.web_dir.join("index.html");
-    let files = ServeDir::new(&state.config.web_dir).fallback(ServeFile::new(index));
     let config = state.config.clone();
-    Router::new()
+    let routes = Router::new()
         .route("/api/health", get(health))
-        .merge(api::router())
-        .fallback_service(files)
+        .merge(api::router());
+    // Where the web app comes from: a folder if `OP_WEB_DIR` says so, else the copy inside this binary, else (a
+    // development build that has not built the web app) the usual build folder.
+    let routes = match (&config.web_dir, assets::embedded_available()) {
+        (Some(dir), _) => routes.fallback_service(from_folder(dir)),
+        (None, true) => routes.fallback(|method: Method, uri: Uri| async move {
+            assets::serve(&assets::Embedded, &method, uri.path())
+        }),
+        (None, false) => routes.fallback_service(from_folder(Path::new("web/dist"))),
+    };
+    routes
         .layer(DefaultBodyLimit::max(1024 * 1024))
         .layer(middleware::from_fn(security::csrf))
         .layer(middleware::from_fn_with_state(
@@ -46,6 +63,10 @@ pub fn app(state: Shared) -> Router {
             security::security_headers,
         ))
         .with_state(state)
+}
+
+fn from_folder(dir: &Path) -> ServeDir<ServeFile> {
+    ServeDir::new(dir).fallback(ServeFile::new(dir.join("index.html")))
 }
 
 #[cfg(test)]
