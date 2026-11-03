@@ -20,6 +20,9 @@ export function newTimer(start: number, total: number): Result<Timer> {
   return { ok: true, value: { start, total, pauseBuffer: 0, pauseTs: null } };
 }
 
+/** The instant the phase reaches (or reached) its total if it keeps running: start + total + time paused. */
+export const endInstant = (t: Timer): number => t.start + t.total + t.pauseBuffer;
+
 export const isPaused = (t: Timer): boolean => t.pauseTs !== null;
 
 /** Time the phase has run; never negative (a clock set back reads 0). */

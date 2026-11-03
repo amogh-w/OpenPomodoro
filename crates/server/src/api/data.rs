@@ -56,7 +56,7 @@ fn state_json(state: &Shared, user: &str, timer: &TimerState) -> Result<Value, A
 }
 
 async fn get_state(State(state): State<Shared>, auth: AuthUser) -> Result<Json<Value>, ApiError> {
-    let timer = TimerState::load(&state.db(), &auth.user.id)?;
+    let timer = timer_service::load_state(&state.db(), &auth.user.id)?;
     Ok(Json(state_json(&state, &auth.user.id, &timer)?))
 }
 
@@ -92,7 +92,7 @@ async fn post_command(
                 state.hub.publish(&user, CHANGED);
                 ("applied", timer)
             }
-            CommandResult::Duplicate => ("duplicate", TimerState::load(&db, &user)?),
+            CommandResult::Duplicate => ("duplicate", timer_service::load_state(&db, &user)?),
         }
     };
     Ok(Json(

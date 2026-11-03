@@ -47,6 +47,15 @@ pub fn valid_value(name: &str, value: &Value) -> bool {
 }
 
 impl Settings {
+    /// The part the shared planner needs.
+    pub fn plan_settings(&self) -> op_core::PlanSettings {
+        op_core::PlanSettings {
+            config: self.config,
+            rules: self.rules,
+            breathe_ms: self.breathe_ms,
+        }
+    }
+
     pub fn load(db: &Db, user: &str) -> Result<Settings, DbError> {
         let defaults = Config::default();
         let int = |name: &str, default: i64| -> Result<i64, DbError> {

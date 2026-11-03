@@ -1,0 +1,2305 @@
+{
+  "cases": [
+    {
+      "name": "focus_cycle_with_break",
+      "steps": [
+        {
+          "action": {
+            "category": "c1",
+            "duration_ms": 1500000,
+            "intention": "write",
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": "c1",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": "write",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": "c1",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": "write",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 1620000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": "c1",
+              "focus_elapsed_ms": 1620000,
+              "focus_ended_at": 1620000,
+              "focus_started_at": 0,
+              "intention": "write",
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 1620000,
+          "expect": {
+            "records": [
+              {
+                "category": "c1",
+                "duration_ms": 1620000,
+                "ended_at": 1620000,
+                "intention": "write",
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": "c1",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "write",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1620000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1920000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": "c1",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "write",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1620000,
+              "state": "rest_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "intention": "again",
+            "name": "init_focus"
+          },
+          "at": 1980000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 360000,
+                "ended_at": 1980000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 1620000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1980000,
+              "intention": "again",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 1980000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause_resume_extend_shrink",
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": 600000,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "paused_session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 1200000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 600000,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "delta_ms": 300000,
+            "name": "extend"
+          },
+          "at": 1260000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 600000,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1800000
+            }
+          }
+        },
+        {
+          "action": {
+            "delta_ms": -600000,
+            "name": "extend"
+          },
+          "at": 1320000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 600000,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1200000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1380000,
+          "expect": {
+            "error": "rejected:not_ended"
+          }
+        }
+      ]
+    },
+    {
+      "name": "breathe_then_session",
+      "settings": {
+        "breathe": true
+      },
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "breathe",
+              "total": 30000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 30000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 30000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 30000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "breathe_skipped",
+      "settings": {
+        "breathe": true
+      },
+      "steps": [
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "breathe",
+              "total": 30000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "skip_breathe"
+          },
+          "at": 5000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 5000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 5000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "abandon"
+          },
+          "at": 6000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 0,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "auto_start_break_found_late",
+      "settings": {
+        "auto_start_break": true
+      },
+      "steps": [
+        {
+          "action": {
+            "intention": "deep",
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": "deep",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 2400000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 1500000,
+                "intention": "deep",
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "deep",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1500000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 2400000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "deep",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1500000,
+              "state": "rest_end",
+              "total": 300000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "auto_start_chain_keeps_intention",
+      "settings": {
+        "auto_start_break": true,
+        "auto_start_focus": true
+      },
+      "steps": [
+        {
+          "action": {
+            "category": "c2",
+            "intention": "deep work",
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": "c2",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": "deep work",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [
+              {
+                "category": "c2",
+                "duration_ms": 1500000,
+                "ended_at": 1500000,
+                "intention": "deep work",
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": "c2",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "deep work",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1500000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1800000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 300000,
+                "ended_at": 1800000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 1500000
+              }
+            ],
+            "timer": {
+              "category": "c2",
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1800000,
+              "intention": "deep work",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 1800000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "long_break_after_two_rounds",
+      "settings": {
+        "rounds_before_long": 2
+      },
+      "steps": [
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 1500000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 1500000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1500000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1800000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1500000,
+              "state": "rest_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 1860000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 360000,
+                "ended_at": 1860000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 1500000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1860000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 1860000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 3360000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1860000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 1860000,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 3360000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 3360000,
+              "focus_started_at": 1860000,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 3360000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 3360000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 1860000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "long_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 2,
+              "start": 3360000,
+              "state": "rest",
+              "total": 900000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 4260000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "long_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 2,
+              "start": 3360000,
+              "state": "rest_end",
+              "total": 900000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 4320000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 960000,
+                "ended_at": 4320000,
+                "kind": "long_break",
+                "planned_ms": 900000,
+                "started_at": 3360000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 4320000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 4320000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "abandon_done_and_breaks",
+      "steps": [
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "abandon"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 0,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 660000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 660000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 660000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 2160000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 660000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 660000,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 2160000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 2160000,
+              "focus_started_at": 660000,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "done"
+          },
+          "at": 2160000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 2160000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 660000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 2400000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 2400000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 2520000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 120000,
+                "ended_at": 2520000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 2400000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 3000000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 3000000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "skip_rest"
+          },
+          "at": 3060000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 60000,
+                "ended_at": 3060000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 3000000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "skip_rest_starts_next_focus",
+      "settings": {
+        "auto_start_focus": true
+      },
+      "steps": [
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 0,
+              "start": 0,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "skip_rest"
+          },
+          "at": 60000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 60000,
+                "ended_at": 60000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 60000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 60000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "strict_mode_blocks",
+      "settings": {
+        "strict": true
+      },
+      "steps": [
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "rejected:strict"
+          }
+        },
+        {
+          "action": {
+            "name": "abandon"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "rejected:strict"
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 120000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 120000,
+              "focus_ended_at": 120000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 180000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 120000,
+                "ended_at": 120000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 180000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 240000,
+          "expect": {
+            "error": "rejected:strict"
+          }
+        },
+        {
+          "action": {
+            "name": "skip_rest"
+          },
+          "at": 240000,
+          "expect": {
+            "error": "rejected:strict"
+          }
+        }
+      ]
+    },
+    {
+      "name": "errors_leave_state_unchanged",
+      "steps": [
+        {
+          "action": {
+            "name": "done"
+          },
+          "at": 0,
+          "expect": {
+            "error": "rejected:unknown"
+          }
+        },
+        {
+          "action": {
+            "name": "teleport"
+          },
+          "at": 0,
+          "expect": {
+            "error": "invalid:unknown_command"
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 5,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "intention": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "rejected:not_ended"
+          }
+        },
+        {
+          "action": {
+            "delta_ms": 420000,
+            "name": "extend"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "delta_ms": 0,
+            "name": "extend"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "delta_ms": 3900000,
+            "name": "extend"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "name": "extend"
+          },
+          "at": 60000,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 60000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": 60000,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "paused_session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 60000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 120000,
+          "expect": {
+            "error": "rejected:unknown"
+          }
+        }
+      ]
+    },
+    {
+      "name": "take_rest_kind_override",
+      "steps": [
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 1500000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "kind": "huge",
+            "name": "take_rest"
+          },
+          "at": 1500000,
+          "expect": {
+            "error": "invalid:bad_args"
+          }
+        },
+        {
+          "action": {
+            "kind": "long",
+            "name": "take_rest"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 1500000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "long_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 1500000,
+              "state": "rest",
+              "total": 900000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "shrink_past_zero_needs_timer_ends",
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "delta_ms": -1200000,
+            "name": "extend"
+          },
+          "at": 1200000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1200000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1200000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 1200000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "extend_out_of_overtime",
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 300000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 420000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "delta_ms": 300000,
+            "name": "extend"
+          },
+          "at": 480000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 780000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 540000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": 540000,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "paused_session",
+              "total": 780000
+            }
+          }
+        },
+        {
+          "action": {
+            "delta_ms": -300000,
+            "name": "extend"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": 540000,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "paused_session",
+              "total": 540000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause_inside_overtime_and_break_overtime",
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 300000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 360000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 420000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": 420000,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "paused_session_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 540000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 120000,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 480000,
+              "focus_ended_at": 600000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 300000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 480000,
+                "ended_at": 600000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 300000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 600000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1200000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 600000,
+              "state": "rest_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 1260000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": 1260000,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 600000,
+              "state": "paused_rest_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "toggle_pause"
+          },
+          "at": 1320000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 60000,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 600000,
+              "state": "rest_end",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 1380000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 720000,
+                "ended_at": 1380000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 600000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1380000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 1380000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "custom_settings",
+      "settings": {
+        "focus_ms": 600000,
+        "long_break_ms": 1800000,
+        "rounds_before_long": 1,
+        "short_break_ms": 120000
+      },
+      "steps": [
+        {
+          "action": {
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 600000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 600000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 600000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "total": 600000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 600000,
+              "focus_ended_at": 600000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 600000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 600000,
+                "ended_at": 600000,
+                "intention": null,
+                "kind": "focus",
+                "planned_ms": 600000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "long_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 600000,
+              "state": "rest",
+              "total": 1800000
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "defaults": {
+    "auto_start_break": false,
+    "auto_start_focus": false,
+    "breathe": false,
+    "breathe_ms": 30000,
+    "focus_ms": 1500000,
+    "long_break_ms": 900000,
+    "rounds_before_long": 4,
+    "short_break_ms": 300000,
+    "strict": false
+  },
+  "description": "Shared planner vectors. Each case starts from an idle timer and applies its steps in order. A step is an action taken at time `at` (Unix ms). `expect` is either the next stored timer state (every field) plus the session records that finished, or an error `invalid:<code>` / `rejected:<code>` (the state then stays as it was). Settings are `defaults` with the case's overrides. Rust (crates/core/tests/planner_vectors.rs) is the source of truth and wrote the expectations (run it with UPDATE_VECTORS=1); TypeScript (web/src/lib/planner.test.ts) must produce the same."
+}
