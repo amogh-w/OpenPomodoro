@@ -1,0 +1,25 @@
+{
+  "name": "openpomodoro-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "icons": "node ui/icons.mjs --list ui/icons.txt --out public/icons.svg",
+    "css": "tailwindcss -i ui/kit.css -o src/app.css --minify",
+    "sync": "cp ui/theme.js ui/ui.js public/",
+    "build": "npm run icons && npm run sync && npm run css && vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tailwindcss/cli": "^4.1.11",
+    "@tsconfig/svelte": "^5.0.8",
+    "lucide-static": "^0.540.0",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.8",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.5"
+  }
+}

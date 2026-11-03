@@ -1,0 +1,7 @@
+node_modules
+dist
+src/app.css
+public/icons.svg
+public/theme.js
+public/ui.js
+*.tsbuildinfo
