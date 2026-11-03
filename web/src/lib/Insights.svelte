@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { completionRate } from "./completion";
   import { formatSpan } from "./format";
   import { t, tn } from "./i18n";
   import type { Insights } from "./insights";
-  import type { Category } from "./types";
+  import type { SessionRecord, Category } from "./types";
 
-  let { data, categories }: { data: Insights; categories: Category[] } = $props();
+  let { data, categories, sessions }: { data: Insights; categories: Category[]; sessions: SessionRecord[] } = $props();
+  const done = $derived(completionRate(sessions));
 
   const hour = (h: number | null): string => (h === null ? "–" : new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" }));
   const percent = (f: number | null): string => (f === null ? "" : `${f >= 0 ? "+" : "−"}${Math.round(Math.abs(f) * 100)}%`);
@@ -30,6 +32,11 @@
       <div class="t-foot text-subtext1">{t("insights.avgDay")}</div>
       <div class="t-title2 tabular-nums">{formatSpan(data.avgPerDayMs)}</div>
       <div class="t-foot text-subtext1">{tn("insights.activeDays", data.activeDays)}</div>
+    </div>
+    <div class="card p-3">
+      <div class="t-foot text-subtext1">{t("insights.completed")}</div>
+      <div class="t-title2 tabular-nums">{done.rate === null ? "–" : `${Math.round(done.rate * 100)}%`}</div>
+      {#if done.rated > 0}<div class="t-foot text-subtext1">{t("insights.completedOf", { done: done.completed, rated: done.rated })}</div>{/if}
     </div>
     <div class="card p-3">
       <div class="t-foot text-subtext1">{t("insights.bestTime")}</div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
   import Dial from "../lib/Dial.svelte";
   import EditSessionDialog from "../lib/EditSessionDialog.svelte";
@@ -8,7 +9,7 @@
   import TodayPanel from "../lib/TodayPanel.svelte";
   import { app, currentView, sendCommand, tick } from "../lib/appState.svelte";
   import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
-  import { formatElapsed, formatRemaining } from "../lib/format";
+  import { formatElapsed, formatRemaining, formatSpan } from "../lib/format";
   import { t } from "../lib/i18n";
   import { parseIntention } from "../lib/intention";
   import { recentIntentions } from "../lib/recent";
@@ -159,6 +160,18 @@
 
   let intentionField: HTMLInputElement | undefined = $state();
   let editDialog: EditSessionDialog | undefined = $state();
+  let earlyDialog: ConfirmDialog | undefined = $state();
+  let abandonDialog: ConfirmDialog | undefined = $state();
+
+  /** A full session is the point, so stopping before the time is up asks first. Past the end it is simply done. */
+  async function endEarly(): Promise<void> {
+    if (view && !view.overflow && !(await earlyDialog?.ask())) return;
+    await finishFocus();
+  }
+
+  async function abandonFocus(): Promise<void> {
+    if (await abandonDialog?.ask()) await run({ name: "abandon" });
+  }
 
   /** Keyboard shortcuts for the timer; the rules about when they apply live in shortcuts.ts. */
   function onKey(event: KeyboardEvent): void {
@@ -189,7 +202,7 @@
         if (view.can.extend) act(() => void run({ name: "extend", delta_ms: action === "extend" ? STEP_MS : -STEP_MS }));
         break;
       case "finish":
-        if (view.phase === "focus" && view.can.stop) act(() => void finishFocus());
+        if (view.phase === "focus" && view.can.stop) act(() => void endEarly());
         break;
       case "break":
         if (view.phase === "reflect" && view.can.take_rest) act(() => void endReflect("take_rest"));
@@ -236,6 +249,20 @@
 
 <svelte:window onkeydown={onKey} />
 <EditSessionDialog bind:this={editDialog} />
+<ConfirmDialog
+  bind:this={earlyDialog}
+  title={t("timer.endEarly.title")}
+  body={t("timer.endEarly.body", { left: formatSpan(view?.remainingMs ?? 0) })}
+  confirm={t("timer.endEarly.confirm")}
+  cancel={t("timer.endEarly.keep")}
+/>
+<ConfirmDialog
+  bind:this={abandonDialog}
+  title={t("timer.abandon.title")}
+  body={t("timer.abandon.body")}
+  confirm={t("timer.abandon.confirm")}
+  cancel={t("timer.endEarly.keep")}
+/>
 
 <div class="xl:grid xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start xl:gap-10">
 <div>
@@ -473,11 +500,15 @@
             <svg class="size-5"><use href="/icons.svg#coffee" /></svg>{t("timer.takeBreak")}
           </button>
         {/if}
-        <button class="btn btn-gray" disabled={busy || !view.can.stop} onclick={() => finishFocus()}>
-          {t("timer.finish")}
+        <button
+          class="btn {view.overflow ? 'btn-gray' : 'btn-plain'}"
+          disabled={busy || !view.can.stop}
+          onclick={endEarly}
+        >
+          {view.overflow ? t("timer.finish") : t("timer.endEarly")}
         </button>
         {#if view.can.abandon}
-          <button class="btn btn-plain" disabled={busy} onclick={() => run({ name: "abandon" })}>{t("timer.abandon")}</button>
+          <button class="btn btn-plain" disabled={busy} onclick={abandonFocus}>{t("timer.abandon")}</button>
         {/if}
       {:else}
         {#if view.can.init_focus}

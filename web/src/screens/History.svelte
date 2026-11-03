@@ -12,6 +12,7 @@
   import { t, tn } from "../lib/i18n";
   import { refreshRecent } from "../lib/recentStore.svelte";
   import { computeInsights, daysOfMonth } from "../lib/insights";
+  import { completion } from "../lib/completion";
   import { computeStats } from "../lib/stats";
   import type { DayTotal, SessionRecord } from "../lib/types";
 
@@ -131,7 +132,7 @@
 </div>
 
 <div class="mt-3 grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
-  <Insights data={insights} categories={app.categories} />
+  <Insights data={insights} categories={app.categories} {sessions} />
 
   <div class="grid content-start gap-3">
     <div class="flex flex-wrap items-center gap-2">
@@ -179,7 +180,8 @@
                 <span class="min-w-0 flex-1">
                   <span class="block truncate">{kindLabel(s)}</span>
                   <span class="t-foot block text-subtext1">
-                    {time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}
+                    {time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}{#if completion(s) === true}
+                    · <span class="text-green">{t("completion.complete")}</span>{:else if completion(s) === false} · <span class="text-yellow">{t("completion.early")}</span>{/if}
                   </span>
                   {#if s.notes}<span class="t-foot line-clamp-1 block text-subtext1">{s.notes}</span>{/if}
                 </span>

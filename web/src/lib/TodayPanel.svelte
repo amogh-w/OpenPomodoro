@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, tick } from "./appState.svelte";
+  import { completion } from "./completion";
   import DayTimeline from "./DayTimeline.svelte";
   import { dayStartMs, groupByDay, localDayKey, moodTally } from "./days";
   import { formatSpan } from "./format";
@@ -75,7 +76,9 @@
           <span class="size-3 shrink-0 rounded-full" style="background: {color(s.category)}" aria-hidden="true"></span>
           <span class="min-w-0 flex-1">
             <span class="block truncate">{title(s)}</span>
-            <span class="t-foot block text-subtext1">{time(s.started_at)}–{time(s.ended_at)}</span>
+            <span class="t-foot block text-subtext1">
+              {time(s.started_at)}–{time(s.ended_at)}{#if completion(s) === true} · <span class="text-green">{t("completion.complete")}</span>{:else if completion(s) === false} · <span class="text-yellow">{t("completion.early")}</span>{/if}
+            </span>
           </span>
           <span class="tabular-nums text-subtext1">{formatSpan(spentOf(s))}</span>
         </li>

@@ -1393,7 +1393,7 @@
               "pause_buffer": 0,
               "pause_ts": null,
               "planned_ms": null,
-              "rounds": 1,
+              "rounds": 0,
               "start": 180000,
               "state": "rest",
               "total": 300000
@@ -2845,7 +2845,7 @@
               "pause_buffer": null,
               "pause_ts": null,
               "planned_ms": null,
-              "rounds": 1,
+              "rounds": 0,
               "start": null,
               "state": "idle",
               "total": null
@@ -2869,7 +2869,7 @@
               "pause_buffer": 0,
               "pause_ts": null,
               "planned_ms": 1500000,
-              "rounds": 1,
+              "rounds": 0,
               "start": 20000,
               "state": "session",
               "total": 1500000
@@ -2893,7 +2893,7 @@
               "pause_buffer": null,
               "pause_ts": null,
               "planned_ms": 1500000,
-              "rounds": 1,
+              "rounds": 0,
               "start": null,
               "state": "reflect",
               "total": null
@@ -2930,7 +2930,7 @@
               "pause_buffer": null,
               "pause_ts": null,
               "planned_ms": null,
-              "rounds": 2,
+              "rounds": 0,
               "start": null,
               "state": "idle",
               "total": null
@@ -3091,7 +3091,7 @@
               "pause_buffer": null,
               "pause_ts": null,
               "planned_ms": null,
-              "rounds": 1,
+              "rounds": 0,
               "start": null,
               "state": "idle",
               "total": null
@@ -3608,6 +3608,384 @@
               "start": 3000,
               "state": "rest",
               "total": 1200000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "only_full_sessions_move_the_cycle_on",
+      "settings": {
+        "rounds_before_long": 2
+      },
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "intention": "a",
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": "a",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 600000,
+              "focus_ended_at": 600000,
+              "focus_started_at": 0,
+              "intention": "a",
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 600000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 600000,
+                "ended_at": 600000,
+                "intention": "a",
+                "kind": "focus",
+                "mood": null,
+                "notes": null,
+                "planned_ms": 1500000,
+                "started_at": 0
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "a",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 0,
+              "start": 600000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "skip_rest"
+          },
+          "at": 660000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 60000,
+                "ended_at": 660000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 600000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 0,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "intention": "b",
+            "name": "init_focus"
+          },
+          "at": 720000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 720000,
+              "intention": "b",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 720000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 2220000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 720000,
+              "intention": "b",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 720000,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 2280000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 1560000,
+              "focus_ended_at": 2280000,
+              "focus_started_at": 720000,
+              "intention": "b",
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 2280000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1560000,
+                "ended_at": 2280000,
+                "intention": "b",
+                "kind": "focus",
+                "mood": null,
+                "notes": null,
+                "planned_ms": 1500000,
+                "started_at": 720000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "b",
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 2280000,
+              "state": "rest",
+              "total": 300000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "skip_rest"
+          },
+          "at": 2340000,
+          "expect": {
+            "records": [
+              {
+                "duration_ms": 60000,
+                "ended_at": 2340000,
+                "kind": "short_break",
+                "planned_ms": 300000,
+                "started_at": 2280000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": null,
+              "state": "idle",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "intention": "c",
+            "name": "init_focus"
+          },
+          "at": 2400000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 2400000,
+              "intention": "c",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 2400000,
+              "state": "session",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 3900000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 2400000,
+              "intention": "c",
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": 2400000,
+              "state": "session_end",
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 3900000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 3900000,
+              "focus_started_at": 2400000,
+              "intention": "c",
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 1,
+              "start": null,
+              "state": "reflect",
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 3900000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 3900000,
+                "intention": "c",
+                "kind": "focus",
+                "mood": null,
+                "notes": null,
+                "planned_ms": 1500000,
+                "started_at": 2400000
+              }
+            ],
+            "timer": {
+              "category": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": "c",
+              "kind": "long_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 2,
+              "start": 3900000,
+              "state": "rest",
+              "total": 900000
             }
           }
         }

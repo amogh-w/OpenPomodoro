@@ -367,7 +367,8 @@ fn extras_of(action: &Action) -> Result<Extras, PlanError> {
 /// A focus session this short with no intention and no notes is an accidental start, not work (C-06).
 const JUNK_MS: i64 = 30_000;
 
-/// Save a finished focus session: it goes into `records` and counts as a round, unless it was accidental.
+/// Save a finished focus session: it goes into `records`, unless it was accidental. It counts as a round only if it
+/// ran its full planned length: a session ended early is kept in the log but does not move the cycle on.
 fn keep_focus(next: &mut TimerState, records: &mut Vec<Record>, record: Record) {
     let accidental = matches!(
         &record,
@@ -376,8 +377,11 @@ fn keep_focus(next: &mut TimerState, records: &mut Vec<Record>, record: Record) 
     if accidental {
         return;
     }
+    let full = matches!(&record, Record::Focus { elapsed, planned, .. } if elapsed >= planned);
     records.push(record);
-    next.rounds += 1;
+    if full {
+        next.rounds += 1;
+    }
 }
 
 fn keep_break(next: &mut TimerState, record: &Record) {
