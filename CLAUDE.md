@@ -1,6 +1,6 @@
 # OpenPomodoro
 
-An open source, local-first Pomodoro and focus-tracking app. **Rust backend + installable PWA frontend.** v1 is local-only (no accounts, no cloud); sync is an optional later phase.
+An open source, **self-hosted, multi-user** Pomodoro and focus-tracking app. **Rust backend + installable PWA frontend.** You run the server (one binary or Docker); the people you invite get accounts and private data. No hosted service, no telemetry.
 
 The feature list and build order are in `PLAN.md`. Read it before starting work, and update its status table as steps finish.
 
@@ -11,7 +11,7 @@ The feature list and build order are in `PLAN.md`. Read it before starting work,
 - `ref/` is a local, git-excluded folder of private research notes and screenshots. Read it for background if it exists; never reference it from code or docs, never commit it, never add it to `.gitignore` (it is hidden through `.git/info/exclude`). The project must build and make sense without it.
 
 ## Stack (decided in PLAN.md section 2; change only with a note there)
-- Backend: Rust, `axum` HTTP + WebSocket, SQLite through `rusqlite` or `sqlx`, `tokio`. Serves the built PWA as static files and a JSON API.
+- Backend: Rust, `axum` HTTP + WebSocket, SQLite through `rusqlite`, `tokio`, argon2id for passwords. Serves the built PWA as static files and a JSON API.
 - Frontend: a **browser PWA first** (installable, offline), built with **Svelte 5 + Vite (static bundle, no SSR, no meta-framework)** styled by the **cuppa-ui kit** (Tailwind v4 + Catppuccin tokens, Lucide sprite, `theme.js` + `ui.js`). This is a deliberate, user-approved exception to the kit's "no UI framework" rule; every other kit rule still applies: no CDN, no webfonts, native `<dialog>`/`popover`, system font stack, kit classes first. Timer and state logic stays framework-free (plain JS/Rust) and Svelte only renders it. Load the `cuppa:cuppa-ui` skill before writing any UI, follow its rules and checklist, and run the `cuppa:harness` lint/checks when they apply. Never hand-write a second theme switcher; use the kit's `data-flavor`, `data-accent`, `data-radius` hooks. Storage keys: kit owns `ui-*`; app data uses the `op_` prefix.
 - Shared logic: the timer and state machine live in a pure Rust crate (`core`) with an injectable clock. The PWA uses the same rules through a thin JS port checked against shared JSON test vectors (or a WASM build later); the Rust tests are the source of truth.
 - Platforms: **browser PWA now**. Later: installed desktop (tray, global shortcuts) and phone/tablet. Keep every platform-specific feature behind a small `platform` module with feature detection, so new devices add adapters instead of forking the UI. The UI is responsive from the start (phone-first layout, capped width on desktop).
@@ -29,14 +29,14 @@ PLAN.md           feature list and phases
 
 ## Design principles
 1. **Time is stored as timestamps**, never as a counter. Remaining time is computed from `start`, `pause_buffer` and `now`, so reloads, sleep and second devices stay correct. The UI tick is only for repainting.
-2. **State changes are events** in an append-only log, projected into normal tables in one transaction. This gives history, undo, export and future sync.
+2. **State changes are events** in an append-only log, projected into normal tables in one transaction. This gives history, undo, export and recovery.
 3. **Ids sort as strings**: `<UTC yyyyMMddHHmmss>.<5-digit seq>@<device uuid>`. They are strictly increasing per device; across devices they order by wall clock only, so they do not prove causality (rules in PLAN.md section 2).
 4. **The state machine is a table**: unknown `(state, event)` pairs are rejected and logged, never ignored silently.
-5. **Local first, private by default**: data in one SQLite file, full export (JSON, CSV, ICS), no telemetry.
+5. **Self-hosted, private by default**: one SQLite file on your own server, accounts for the people you invite, every row owned by one user, full per-user export (JSON, CSV, ICS), no telemetry.
 6. **Gentle by default, strict by choice**: nudges are soft; strict mode and blocking are opt-in.
 7. **No hard-coded UI strings** (i18n keys from day one) and **no hard-coded colors** (theme tokens).
 8. **State is visible in color**: the whole surface changes for focus, overflow, break.
-9. **The local server is locked down**: it binds `127.0.0.1` by default, checks `Host` and `Origin` on every API and WebSocket request, and requires the per-install token for anything that changes data. LAN listening is opt-in.
+9. **The server is built as an internet-facing service**: argon2id passwords, hashed cookie sessions, `Origin` and `Host` checks against the configured public URL, per-user scoping of every query, rate-limited sign-in. It binds `127.0.0.1` unless `OP_BIND` says otherwise. Details in PLAN.md section 2 (Security).
 
 ## Conventions
 - Rust: `cargo fmt`, `cargo clippy -- -D warnings`, tests next to the code, no `unwrap()` outside tests. Timer and state logic must be unit-tested with a fake clock, including sleep/clock-jump cases.
