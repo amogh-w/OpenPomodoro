@@ -181,10 +181,10 @@ Any other `(state, event)` pair is rejected and logged. The full table is tested
 ## 4. Build order
 
 ### Phase 0: scaffold
-- [ ] 0.1 Cargo workspace (`core`, `server`); `web/` created as Svelte 5 + Vite + TS and initialised with the cuppa-ui kit (`init` script, Tailwind + icon sprite scripts, `theme.js`, `ui.js`); check script running fmt, clippy, tests, `svelte-check`, build, and the kit lint.
-- [ ] 0.2 `server` serves `web/dist` and `/api/health`; binds `127.0.0.1`; `Host`/`Origin` checks in place from the start.
+- [~] 0.1 Cargo workspace (`core`, `server`); `web/` created as Svelte 5 + Vite + TS and initialised with the cuppa-ui kit (`init` script, Tailwind + icon sprite scripts, `theme.js`, `ui.js`); check script running fmt, clippy, tests, `svelte-check` and build (`scripts/check.sh`). Done except the kit lint: it needs this project registered in the cuppa plugin's `harness.json`, which lives outside this repo.
+- [x] 0.2 `server` serves `web/dist` and `/api/health`; binds `127.0.0.1`; `Host`/`Origin` checks in place from the start.
 - [ ] 0.2b PWA skeleton: manifest, icons (original artwork), service worker (shell cache only), install prompt, app shell with tab bar, hash router, theme/flavor/accent settings wired to the kit hooks, i18n catalog and `t()` helper (no literal UI strings from here on). Offline after first load.
-- [ ] 0.3 Docs skeleton: README, CONTRIBUTING, LICENSE (pick MIT or Apache-2.0 and record it here).
+- [x] 0.3 Docs skeleton: README, CONTRIBUTING, LICENSE. License: **MIT**.
 
 ### Phase 1 (P1)
 - [ ] 1.1 **Timer core** (T-01..T-05): pure types, `Clock` trait, timer rule from section 2 (extend/shrink, overflow extend, backwards-clock clamp); tests for pause/resume/extend, clock jumps, sleep. Write the shared JSON test vectors for the timer.
@@ -237,12 +237,12 @@ Rules: every platform feature is behind a `platform` adapter with a browser fall
 - No step is done until its status box is ticked and any new setting is documented.
 
 ## 6. Open decisions
-- License (MIT vs Apache-2.0).
 - `rusqlite` (simple, sync) vs `sqlx` (async, compile-time checks).
 - Whether `web/dist` is committed (server builds without Node) or built in CI/release only.
 - Final name check and logo (original artwork only).
 
 ### Decided
+- License: MIT (simple and familiar; Apache-2.0's patent grant was not needed for a small app).
 - Svelte 5 + Vite (static bundle) over a meta-framework; a marketing/docs site, if any, is a separate project.
 - Timer logic is shared with the PWA as a TS port checked against shared JSON test vectors (WASM may replace the port later).
 - Data ownership in P1: the server's SQLite is the source of truth; the PWA keeps an IndexedDB outbox for offline periods (section 2). Default chosen while fixing the plan; revisit before step 1.5 if a serverless mode is wanted.
