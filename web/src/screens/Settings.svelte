@@ -4,6 +4,7 @@
   import { accents, flavors, radii, setTheme, syncThemeButtons } from "../lib/theme";
   import AccountSection from "../lib/AccountSection.svelte";
   import AlertSettings from "../lib/AlertSettings.svelte";
+  import CategorySettings from "../lib/CategorySettings.svelte";
   import TimerSettings from "../lib/TimerSettings.svelte";
   import { install, promptInstall } from "../platform/install.svelte";
 
@@ -55,6 +56,8 @@
 </section>
 
 <TimerSettings />
+
+<CategorySettings />
 
 <AlertSettings />
 

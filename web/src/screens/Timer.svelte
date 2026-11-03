@@ -1,11 +1,19 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import Dial from "../lib/Dial.svelte";
+  import NotesPane from "../lib/NotesPane.svelte";
   import { app, currentView, sendCommand } from "../lib/appState.svelte";
+  import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
   import { formatElapsed, formatRemaining } from "../lib/format";
   import { t } from "../lib/i18n";
   import { parseIntention } from "../lib/intention";
+  import { recentIntentions } from "../lib/recent";
+  import { recent, refreshRecent } from "../lib/recentStore.svelte";
   import { shouldSendTimerEnds } from "../lib/timerView";
   import type { CommandInput } from "../lib/types";
+
+  type Mood = "focused" | "neutral" | "distracted";
+  const moods: Mood[] = ["focused", "neutral", "distracted"];
 
   const STEP_MS = 5 * 60_000;
   const view = $derived(currentView());
@@ -29,26 +37,57 @@
   let busy = $state(false);
   let problem = $state<string | null>(null);
 
-  async function run(input: CommandInput): Promise<void> {
-    if (busy) return;
+  /** Send a command and say whether it went through (queued while offline counts). */
+  async function run(input: CommandInput): Promise<boolean> {
+    if (busy) return false;
     busy = true;
     problem = null;
     try {
       const result = await sendCommand(input);
       if (!result.ok && result.code !== "network") problem = t("timer.error");
+      return result.ok;
     } finally {
       busy = false;
     }
   }
 
-  function start(event: SubmitEvent): void {
+  // Notes written during a focus session, and the mood picked afterwards, travel with the command that saves it.
+  const draftStates = new Set(["session", "session_end", "paused_session", "paused_session_end", "reflect"]);
+  let mood = $state<Mood | null>(null);
+  const suggestions = $derived(recentIntentions(recent.sessions));
+
+  onMount(() => void refreshRecent());
+
+  // The draft belongs to the session in progress; it is dropped when that session is saved or abandoned.
+  $effect(() => {
+    const state = app.timer?.state;
+    if (!app.ready || !state) return;
+    if (draftStates.has(state) && app.timer?.focus_started_at != null) attachDraft(app.timer.focus_started_at);
+    else clearDraft();
+  });
+  $effect(() => {
+    if (view?.phase !== "reflect") mood = null;
+  });
+
+  /** Leave the reflect screen: save the session with its notes and mood, then take a break or finish. */
+  async function endReflect(name: "take_rest" | "done"): Promise<void> {
+    const notes = draft.notes.trim();
+    if (await run({ name, ...(notes !== "" ? { notes } : {}), ...(mood ? { mood } : {}) })) {
+      clearDraft();
+      void refreshRecent();
+    }
+  }
+
+  async function start(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    void run({
+    const started = await run({
       name: "init_focus",
       intention: parsed.text,
       category: chosenCategory ?? undefined,
       duration_ms: length * 60_000,
     });
+    // The next session starts with a blank field; the earlier text is one tap away in the suggestions.
+    if (started) intention = "";
   }
 
   // When the time is up the server has to be told once. A failed try waits a few seconds before the next.
@@ -60,7 +99,14 @@
     if (key === endedKey && Date.now() - lastTry < 3_000) return;
     endedKey = key;
     lastTry = Date.now();
-    void sendCommand({ name: "timer_ends" });
+    // If a break starts by itself the session is saved right now, so its notes go along.
+    const notes = view.phase === "focus" ? draft.notes.trim() : "";
+    void sendCommand({ name: "timer_ends", ...(notes !== "" ? { notes } : {}) }).then(() => {
+      if (app.timer && !draftStates.has(app.timer.state)) {
+        clearDraft();
+        void refreshRecent();
+      }
+    });
   });
 
   const R = 88;
@@ -94,7 +140,11 @@
         placeholder={t("timer.intention.placeholder")}
         maxlength="200"
         autocomplete="off"
+        list="recent-intentions"
       />
+      <datalist id="recent-intentions">
+        {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
+      </datalist>
     </label>
 
     {#if fromText || parsed.categoryId}
@@ -155,12 +205,23 @@
     <h1 class="t-title1">{t("timer.phase.reflect")}</h1>
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
+    <div class="grid gap-2">
+      <span class="t-foot text-subtext0">{t("timer.mood")}</span>
+      <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.mood")}>
+        {#each moods as option (option)}
+          <button class="chip" aria-pressed={mood === option} onclick={() => (mood = mood === option ? null : option)}>
+            {t(`mood.${option}`)}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <NotesPane open={draft.notes !== ""} />
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
     <div class="grid gap-2">
-      <button class="btn btn-filled btn-lg" disabled={busy || !view.can.take_rest} onclick={() => run({ name: "take_rest" })}>
+      <button class="btn btn-filled btn-lg" disabled={busy || !view.can.take_rest} onclick={() => endReflect("take_rest")}>
         {t("timer.takeBreak")}
       </button>
-      <button class="btn btn-gray" disabled={busy || !view.can.done} onclick={() => run({ name: "done" })}>
+      <button class="btn btn-gray" disabled={busy || !view.can.done} onclick={() => endReflect("done")}>
         {t("timer.done")}
       </button>
     </div>
@@ -222,6 +283,8 @@
     </div>
 
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
+
+    {#if view.phase === "focus"}<NotesPane />{/if}
 
     <div class="flex flex-wrap items-center justify-center gap-2">
       {#if view.phase === "focus"}

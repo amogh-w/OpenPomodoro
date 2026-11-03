@@ -319,28 +319,125 @@ async function queueEvents(events: EventInput[]): Promise<boolean> {
   return true;
 }
 
+/**
+ * Change what is on screen at once, then save `events`. `undo` puts the screen back if the server refuses them.
+ * Offline, or with older changes still waiting, the events are queued instead and the change stays.
+ */
+async function commitEvents(events: EventInput[], change: () => void, undo: () => void): Promise<boolean> {
+  change();
+  if (app.pending > 0 || !app.online) return queueEvents(events);
+  try {
+    const { results } = await api.events(events);
+    if (results.some((r) => r.result === "invalid")) {
+      undo();
+      return false;
+    }
+    persistState();
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && unreachable(error)) {
+      app.online = false;
+      return queueEvents(events);
+    }
+    undo();
+    if (handleFailure(error)) return false;
+    throw error;
+  }
+}
+
 /** Save one setting. The screen changes at once; the server confirms (or the old value comes back). */
 export async function saveSetting(name: SettingName, value: number | boolean): Promise<boolean> {
   const previous = app.settings;
   const event: EventInput = { id: nextId(), entity: "setting", op: "add", key: name, payload: { value } };
-  if (previous) app.settings = { ...previous, [name]: value };
+  return commitEvents(
+    [event],
+    () => {
+      if (previous) app.settings = { ...previous, [name]: value };
+    },
+    () => {
+      app.settings = previous;
+    },
+  );
+}
 
-  if (app.pending > 0 || !app.online) return queueEvents([event]);
-  try {
-    const { results } = await api.events([event]);
-    const accepted = results[0]?.result !== "invalid";
-    if (accepted) persistState();
-    else app.settings = previous;
-    return accepted;
-  } catch (error) {
-    if (error instanceof ApiError && unreachable(error)) {
-      app.online = false;
-      return queueEvents([event]);
-    }
-    app.settings = previous;
-    if (handleFailure(error)) return false;
-    throw error;
-  }
+// ---- categories and sessions ----
+
+export async function addCategory(name: string, color: string): Promise<boolean> {
+  const id = nextId();
+  const before = app.categories;
+  return commitEvents(
+    [{ id, entity: "category", op: "add", key: id, payload: { name, color, is_break: false } }],
+    () => {
+      app.categories = [...before, { id, name, color, is_break: false }];
+    },
+    () => {
+      app.categories = before;
+    },
+  );
+}
+
+export async function updateCategory(id: string, change: { name?: string; color?: string }): Promise<boolean> {
+  const before = app.categories;
+  return commitEvents(
+    [{ id: nextId(), entity: "category", op: "edit", key: id, payload: change }],
+    () => {
+      app.categories = before.map((c) => (c.id === id ? { ...c, ...change } : c));
+    },
+    () => {
+      app.categories = before;
+    },
+  );
+}
+
+export async function removeCategory(id: string): Promise<boolean> {
+  const before = app.categories;
+  return commitEvents(
+    [{ id: nextId(), entity: "category", op: "delete", key: id }],
+    () => {
+      app.categories = before.filter((c) => c.id !== id);
+    },
+    () => {
+      app.categories = before;
+    },
+  );
+}
+
+/** A session added after the fact (the person forgot to start the timer), or a break. */
+export interface NewSession {
+  kind: "focus" | "short_break" | "long_break";
+  started_at: number;
+  ended_at: number;
+  intention?: string;
+  category?: string | null;
+  notes?: string | null;
+  mood?: "focused" | "neutral" | "distracted" | null;
+}
+
+export async function addSession(session: NewSession): Promise<boolean> {
+  const id = nextId();
+  const duration = session.ended_at - session.started_at;
+  return commitEvents(
+    [
+      {
+        id,
+        entity: "session",
+        op: "add",
+        key: id,
+        payload: { ...session, duration_ms: duration, planned_ms: duration },
+      },
+    ],
+    () => {},
+    () => {},
+  );
+}
+
+/** Change fields of a saved session (notes, mood, intention, category). */
+export async function editSession(id: string, change: Record<string, unknown>): Promise<boolean> {
+  return commitEvents([{ id: nextId(), entity: "session", op: "edit", key: id, payload: change }], () => {}, () => {});
+}
+
+export async function deleteSession(id: string): Promise<boolean> {
+  return commitEvents([{ id: nextId(), entity: "session", op: "delete", key: id }], () => {}, () => {});
 }
 
 /** The timer view for the signed-in user right now, or null before the first answer from the server. */
