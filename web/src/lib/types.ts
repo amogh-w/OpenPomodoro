@@ -82,6 +82,8 @@ export interface CommandInput {
   duration_ms?: number;
   delta_ms?: number;
   kind?: "short" | "long";
+  notes?: string;
+  mood?: "focused" | "neutral" | "distracted";
 }
 
 export interface EventInput {

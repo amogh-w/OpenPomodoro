@@ -632,9 +632,8 @@ mod tests {
             .send()
             .await
             .json();
-        assert_eq!(
-            after["sessions"][0].get("notes"),
-            None,
+        assert!(
+            after["sessions"][0]["notes"].is_null(),
             "Alice's row did not change"
         );
 

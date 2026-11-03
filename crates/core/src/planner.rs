@@ -29,6 +29,10 @@ pub struct Action {
     pub delta_ms: Option<i64>,
     /// For `take_rest`: `short` or `long`, instead of the cycle's choice.
     pub kind: Option<String>,
+    /// Notes for the focus session this action saves (`take_rest`, `done`, or `timer_ends` into an auto break).
+    pub notes: Option<String>,
+    /// How the session went: `focused`, `neutral` or `distracted`. Read in the same places as `notes`.
+    pub mood: Option<String>,
 }
 
 /// The settings the timer runs on.
@@ -184,6 +188,8 @@ pub enum Record {
         planned: i64,
         intention: Option<String>,
         category: Option<String>,
+        notes: Option<String>,
+        mood: Option<String>,
     },
     Break {
         kind: PhaseKind,
@@ -205,6 +211,8 @@ impl Record {
                 planned,
                 intention,
                 category,
+                notes,
+                mood,
             } => json!({
                 "kind": "focus",
                 "started_at": started_at,
@@ -213,6 +221,8 @@ impl Record {
                 "planned_ms": planned,
                 "intention": intention,
                 "category": category,
+                "notes": notes,
+                "mood": mood,
             }),
             Record::Break {
                 kind,
@@ -296,7 +306,11 @@ fn break_record(prev: &TimerState, ended_at: i64) -> Result<Record, PlanError> {
 }
 
 /// The focus work that just finished, from the live timer (a focus phase that ended without going through reflect).
-fn focus_record_from_timer(prev: &TimerState, ended_at: i64) -> Result<Record, PlanError> {
+fn focus_record_from_timer(
+    prev: &TimerState,
+    ended_at: i64,
+    extras: Extras,
+) -> Result<Record, PlanError> {
     let timer = timer_of(prev)?;
     Ok(Record::Focus {
         started_at: prev.focus_started_at.unwrap_or_else(|| timer.start()),
@@ -305,11 +319,13 @@ fn focus_record_from_timer(prev: &TimerState, ended_at: i64) -> Result<Record, P
         planned: prev.planned_ms.unwrap_or_else(|| timer.total()),
         intention: prev.intention.clone(),
         category: prev.category.clone(),
+        notes: extras.notes,
+        mood: extras.mood,
     })
 }
 
 /// The focus work held in `reflect`.
-fn focus_record_from_reflect(prev: &TimerState) -> Result<Record, PlanError> {
+fn focus_record_from_reflect(prev: &TimerState, extras: Extras) -> Result<Record, PlanError> {
     let (started_at, ended_at, elapsed) = prev
         .focus_started_at
         .zip(prev.focus_ended_at)
@@ -323,7 +339,45 @@ fn focus_record_from_reflect(prev: &TimerState) -> Result<Record, PlanError> {
         planned: prev.planned_ms.unwrap_or(elapsed),
         intention: prev.intention.clone(),
         category: prev.category.clone(),
+        notes: extras.notes,
+        mood: extras.mood,
     })
+}
+
+/// Notes and mood that go with a focus session when it is saved.
+struct Extras {
+    notes: Option<String>,
+    mood: Option<String>,
+}
+
+const MAX_NOTES_CHARS: usize = 4000;
+
+fn extras_of(action: &Action) -> Result<Extras, PlanError> {
+    let mood = match action.mood.as_deref() {
+        None => None,
+        Some(m @ ("focused" | "neutral" | "distracted")) => Some(m.to_string()),
+        Some(_) => return Err(PlanError::Invalid("bad_args")),
+    };
+    Ok(Extras {
+        notes: clean(&action.notes, MAX_NOTES_CHARS)?,
+        mood,
+    })
+}
+
+/// A focus session this short with no intention and no notes is an accidental start, not work (C-06).
+const JUNK_MS: i64 = 30_000;
+
+/// Save a finished focus session: it goes into `records` and counts as a round, unless it was accidental.
+fn keep_focus(next: &mut TimerState, records: &mut Vec<Record>, record: Record) {
+    let accidental = matches!(
+        &record,
+        Record::Focus { elapsed, intention: None, notes: None, .. } if *elapsed <= JUNK_MS
+    );
+    if accidental {
+        return;
+    }
+    records.push(record);
+    next.rounds += 1;
 }
 
 fn keep_break(next: &mut TimerState, record: &Record) {
@@ -389,8 +443,11 @@ fn build_next(
             match (prev.state, out.state) {
                 (State::Breathe, _) => begin_session(&mut next, end),
                 (State::Session, State::Rest) => {
-                    records.push(focus_record_from_timer(prev, end)?);
-                    next.rounds += 1;
+                    keep_focus(
+                        &mut next,
+                        &mut records,
+                        focus_record_from_timer(prev, end, extras_of(cmd)?)?,
+                    );
                     let kind = settings.config.break_after(next.rounds);
                     begin_break(&mut next, kind, end, settings);
                 }
@@ -444,8 +501,11 @@ fn build_next(
             };
             let from_reflect = out.effect == Some(Effect::SaveFocus);
             if from_reflect {
-                records.push(focus_record_from_reflect(prev)?);
-                next.rounds += 1;
+                keep_focus(
+                    &mut next,
+                    &mut records,
+                    focus_record_from_reflect(prev, extras_of(cmd)?)?,
+                );
             }
             // The cycle picks the break after a kept focus round; an unscheduled break is a short one.
             let kind = explicit.unwrap_or_else(|| {
@@ -458,9 +518,12 @@ fn build_next(
             begin_break(&mut next, kind, at, settings);
         }
         Event::Done => {
-            records.push(focus_record_from_reflect(prev)?);
             next = prev.cleared();
-            next.rounds += 1;
+            keep_focus(
+                &mut next,
+                &mut records,
+                focus_record_from_reflect(prev, extras_of(cmd)?)?,
+            );
         }
         Event::SkipRest => {
             let record = break_record(prev, at)?;

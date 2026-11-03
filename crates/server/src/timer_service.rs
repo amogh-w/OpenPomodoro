@@ -32,6 +32,9 @@ pub struct Command {
     pub delta_ms: Option<i64>,
     /// For `take_rest`: `short` or `long`, instead of the cycle's choice.
     pub kind: Option<String>,
+    /// Notes and mood for the focus session this command saves.
+    pub notes: Option<String>,
+    pub mood: Option<String>,
 }
 
 impl Command {
@@ -43,6 +46,8 @@ impl Command {
             duration_ms: self.duration_ms,
             delta_ms: self.delta_ms,
             kind: self.kind.clone(),
+            notes: self.notes.clone(),
+            mood: self.mood.clone(),
         }
     }
 }
@@ -217,6 +222,8 @@ mod tests {
                 duration_ms: None,
                 delta_ms: None,
                 kind: None,
+                notes: None,
+                mood: None,
             }
         }
 

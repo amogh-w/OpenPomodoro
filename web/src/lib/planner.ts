@@ -18,6 +18,9 @@ export interface Action {
   duration_ms?: number | null;
   delta_ms?: number | null;
   kind?: string | null;
+  /** Notes and mood for the focus session this action saves (`take_rest`, `done`, `timer_ends` into an auto break). */
+  notes?: string | null;
+  mood?: string | null;
 }
 
 /** A finished piece of work, as stored in a session row. */
@@ -30,6 +33,8 @@ export type RecordData =
       planned_ms: number;
       intention: string | null;
       category: string | null;
+      notes: string | null;
+      mood: string | null;
     }
   | {
       kind: "short_break" | "long_break";
@@ -153,7 +158,7 @@ function breakRecord(prev: TimerData, endedAt: number): RecordData {
 }
 
 /** The focus work that just finished, from the live timer (a focus phase that ended without going through reflect). */
-function focusRecordFromTimer(prev: TimerData, endedAt: number): RecordData {
+function focusRecordFromTimer(prev: TimerData, endedAt: number, extras: Extras): RecordData {
   const timer = timerOrFail(prev);
   return {
     kind: "focus",
@@ -163,11 +168,13 @@ function focusRecordFromTimer(prev: TimerData, endedAt: number): RecordData {
     planned_ms: prev.planned_ms ?? timer.total,
     intention: prev.intention,
     category: prev.category,
+    notes: extras.notes,
+    mood: extras.mood,
   };
 }
 
 /** The focus work held in `reflect`. */
-function focusRecordFromReflect(prev: TimerData): RecordData {
+function focusRecordFromReflect(prev: TimerData, extras: Extras): RecordData {
   const { focus_started_at: startedAt, focus_ended_at: endedAt, focus_elapsed_ms: spent } = prev;
   if (startedAt === null || endedAt === null || spent === null) throw rejected("unknown");
   return {
@@ -178,7 +185,33 @@ function focusRecordFromReflect(prev: TimerData): RecordData {
     planned_ms: prev.planned_ms ?? spent,
     intention: prev.intention,
     category: prev.category,
+    notes: extras.notes,
+    mood: extras.mood,
   };
+}
+
+interface Extras {
+  notes: string | null;
+  mood: string | null;
+}
+
+const MAX_NOTES_CHARS = 4000;
+const MOODS: readonly string[] = ["focused", "neutral", "distracted"];
+
+function extrasOf(action: Action): Extras {
+  const mood = action.mood ?? null;
+  if (mood !== null && !MOODS.includes(mood)) throw invalid("bad_args");
+  return { notes: clean(action.notes, MAX_NOTES_CHARS), mood };
+}
+
+/** A focus session this short with no intention and no notes is an accidental start, not work. */
+const JUNK_MS = 30_000;
+
+/** Save a finished focus session: it goes into `records` and counts as a round, unless it was accidental. */
+function keepFocus(next: TimerData, records: RecordData[], record: RecordData): void {
+  if (record.kind === "focus" && record.duration_ms <= JUNK_MS && record.intention === null && record.notes === null) return;
+  records.push(record);
+  next.rounds += 1;
 }
 
 function keepBreak(next: TimerData, record: RecordData): void {
@@ -227,8 +260,7 @@ function buildNext(
       if (prev.state === "breathe") {
         beginSession(next, end);
       } else if (prev.state === "session" && out.state === "rest") {
-        records.push(focusRecordFromTimer(prev, end));
-        next.rounds += 1;
+        keepFocus(next, records, focusRecordFromTimer(prev, end, extrasOf(action)));
         beginBreak(next, breakAfter(next.rounds, s), end, s);
       } else if (prev.state === "rest" && (out.state === "breathe" || out.state === "session")) {
         const record = breakRecord(prev, end);
@@ -278,18 +310,14 @@ function buildNext(
       else if (action.kind === undefined || action.kind === null) explicit = null;
       else throw invalid("bad_args");
       const fromReflect = out.effect === "save_focus";
-      if (fromReflect) {
-        records.push(focusRecordFromReflect(prev));
-        next.rounds += 1;
-      }
+      if (fromReflect) keepFocus(next, records, focusRecordFromReflect(prev, extrasOf(action)));
       // The cycle picks the break after a kept focus round; an unscheduled break is a short one.
       beginBreak(next, explicit ?? (fromReflect ? breakAfter(next.rounds, s) : "short_break"), at, s);
       break;
     }
     case "done": {
-      records.push(focusRecordFromReflect(prev));
       next = cleared(prev);
-      next.rounds += 1;
+      keepFocus(next, records, focusRecordFromReflect(prev, extrasOf(action)));
       break;
     }
     case "skip_rest": {
