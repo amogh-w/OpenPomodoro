@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+pub mod accounts;
 pub mod db;
 #[cfg(test)]
 mod test_util;

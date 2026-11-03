@@ -13,7 +13,8 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: [&str; 1] = [r#"
+const MIGRATIONS: [&str; 2] = [
+    r#"
     CREATE TABLE users (
         id            TEXT PRIMARY KEY,
         username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -62,7 +63,27 @@ const MIGRATIONS: [&str; 1] = [r#"
 
     -- History queries by start time.
     CREATE INDEX session_started ON rows (user_id, json_extract(data, '$.started_at')) WHERE entity = 'session';
-"#];
+"#,
+    r#"
+    -- Sign-in sessions. Only a hash of the cookie value is stored, so a leaked database cannot be replayed.
+    CREATE TABLE auth_sessions (
+        token_hash TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        last_seen  INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+    ) WITHOUT ROWID;
+    CREATE INDEX auth_sessions_by_user ON auth_sessions (user_id);
+
+    -- Failed sign-ins per account and per address, for backoff.
+    CREATE TABLE login_attempts (
+        key          TEXT PRIMARY KEY,
+        failures     INTEGER NOT NULL,
+        locked_until INTEGER NOT NULL,
+        updated_at   INTEGER NOT NULL
+    ) WITHOUT ROWID;
+"#,
+];
 
 #[derive(Debug)]
 pub enum DbError {
@@ -144,6 +165,20 @@ pub struct User {
     pub disabled: bool,
     /// Unix milliseconds.
     pub created_at: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthSession {
+    pub user_id: String,
+    pub last_seen: i64,
+    pub expires_at: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Attempt {
+    pub failures: u32,
+    pub locked_until: i64,
+    pub updated_at: i64,
 }
 
 pub struct Db {
@@ -246,6 +281,147 @@ impl Db {
             .conn
             .execute("DELETE FROM users WHERE id = ?1", params![id])?
             > 0)
+    }
+
+    /// Insert `user` only if there are no accounts yet, atomically, so two first-run setups cannot both win.
+    pub fn insert_user_if_none(&self, user: &User) -> Result<bool> {
+        let n = self.conn.execute(
+            "INSERT INTO users (id, username, password_hash, role, disabled, created_at)
+             SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE NOT EXISTS (SELECT 1 FROM users)",
+            params![
+                user.id,
+                user.username,
+                user.password_hash,
+                user.role.code(),
+                user.disabled,
+                user.created_at
+            ],
+        )?;
+        Ok(n > 0)
+    }
+
+    pub fn count_enabled_admins(&self) -> Result<u64> {
+        let n: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND disabled = 0",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(u64::try_from(n).unwrap_or(0))
+    }
+
+    // ---- sign-in sessions and attempts ----
+
+    pub fn insert_auth_session(
+        &self,
+        token_hash: &str,
+        user_id: &str,
+        now_ms: i64,
+        expires_at: i64,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO auth_sessions (token_hash, user_id, created_at, last_seen, expires_at) VALUES (?1, ?2, ?3, ?3, ?4)",
+            params![token_hash, user_id, now_ms, expires_at],
+        )?;
+        Ok(())
+    }
+
+    pub fn auth_session(&self, token_hash: &str) -> Result<Option<AuthSession>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT user_id, last_seen, expires_at FROM auth_sessions WHERE token_hash = ?1",
+                params![token_hash],
+                |r| {
+                    Ok(AuthSession {
+                        user_id: r.get(0)?,
+                        last_seen: r.get(1)?,
+                        expires_at: r.get(2)?,
+                    })
+                },
+            )
+            .optional()?)
+    }
+
+    pub fn touch_auth_session(&self, token_hash: &str, now_ms: i64, expires_at: i64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE auth_sessions SET last_seen = ?2, expires_at = ?3 WHERE token_hash = ?1",
+            params![token_hash, now_ms, expires_at],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_auth_session(&self, token_hash: &str) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM auth_sessions WHERE token_hash = ?1",
+            params![token_hash],
+        )?;
+        Ok(())
+    }
+
+    /// Sign a user out everywhere, optionally keeping one session.
+    pub fn delete_auth_sessions_of(&self, user_id: &str, keep_hash: Option<&str>) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM auth_sessions WHERE user_id = ?1 AND token_hash IS NOT ?2",
+            params![user_id, keep_hash],
+        )?;
+        Ok(())
+    }
+
+    pub fn purge_expired_auth_sessions(&self, now_ms: i64) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM auth_sessions WHERE expires_at <= ?1",
+            params![now_ms],
+        )?;
+        Ok(())
+    }
+
+    pub fn attempt(&self, key: &str) -> Result<Option<Attempt>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT failures, locked_until, updated_at FROM login_attempts WHERE key = ?1",
+                params![key],
+                |r| {
+                    Ok(Attempt {
+                        failures: r.get(0)?,
+                        locked_until: r.get(1)?,
+                        updated_at: r.get(2)?,
+                    })
+                },
+            )
+            .optional()?)
+    }
+
+    pub fn put_attempt(&self, key: &str, attempt: Attempt) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO login_attempts (key, failures, locked_until, updated_at) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT (key) DO UPDATE SET failures = ?2, locked_until = ?3, updated_at = ?4",
+            params![key, attempt.failures, attempt.locked_until, attempt.updated_at],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_attempt(&self, key: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM login_attempts WHERE key = ?1", params![key])?;
+        Ok(())
+    }
+
+    /// Forget attempt records not touched since `before_ms` (keeps the table from growing without bound).
+    pub fn purge_attempts_before(&self, before_ms: i64) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM login_attempts WHERE updated_at < ?1 AND locked_until < ?1",
+            params![before_ms],
+        )?;
+        Ok(())
+    }
+
+    pub fn set_meta(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = ?2",
+            params![key, value],
+        )?;
+        Ok(())
     }
 
     // ---- events and rows (always for one user) ----
@@ -586,7 +762,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("version");
-        assert_eq!(version, 1);
+        assert_eq!(version, 2);
         let mode: String = db
             .conn
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -609,7 +785,7 @@ mod tests {
             Db::open(&path),
             Err(DbError::FutureSchema {
                 found: 99,
-                supported: 1
+                supported: 2
             })
         ));
     }
