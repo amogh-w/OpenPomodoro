@@ -316,15 +316,20 @@ async fn get_export(
             Settings::load(&db, user)?,
         )
     };
-    let names: HashMap<String, String> = categories
-        .iter()
-        .filter_map(|(id, row)| {
-            row.data
-                .get("name")
-                .and_then(Value::as_str)
-                .map(|n| (id.clone(), n.to_string()))
-        })
-        .collect();
+    let labels = |rows: &[(String, Row)], field: &str| -> HashMap<String, String> {
+        rows.iter()
+            .filter_map(|(id, row)| {
+                row.data
+                    .get(field)
+                    .and_then(Value::as_str)
+                    .map(|n| (id.clone(), n.to_string()))
+            })
+            .collect()
+    };
+    let names = export::Names {
+        categories: labels(&categories, "name"),
+        tasks: labels(&tasks, "title"),
+    };
     let day = format_ts(now.div_euclid(1000))
         .chars()
         .take(8)

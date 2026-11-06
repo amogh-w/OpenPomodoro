@@ -50,10 +50,23 @@ pub fn sorted(sessions: &[(String, Row)]) -> Vec<&(String, Row)> {
     list
 }
 
+/// Names for the ids a session points at, so an export reads in words.
+#[derive(Default)]
+pub struct Names {
+    pub categories: HashMap<String, String>,
+    pub tasks: HashMap<String, String>,
+}
+
 /// A category's name from its id; an id that no longer exists is shown as it is.
-fn category_name(row: &Row, categories: &HashMap<String, String>) -> Option<String> {
+fn category_name(row: &Row, names: &Names) -> Option<String> {
     let id = text(row, "category")?;
-    Some(categories.get(&id).cloned().unwrap_or(id))
+    Some(names.categories.get(&id).cloned().unwrap_or(id))
+}
+
+/// The title of the task a session worked on; a deleted task is shown by its id.
+fn task_title(row: &Row, names: &Names) -> Option<String> {
+    let id = text(row, "task")?;
+    Some(names.tasks.get(&id).cloned().unwrap_or(id))
 }
 
 // ---- CSV ----
@@ -73,9 +86,9 @@ fn csv_cell(value: &str) -> String {
     }
 }
 
-pub fn csv(sessions: &[(String, Row)], categories: &HashMap<String, String>) -> String {
+pub fn csv(sessions: &[(String, Row)], names: &Names) -> String {
     let mut out = String::from(
-        "id,kind,started_at,ended_at,duration_seconds,planned_seconds,intention,category,notes,mood\r\n",
+        "id,kind,started_at,ended_at,duration_seconds,planned_seconds,intention,category,task,notes,mood\r\n",
     );
     for (id, row) in sorted(sessions) {
         let number = |key: &str, scale: i64| {
@@ -92,7 +105,8 @@ pub fn csv(sessions: &[(String, Row)], categories: &HashMap<String, String>) -> 
             number("duration_ms", 1000),
             number("planned_ms", 1000),
             csv_cell(&text(row, "intention").unwrap_or_default()),
-            csv_cell(&category_name(row, categories).unwrap_or_default()),
+            csv_cell(&category_name(row, names).unwrap_or_default()),
+            csv_cell(&task_title(row, names).unwrap_or_default()),
             csv_cell(&text(row, "notes").unwrap_or_default()),
             csv_cell(&text(row, "mood").unwrap_or_default()),
         ];
@@ -138,11 +152,7 @@ fn push(out: &mut String, line: &str) {
 }
 
 /// Sessions as calendar events, so they can be laid over a calendar. `now_ms` stamps the file.
-pub fn ics(
-    sessions: &[(String, Row)],
-    categories: &HashMap<String, String>,
-    now_ms: i64,
-) -> String {
+pub fn ics(sessions: &[(String, Row)], names: &Names, now_ms: i64) -> String {
     let mut out = String::new();
     for line in [
         "BEGIN:VCALENDAR",
@@ -171,10 +181,16 @@ pub fn ics(
         push(&mut out, &format!("DTSTART:{}", ics_utc(start)));
         push(&mut out, &format!("DTEND:{}", ics_utc(end.max(start))));
         push(&mut out, &format!("SUMMARY:{}", ics_escape(&summary)));
-        if let Some(name) = category_name(row, categories) {
+        if let Some(name) = category_name(row, names) {
             push(&mut out, &format!("CATEGORIES:{}", ics_escape(&name)));
         }
         let mut description = text(row, "notes").unwrap_or_default();
+        if let Some(title) = task_title(row, names) {
+            if !description.is_empty() {
+                description.push('\n');
+            }
+            description.push_str(&format!("Task: {title}"));
+        }
         if let Some(mood) = text(row, "mood") {
             if !description.is_empty() {
                 description.push('\n');
@@ -211,8 +227,11 @@ mod tests {
         )
     }
 
-    fn cats() -> HashMap<String, String> {
-        HashMap::from([("c1".to_string(), "Deep work".to_string())])
+    fn cats() -> Names {
+        Names {
+            categories: HashMap::from([("c1".to_string(), "Deep work".to_string())]),
+            tasks: HashMap::from([("t1".to_string(), "Write the report".to_string())]),
+        }
     }
 
     #[test]
@@ -231,22 +250,22 @@ mod tests {
             ),
             session(
                 "a",
-                json!({"kind": "focus", "started_at": 1_000_000, "ended_at": 1_600_000, "duration_ms": 600_000, "planned_ms": 1_500_000, "intention": "write", "category": "c1", "notes": "ok", "mood": "focused"}),
+                json!({"kind": "focus", "started_at": 1_000_000, "ended_at": 1_600_000, "duration_ms": 600_000, "planned_ms": 1_500_000, "intention": "write", "category": "c1", "task": "t1", "notes": "ok", "mood": "focused"}),
             ),
         ];
         let text = csv(&sessions, &cats());
         let lines: Vec<&str> = text.split("\r\n").collect();
         assert_eq!(
             lines[0],
-            "id,kind,started_at,ended_at,duration_seconds,planned_seconds,intention,category,notes,mood"
+            "id,kind,started_at,ended_at,duration_seconds,planned_seconds,intention,category,task,notes,mood"
         );
         assert_eq!(
             lines[1],
-            "a,focus,1970-01-01T00:16:40Z,1970-01-01T00:26:40Z,600,1500,write,Deep work,ok,focused"
+            "a,focus,1970-01-01T00:16:40Z,1970-01-01T00:26:40Z,600,1500,write,Deep work,Write the report,ok,focused"
         );
         assert_eq!(
             lines[2],
-            "b,short_break,1970-01-01T00:33:20Z,1970-01-01T00:38:20Z,300,300,,,,"
+            "b,short_break,1970-01-01T00:33:20Z,1970-01-01T00:38:20Z,300,300,,,,,"
         );
         assert_eq!(lines[3], "", "ends with a line break");
     }

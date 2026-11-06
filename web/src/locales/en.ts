@@ -63,6 +63,8 @@ const en = {
   "tasks.markDone": "Mark done: {title}",
   "tasks.markOpen": "Put back: {title}",
   "tasks.remove": "Delete: {title}",
+  "tasks.rename": "Rename: {title}",
+  "tasks.spent": "{time} so far",
   "tasks.done": "Done ({n})",
   "tasks.workingOn": "Working on: {title}",
   "tasks.clear": "Stop working on this task",

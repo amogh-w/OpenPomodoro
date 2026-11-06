@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { addTask, app, removeTask, setTaskDone } from "./appState.svelte";
+  import { addTask, app, removeTask, setTaskDone, updateTask } from "./appState.svelte";
+  import { formatSpan } from "./format";
   import { t } from "./i18n";
-  import { splitTasks } from "./tasks";
+  import { recent } from "./recentStore.svelte";
+  import { splitTasks, timePerTask } from "./tasks";
   import type { Task } from "./types";
 
   let { selected = null, onpick }: { selected?: string | null; onpick: (task: Task) => void } = $props();
@@ -9,6 +11,14 @@
   let title = $state("");
   let showDone = $state(false);
   const groups = $derived(splitTasks(app.tasks));
+  const spent = $derived(timePerTask(recent.sessions));
+  let editing = $state<string | null>(null);
+
+  async function rename(task: Task, text: string): Promise<void> {
+    editing = null;
+    const next = text.trim();
+    if (next !== "" && next !== task.title) await updateTask(task.id, { title: next });
+  }
 
   async function add(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -36,9 +46,29 @@
           <label class="check flex size-11 shrink-0 items-center justify-center">
             <input type="checkbox" checked={false} aria-label={t("tasks.markDone", { title: task.title })} onchange={() => setTaskDone(task.id, true)} />
           </label>
-          <button class="min-h-11 min-w-0 flex-1 truncate rounded-[var(--r-ctl)] px-2 text-left {selected === task.id ? 'bg-surface0 font-semibold' : ''}" aria-pressed={selected === task.id} onclick={() => onpick(task)}>
-            {task.title}
-          </button>
+          {#if editing === task.id}
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              class="field min-w-0 flex-1"
+              value={task.title}
+              maxlength="200"
+              aria-label={t("tasks.rename", { title: task.title })}
+              autofocus
+              onblur={(e) => void rename(task, e.currentTarget.value)}
+              onkeydown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") editing = null;
+              }}
+            />
+          {:else}
+            <button class="min-h-11 min-w-0 flex-1 rounded-[var(--r-ctl)] px-2 text-left {selected === task.id ? 'bg-surface0 font-semibold' : ''}" aria-pressed={selected === task.id} onclick={() => onpick(task)}>
+              <span class="block truncate">{task.title}</span>
+              {#if (spent.get(task.id) ?? 0) > 0}<span class="t-foot block text-subtext1">{t("tasks.spent", { time: formatSpan(spent.get(task.id) ?? 0) })}</span>{/if}
+            </button>
+            <button class="btn btn-plain size-11 !px-0" aria-label={t("tasks.rename", { title: task.title })} onclick={() => (editing = task.id)}>
+              <svg class="size-5"><use href="/icons.svg#pencil" /></svg>
+            </button>
+          {/if}
           <button class="btn btn-plain size-11 !px-0" aria-label={t("tasks.remove", { title: task.title })} onclick={() => removeTask(task.id)}>
             <svg class="size-5"><use href="/icons.svg#trash-2" /></svg>
           </button>
