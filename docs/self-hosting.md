@@ -37,6 +37,7 @@ All settings are environment variables.
 | `OP_PORT` | `3000` | Port. |
 | `OP_DB` | `data/openpomodoro.db` | The SQLite file. Its folder is created if missing. |
 | `OP_TRUST_PROXY` | off | Set to `true` when a reverse proxy is in front, so sign-in rate limits use the client address the proxy reports. Leave it off otherwise: a client could claim any address. |
+| `OP_HOOKS_FILE` | none | A JSON file of lifecycle hooks (see [Hooks](#hooks)). |
 | `OP_WEB_DIR` | none | Serve the web app from this folder instead of the copy inside the program (for development). |
 
 `op-server healthcheck` asks a running server whether it is healthy and exits 0 or 1. The Docker image uses it.
@@ -122,3 +123,34 @@ People using the app are offered an "Update now" prompt the next time they open 
 - **Live updates between devices do not arrive:** the proxy is not allowing WebSocket upgrades on `/api/ws`.
 - **Everyone is rate limited together:** `OP_TRUST_PROXY` is off behind a proxy, so every request seems to come
   from the proxy's address.
+
+## Hooks
+
+Hooks run a program on the server when a person's timer changes phase, for example to switch a light or post to
+a chat. They run programs, so only you (the server's admin) set them, in a JSON file that `OP_HOOKS_FILE` points
+to. The web app can show them and test them (Admin screen) but never change them.
+
+```json
+{
+  "hooks": [
+    { "event": "focus_started", "command": ["/usr/local/bin/lights", "red"] },
+    { "event": "focus_ended", "command": ["/usr/local/bin/lights", "green"], "timeout_s": 5 },
+    { "event": "*", "command": ["/usr/local/bin/log-event"], "enabled": false }
+  ]
+}
+```
+
+- `event` is one of `focus_started`, `focus_ended` (time ran out), `focus_stopped` (finished by hand),
+  `focus_abandoned`, `paused`, `resumed`, `break_started`, `break_ended` (time ran out), `break_stopped`, or `*`
+  for all of them.
+- `command` is the program and its arguments. It is run directly, never through a shell.
+- `timeout_s` (1 to 60, default 10): the program is killed after this long. `enabled: false` switches a hook off
+  without deleting it.
+- The program gets the event as JSON on standard input (`event`, `at` in Unix milliseconds, `user.id`,
+  `user.username`, and the user's `timer` state) and the event name in the `OP_EVENT` environment variable.
+- Events are queued; if a program is slow they wait, and if the queue overflows new events are dropped (with a
+  line in the server's output). A hook can never delay or block the timer.
+- A bad file stops the server from starting, with the reason printed. Every user's timer triggers the hooks, so
+  only list programs you trust with everyone's activity.
+
+On a server with Docker, the program has to exist inside the container.

@@ -46,6 +46,8 @@ pub struct Config {
     pub web_dir: Option<PathBuf>,
     /// Trust the `X-Forwarded-For` header from a reverse proxy in front of this server.
     pub trust_proxy: bool,
+    /// A JSON file listing the lifecycle hooks to run (`OP_HOOKS_FILE`); set by the admin, never by the web app.
+    pub hooks_file: Option<PathBuf>,
 }
 
 impl Config {
@@ -90,6 +92,9 @@ impl Config {
                 .filter(|v| !v.trim().is_empty())
                 .map(PathBuf::from),
             trust_proxy: flag("OP_TRUST_PROXY"),
+            hooks_file: get("OP_HOOKS_FILE")
+                .filter(|v| !v.trim().is_empty())
+                .map(PathBuf::from),
         })
     }
 

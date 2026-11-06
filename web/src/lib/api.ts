@@ -99,7 +99,17 @@ export interface SignedInBrowser {
   current: boolean;
 }
 
+export interface HookInfo {
+  event: string;
+  command: string[];
+  timeout_s: number;
+  enabled: boolean;
+}
+
 export const api = {
+  adminHooks: () => request<{ hooks: HookInfo[] }>("GET", "/api/admin/hooks"),
+  adminTestHook: (index: number) =>
+    request<{ event: string; result: "exited" | "timed_out" | "failed"; detail: unknown }>("POST", `/api/admin/hooks/${index}/test`),
   listTokens: () => request<{ tokens: TokenInfo[] }>("GET", "/api/me/tokens"),
   createToken: (name: string) => request<TokenInfo & { token: string }>("POST", "/api/me/tokens", { name }),
   revokeToken: (id: string) => request<void>("DELETE", `/api/me/tokens/${id}`),

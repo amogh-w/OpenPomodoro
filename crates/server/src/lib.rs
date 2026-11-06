@@ -20,6 +20,7 @@ pub mod db;
 pub mod error;
 pub mod export;
 pub mod healthcheck;
+pub mod hooks;
 pub mod hub;
 pub mod security;
 pub mod settings;

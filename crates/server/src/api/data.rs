@@ -111,6 +111,10 @@ async fn post_command(
 
 /// Apply a timer command for a user and answer with the new state (shared by the app's API and the token API).
 pub(super) fn run_command(state: &Shared, user: &str, cmd: &Command) -> Result<Value, ApiError> {
+    let before = state
+        .hooks
+        .get()
+        .and_then(|_| timer_service::load_state(&state.db(), user).ok());
     let (status, timer) = {
         let mut db = state.db();
         let mut ids = state.ids();
@@ -124,6 +128,24 @@ pub(super) fn run_command(state: &Shared, user: &str, cmd: &Command) -> Result<V
             CommandResult::Duplicate => ("duplicate", timer_service::load_state(&db, user)?),
         }
     };
+    if let (Some(runner), Some(before), "applied") = (state.hooks.get(), &before, status) {
+        let events = crate::hooks::events_between(before, &timer);
+        if !events.is_empty() {
+            let username = state
+                .db()
+                .user_by_id(user)
+                .ok()
+                .flatten()
+                .map(|u| u.username)
+                .unwrap_or_default();
+            for event in events {
+                runner.emit(
+                    event,
+                    &crate::hooks::payload(event, state.now_ms(), user, &username, &timer),
+                );
+            }
+        }
+    }
     Ok(json!({ "status": status, "state": state_json(state, user, &timer)? }))
 }
 

@@ -16,6 +16,8 @@ pub struct AppState {
     pub hub: Hub,
     pub config: Arc<Config>,
     pub clock: Arc<dyn Clock + Send + Sync>,
+    /// Set once at start-up when the admin configured hooks.
+    pub hooks: std::sync::OnceLock<Arc<crate::hooks::HookRunner>>,
 }
 
 pub type Shared = Arc<AppState>;
@@ -36,6 +38,7 @@ impl AppState {
             hub: Hub::default(),
             config: Arc::new(config),
             clock,
+            hooks: std::sync::OnceLock::new(),
         }))
     }
 

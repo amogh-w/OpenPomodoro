@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "../lib/api";
+  import HooksPanel from "../lib/HooksPanel.svelte";
   import { errorMessage } from "../lib/errors";
   import { t } from "../lib/i18n";
   import { session } from "../lib/session.svelte";
@@ -187,3 +188,5 @@
   </div>
   <button class="btn btn-filled" type="submit" disabled={creating}>{t("admin.create")}</button>
 </form>
+
+<HooksPanel />

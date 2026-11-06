@@ -89,4 +89,4 @@ the account is disabled. One account may keep at most ten sockets open at once; 
 ## Errors
 
 Errors are JSON, `{ "error": "<code>" }`, with the usual status: `401` (missing or unknown token), `400`
-(malformed), `404`, `409` (not allowed in the current state), `413` (too large), `429` (rate limited).
+(malformed), `404`, `409` (not allowed in the current state), `413` (too large).

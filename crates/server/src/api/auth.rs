@@ -33,6 +33,8 @@ pub fn router() -> Router<Shared> {
             axum::routing::delete(delete_session),
         )
         .route("/api/admin/backup", get(admin_backup))
+        .route("/api/admin/hooks", get(list_hooks))
+        .route("/api/admin/hooks/{index}/test", post(test_hook))
         .route("/api/admin/users", get(list_users).post(create_user))
         .route("/api/admin/users/{id}/password", post(set_user_password))
         .route("/api/admin/users/{id}/disabled", post(set_user_disabled))
@@ -273,6 +275,54 @@ async fn delete_session(
     } else {
         Err(ApiError::not_found())
     }
+}
+
+/// The configured hooks, for the admin to see (the file is the only place they are changed).
+async fn list_hooks(State(state): State<Shared>, _admin: AdminUser) -> Json<serde_json::Value> {
+    let hooks: Vec<serde_json::Value> = state
+        .hooks
+        .get()
+        .map(|r| {
+            r.hooks()
+                .iter()
+                .map(|h| serde_json::json!({"event": h.event, "command": h.command, "timeout_s": h.timeout_s, "enabled": h.enabled}))
+                .collect()
+        })
+        .unwrap_or_default();
+    Json(serde_json::json!({ "hooks": hooks }))
+}
+
+/// Run one hook now with a sample event and say how it ended.
+async fn test_hook(
+    State(state): State<Shared>,
+    AdminUser(admin): AdminUser,
+    Path(index): Path<usize>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let Some(hook) = state
+        .hooks
+        .get()
+        .and_then(|r| r.hooks().get(index))
+        .cloned()
+    else {
+        return Err(ApiError::not_found());
+    };
+    let event = if hook.event == "*" {
+        "focus_started"
+    } else {
+        hook.event.as_str()
+    };
+    let timer = op_core::TimerState::idle();
+    let body = crate::hooks::payload(event, state.now_ms(), &admin.id, &admin.username, &timer)
+        .to_string();
+    let outcome = crate::hooks::run_hook(&hook, event, &body).await;
+    let (result, detail) = match outcome {
+        crate::hooks::Outcome::Exited(code) => ("exited", serde_json::json!(code)),
+        crate::hooks::Outcome::TimedOut => ("timed_out", serde_json::Value::Null),
+        crate::hooks::Outcome::Failed(why) => ("failed", serde_json::json!(why)),
+    };
+    Ok(Json(
+        serde_json::json!({ "event": event, "result": result, "detail": detail }),
+    ))
 }
 
 async fn me(auth: AuthUser) -> Json<UserJson> {

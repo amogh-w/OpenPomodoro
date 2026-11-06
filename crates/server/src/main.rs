@@ -80,6 +80,20 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    if let Some(path) = &state.config.hooks_file {
+        match op_server::hooks::HooksFile::load(path) {
+            Ok(file) => {
+                println!("{} hook(s) from {}", file.hooks.len(), path.display());
+                let (runner, worker) = op_server::hooks::HookRunner::new(file);
+                tokio::spawn(worker.run());
+                let _ = state.hooks.set(runner);
+            }
+            Err(message) => {
+                eprintln!("hooks file error: {message}");
+                return ExitCode::from(2);
+            }
+        }
+    }
     let service = op_server::app(state).into_make_service_with_connect_info::<SocketAddr>();
     match axum::serve(listener, service).await {
         Ok(()) => ExitCode::SUCCESS,
