@@ -11,6 +11,7 @@ const DIAL_STEP = "op_dial_step_s";
 const ASK_REFLECTION = "op_ask_reflection";
 const FOCUS_ON_CATEGORY = "op_focus_on_category";
 const COMPACT = "op_compact";
+const GARDEN = "op_garden";
 const SHORTCUTS = "op_shortcuts";
 
 /** Seconds the timer dial snaps to. 5 seconds turns the dial into a seconds dial, for trying the whole flow quickly. */
@@ -68,12 +69,19 @@ export const prefs = $state({
   focusOnCategory: read(FOCUS_ON_CATEGORY) === "1",
   /** Compact view: just the timer and its buttons, in a small column (for a corner of the screen). */
   compact: read(COMPACT) === "1",
+  /** Show the garden: a seedling that grows with each session and a tree for each finished cycle. */
+  garden: read(GARDEN) !== "0",
 });
 
 
 export function setDialStep(step: DialStep): void {
   prefs.dialStep = step;
   write(DIAL_STEP, String(step));
+}
+
+export function setGarden(on: boolean): void {
+  prefs.garden = on;
+  write(GARDEN, on ? "1" : "0");
 }
 
 export function setCompact(on: boolean): void {

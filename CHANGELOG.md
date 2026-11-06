@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Garden:** a seedling grows during each focus session and a tree for each finished cycle; the Profile screen shows
+  every plant and tree. An early end grows a smaller plant, abandoning costs nothing, and it can be switched off in
+  Settings.
+
 ## 0.2.0
 
 The browser app is now feature-complete for what a browser can do. Nothing here needs a desktop or phone wrapper.

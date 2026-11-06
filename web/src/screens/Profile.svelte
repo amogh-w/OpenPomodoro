@@ -1,4 +1,5 @@
 <script lang="ts">
+  import GardenCard from "../lib/GardenCard.svelte";
   import AccessSettings from "../lib/AccessSettings.svelte";
   import AccountSection from "../lib/AccountSection.svelte";
   import TwoStepSection from "../lib/TwoStepSection.svelte";
@@ -16,6 +17,8 @@
     <p class="t-foot text-subtext1">{t("profile.since", { date: new Date(session.user.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) })}</p>
   {/if}
 </section>
+
+<GardenCard />
 
 <div class="mt-4 lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid lg:[&>*]:mt-0 lg:[&>*]:mb-6">
   <AccountSection />

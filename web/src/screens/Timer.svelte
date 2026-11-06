@@ -3,6 +3,9 @@
   import CategoryPicker from "../lib/CategoryPicker.svelte";
   import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
+  import { encouragement, stageOf } from "../lib/garden";
+  import Plant from "../lib/Plant.svelte";
+  import Tree from "../lib/Tree.svelte";
   import Dial from "../lib/Dial.svelte";
   import EditSessionDialog from "../lib/EditSessionDialog.svelte";
   import NotesPane from "../lib/NotesPane.svelte";
@@ -12,7 +15,7 @@
   import { app, currentView, sendCommand, setTaskDone, tick } from "../lib/appState.svelte";
   import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
   import { formatElapsed, formatRemaining, formatSpan } from "../lib/format";
-  import { t } from "../lib/i18n";
+  import { t, type MessageKey } from "../lib/i18n";
   import { parseIntention } from "../lib/intention";
   import { planPreview } from "../lib/planPreview.svelte";
   import { recentIntentions } from "../lib/recent";
@@ -217,6 +220,15 @@
   let abandonDialog: ConfirmDialog | undefined = $state();
   let breakDialog: ConfirmDialog | undefined = $state();
   const cycleLength = $derived(app.settings?.rounds_before_long ?? 4);
+  // The garden: where the cycle stands, and what the session just finished planted.
+  const cycleDone = $derived((app.timer?.rounds ?? 0) % cycleLength);
+  const cycleMessage = $derived(encouragement(cycleDone, cycleLength));
+  const plantedSize = $derived.by((): number => {
+    const planned = app.timer?.planned_ms ?? 0;
+    return planned > 0 ? Math.min(1, (app.timer?.focus_elapsed_ms ?? 0) / planned) : 1;
+  });
+  /** This session is the one that completes the tree (saving it makes the cycle whole). */
+  const completesTree = $derived(cycleDone + 1 >= cycleLength);
   const roundNow = $derived(((app.timer?.rounds ?? 0) % cycleLength) + 1);
 
   /** Rest is part of the cycle too, so cutting a break short asks first. Once it has run over, it just ends. */
@@ -364,6 +376,9 @@
     </div>
 
     <h1 class="t-large text-center">{isBreak ? t("timer.prompt.break") : t("timer.prompt")}</h1>
+    {#if prefs.garden && !isBreak && !prefs.compact}
+      <p class="t-foot -mt-2 text-center text-subtext1 lg:hidden">{t(cycleMessage.key as MessageKey, cycleMessage.params)}</p>
+    {/if}
 
     {#if !isBreak}
       <button
@@ -479,6 +494,19 @@
   <div class="mx-auto grid max-w-xl gap-5 pt-8 text-center">
     <h1 class="t-title1">{t("timer.phase.reflect")}</h1>
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
+    {#if prefs.garden}
+      <!-- What this session grew: a plant at the size of the time given, and the tree it adds to. -->
+      <div class="grid justify-items-center gap-2" role="status">
+        {#if completesTree}
+          <Tree done={cycleLength} total={cycleLength} class="h-24 w-[5.5rem]" label={t("garden.treeGrown", { total: cycleLength })} />
+          <p class="t-headline">{t("garden.treeGrown", { total: cycleLength })}</p>
+        {:else}
+          <Plant stage={stageOf(plantedSize)} variant={0} class="size-20" />
+          <p class="text-subtext1">{t(`garden.planted.${stageOf(plantedSize)}` as MessageKey)}</p>
+          <p class="t-foot text-subtext1">{t(encouragement(cycleDone + 1, cycleLength).key as MessageKey, encouragement(cycleDone + 1, cycleLength).params)}</p>
+        {/if}
+      </div>
+    {/if}
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
     <div class="grid gap-2">
       <span class="t-foot text-subtext1">{t("timer.mood")}</span>
@@ -545,7 +573,16 @@
           stroke-dashoffset={view.overflow ? 0 : C * view.progress}
         />
       </svg>
-      <div class="absolute inset-0 grid place-content-center gap-1">
+      <div class="absolute inset-0 grid place-content-center justify-items-center gap-1">
+        {#if prefs.garden && view.phase === "focus" && !prefs.compact}
+          <!-- The seedling grows with the session: it changes stage as time goes and swells in between. -->
+          <Plant
+            stage={stageOf(view.overflow ? 1 : view.progress)}
+            variant={0}
+            class="size-[24cqw] origin-bottom transition-transform duration-1000 ease-linear"
+            style="transform: scale({0.7 + 0.3 * (view.overflow ? 1 : view.progress)})"
+          />
+        {/if}
         <div class="font-bold leading-none tabular-nums" style="font-size: {clockText.length > 5 ? 15 : 21}cqw">{clockText}</div>
         {#if view.paused}<div class="text-subtext1">{t("timer.phase.paused")}</div>{/if}
       </div>

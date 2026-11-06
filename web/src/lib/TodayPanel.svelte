@@ -3,6 +3,7 @@
   import { completion } from "./completion";
   import AddSession from "./AddSession.svelte";
   import DayColumn from "./DayColumn.svelte";
+  import GardenStrip from "./GardenStrip.svelte";
   import { dayStartMs, groupByDay, localDayKey, moodTally } from "./days";
   import { formatSpan } from "./format";
   import { t, tn } from "./i18n";
@@ -72,6 +73,8 @@
     <span aria-label={t("mood.distracted")}>{tally.distracted} ↓</span>
     <span class="ml-2">{t("today.focusTotal", { time: formatSpan(group?.focusMs ?? 0) })}</span>
   </p>
+
+  <GardenStrip {day} />
 
   <DayColumn
     sessions={group?.sessions ?? []}
