@@ -24,6 +24,7 @@ export interface TimerData {
   planned_ms: number | null;
   intention: string | null;
   category: string | null;
+  task: string | null;
   focus_started_at: number | null;
   focus_ended_at: number | null;
   focus_elapsed_ms: number | null;
@@ -42,6 +43,16 @@ export interface Settings {
   strict: boolean;
 }
 
+/** A to-do that focus sessions can be linked to. */
+export interface Task {
+  id: string;
+  title: string;
+  done?: boolean;
+  /** Unix ms, set when it was ticked off. */
+  done_at?: number | null;
+  category?: string | null;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -54,6 +65,8 @@ export interface ServerState {
   timer: TimerData;
   settings: Settings;
   categories: Category[];
+  /** Missing in state cached before tasks existed. */
+  tasks?: Task[];
 }
 
 export interface CommandResponse {
@@ -70,6 +83,7 @@ export interface SessionRecord {
   planned_ms?: number;
   intention?: string | null;
   category?: string | null;
+  task?: string | null;
   notes?: string | null;
   mood?: "focused" | "neutral" | "distracted" | null;
 }
@@ -88,6 +102,7 @@ export interface CommandInput {
   at?: number;
   intention?: string;
   category?: string;
+  task?: string;
   duration_ms?: number;
   delta_ms?: number;
   kind?: "short" | "long";
@@ -97,7 +112,7 @@ export interface CommandInput {
 
 export interface EventInput {
   id: string;
-  entity: "session" | "category" | "setting";
+  entity: "session" | "category" | "task" | "setting";
   op: "add" | "edit" | "delete";
   key: string;
   payload?: Record<string, unknown> | null;

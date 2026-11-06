@@ -15,6 +15,8 @@ export interface Action {
   name: string;
   intention?: string | null;
   category?: string | null;
+  /** The task (a `task` row id) a started focus session works on. */
+  task?: string | null;
   duration_ms?: number | null;
   delta_ms?: number | null;
   kind?: string | null;
@@ -33,6 +35,7 @@ export type RecordData =
       planned_ms: number;
       intention: string | null;
       category: string | null;
+      task: string | null;
       notes: string | null;
       mood: string | null;
     }
@@ -76,6 +79,7 @@ export function idleState(): TimerData {
     planned_ms: null,
     intention: null,
     category: null,
+    task: null,
     focus_started_at: null,
     focus_ended_at: null,
     focus_elapsed_ms: null,
@@ -168,6 +172,7 @@ function focusRecordFromTimer(prev: TimerData, endedAt: number, extras: Extras):
     planned_ms: prev.planned_ms ?? timer.total,
     intention: prev.intention,
     category: prev.category,
+    task: prev.task,
     notes: extras.notes,
     mood: extras.mood,
   };
@@ -185,6 +190,7 @@ function focusRecordFromReflect(prev: TimerData, extras: Extras): RecordData {
     planned_ms: prev.planned_ms ?? spent,
     intention: prev.intention,
     category: prev.category,
+    task: prev.task,
     notes: extras.notes,
     mood: extras.mood,
   };
@@ -249,6 +255,7 @@ function buildNext(
       next.planned_ms = asked ?? s.focus_ms;
       next.intention = clean(action.intention, 200);
       next.category = clean(action.category, 64);
+      next.task = clean(action.task, 64);
       startFocus();
       break;
     }
@@ -337,6 +344,7 @@ function buildNext(
         next.planned_ms = prev.planned_ms ?? s.focus_ms;
         next.intention = prev.intention;
         next.category = prev.category;
+        next.task = prev.task;
         beginFocus(next, out.state, at, s);
       }
       break;

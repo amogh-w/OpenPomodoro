@@ -14,7 +14,7 @@ use crate::validate;
 pub const MAX_SESSIONS: usize = 100_000;
 pub const MAX_CATEGORIES: usize = 1_000;
 
-const SESSION_FIELDS: [&str; 9] = [
+const SESSION_FIELDS: [&str; 10] = [
     "kind",
     "started_at",
     "ended_at",
@@ -22,10 +22,13 @@ const SESSION_FIELDS: [&str; 9] = [
     "planned_ms",
     "intention",
     "category",
+    "task",
     "notes",
     "mood",
 ];
 const CATEGORY_FIELDS: [&str; 3] = ["name", "color", "is_break"];
+const TASK_FIELDS: [&str; 4] = ["title", "done", "done_at", "category"];
+pub const MAX_TASKS: usize = 20_000;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum BackupError {
@@ -38,6 +41,7 @@ pub enum BackupError {
 pub struct Plan {
     pub events: Vec<EventRecord>,
     pub categories: usize,
+    pub tasks: usize,
     pub sessions: usize,
     pub settings: usize,
     /// Items that did not pass the checks and were left out.
@@ -72,14 +76,16 @@ pub fn plan(backup: &Value, ids: &mut IdGen, now_ms: i64) -> Result<Plan, Backup
             .cloned()
             .unwrap_or_default()
     };
-    let (categories, sessions) = (list("categories"), list("sessions"));
-    if categories.len() > MAX_CATEGORIES || sessions.len() > MAX_SESSIONS {
+    let (categories, tasks, sessions) = (list("categories"), list("tasks"), list("sessions"));
+    if categories.len() > MAX_CATEGORIES || tasks.len() > MAX_TASKS || sessions.len() > MAX_SESSIONS
+    {
         return Err(BackupError::TooLarge);
     }
 
     let mut plan = Plan {
         events: Vec::new(),
         categories: 0,
+        tasks: 0,
         sessions: 0,
         settings: 0,
         skipped: 0,
@@ -117,6 +123,25 @@ pub fn plan(backup: &Value, ids: &mut IdGen, now_ms: i64) -> Result<Plan, Backup
             Value::Object(pick(row, &CATEGORY_FIELDS)),
         ) {
             plan.categories += 1;
+        }
+    }
+
+    for item in &tasks {
+        let Some(row) = item.as_object() else {
+            plan.skipped += 1;
+            continue;
+        };
+        let Some(key) = row.get("id").and_then(Value::as_str) else {
+            plan.skipped += 1;
+            continue;
+        };
+        if accept(
+            &mut plan,
+            Entity::Task,
+            key,
+            Value::Object(pick(row, &TASK_FIELDS)),
+        ) {
+            plan.tasks += 1;
         }
     }
 

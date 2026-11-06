@@ -23,6 +23,8 @@ pub struct Action {
     pub name: String,
     pub intention: Option<String>,
     pub category: Option<String>,
+    /// The task this focus session works on (a `task` row id), for `init_focus` / `start_focus`.
+    pub task: Option<String>,
     /// Focus length for `init_focus` / `start_focus`, or break length for `take_rest`; the user's setting when omitted.
     pub duration_ms: Option<i64>,
     /// Extend (positive) or shrink (negative) by whole 5-minute steps.
@@ -94,6 +96,7 @@ pub struct TimerState {
     pub planned_ms: Option<i64>,
     pub intention: Option<String>,
     pub category: Option<String>,
+    pub task: Option<String>,
     pub focus_started_at: Option<i64>,
     /// Set while in `reflect`: when the focus phase ended and how long it really ran.
     pub focus_ended_at: Option<i64>,
@@ -111,6 +114,7 @@ impl TimerState {
             planned_ms: None,
             intention: None,
             category: None,
+            task: None,
             focus_started_at: None,
             focus_ended_at: None,
             focus_elapsed_ms: None,
@@ -131,6 +135,7 @@ impl TimerState {
         m.insert("planned_ms".into(), json!(self.planned_ms));
         m.insert("intention".into(), json!(self.intention));
         m.insert("category".into(), json!(self.category));
+        m.insert("task".into(), json!(self.task));
         m.insert("focus_started_at".into(), json!(self.focus_started_at));
         m.insert("focus_ended_at".into(), json!(self.focus_ended_at));
         m.insert("focus_elapsed_ms".into(), json!(self.focus_elapsed_ms));
@@ -161,6 +166,7 @@ impl TimerState {
             planned_ms: int("planned_ms"),
             intention: text("intention"),
             category: text("category"),
+            task: text("task"),
             focus_started_at: int("focus_started_at"),
             focus_ended_at: int("focus_ended_at"),
             focus_elapsed_ms: int("focus_elapsed_ms"),
@@ -188,6 +194,7 @@ pub enum Record {
         planned: i64,
         intention: Option<String>,
         category: Option<String>,
+        task: Option<String>,
         notes: Option<String>,
         mood: Option<String>,
     },
@@ -211,6 +218,7 @@ impl Record {
                 planned,
                 intention,
                 category,
+                task,
                 notes,
                 mood,
             } => json!({
@@ -221,6 +229,7 @@ impl Record {
                 "planned_ms": planned,
                 "intention": intention,
                 "category": category,
+                "task": task,
                 "notes": notes,
                 "mood": mood,
             }),
@@ -319,6 +328,7 @@ fn focus_record_from_timer(
         planned: prev.planned_ms.unwrap_or_else(|| timer.total()),
         intention: prev.intention.clone(),
         category: prev.category.clone(),
+        task: prev.task.clone(),
         notes: extras.notes,
         mood: extras.mood,
     })
@@ -339,6 +349,7 @@ fn focus_record_from_reflect(prev: &TimerState, extras: Extras) -> Result<Record
         planned: prev.planned_ms.unwrap_or(elapsed),
         intention: prev.intention.clone(),
         category: prev.category.clone(),
+        task: prev.task.clone(),
         notes: extras.notes,
         mood: extras.mood,
     })
@@ -435,6 +446,7 @@ fn build_next(
             next.planned_ms = Some(planned);
             next.intention = clean(&cmd.intention, 200)?;
             next.category = clean(&cmd.category, 64)?;
+            next.task = clean(&cmd.task, 64)?;
             start_focus(&mut next, prev, &mut records, at)?;
         }
         Event::SkipBreathe => begin_session(&mut next, at),
@@ -546,6 +558,7 @@ fn build_next(
                 next.planned_ms = prev.planned_ms.or(Some(settings.config.focus_ms()));
                 next.intention = prev.intention.clone();
                 next.category = prev.category.clone();
+                next.task = prev.task.clone();
                 begin_focus(&mut next, out.state, at, settings);
             }
         }

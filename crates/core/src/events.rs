@@ -13,6 +13,8 @@ use serde_json::{Map, Value};
 pub enum Entity {
     Session,
     Category,
+    /// A to-do the person can link to focus sessions.
+    Task,
     Setting,
     /// The live timer state; one row with the key `current`.
     Timer,
@@ -23,6 +25,7 @@ impl Entity {
         match self {
             Entity::Session => "session",
             Entity::Category => "category",
+            Entity::Task => "task",
             Entity::Setting => "setting",
             Entity::Timer => "timer",
         }
@@ -32,6 +35,7 @@ impl Entity {
         Some(match code {
             "session" => Entity::Session,
             "category" => Entity::Category,
+            "task" => Entity::Task,
             "setting" => Entity::Setting,
             "timer" => Entity::Timer,
             _ => return None,

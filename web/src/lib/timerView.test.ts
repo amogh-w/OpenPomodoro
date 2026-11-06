@@ -16,6 +16,7 @@ function data(over: Partial<TimerData> = {}): TimerData {
     planned_ms: null,
     intention: null,
     category: null,
+    task: null,
     focus_started_at: null,
     focus_ended_at: null,
     focus_elapsed_ms: null,

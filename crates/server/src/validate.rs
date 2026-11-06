@@ -56,12 +56,26 @@ fn session_field_ok(name: &str, v: &Value) -> Option<bool> {
         "started_at" | "ended_at" | "duration_ms" | "planned_ms" => is_time(v),
         "intention" => is_text(v, 200),
         "category" => v.is_null() || is_text(v, 64),
+        "task" => v.is_null() || is_text(v, 64),
         "notes" => v.is_null() || is_text(v, 4000),
         "mood" => {
             v.is_null()
                 || v.as_str()
                     .is_some_and(|m| matches!(m, "focused" | "neutral" | "distracted"))
         }
+        _ => return None,
+    })
+}
+
+/// Allowed fields of a task row.
+fn task_field_ok(name: &str, v: &Value) -> Option<bool> {
+    Some(match name {
+        "title" => v.as_str().is_some_and(|s| {
+            (1..=200).contains(&s.chars().count()) && !s.chars().any(char::is_control)
+        }),
+        "done" => v.is_boolean(),
+        "done_at" => v.is_null() || is_time(v),
+        "category" => v.is_null() || is_text(v, 64),
         _ => return None,
     })
 }
@@ -137,6 +151,7 @@ pub fn check_client_event(event: &EventRecord, now_ms: i64) -> Result<(), &'stat
             is_add,
         ),
         Entity::Category => check_fields(payload, category_field_ok, &["name"], is_add),
+        Entity::Task => check_fields(payload, task_field_ok, &["title"], is_add),
         Entity::Timer => Err("forbidden_entity"),
     }
 }
@@ -299,6 +314,35 @@ mod tests {
             check_client_event(&base("notes", json!("line one\nline two")), NOW),
             Ok(())
         );
+    }
+
+    #[test]
+    fn tasks_are_checked() {
+        let ok = ev(
+            Entity::Task,
+            Op::Add,
+            "t1",
+            json!({"title": "Write the report", "done": false, "category": null}),
+        );
+        assert_eq!(check_client_event(&ok, NOW), Ok(()));
+        for (payload, want) in [
+            (json!({"done": false}), "missing_field"),
+            (json!({"title": ""}), "bad_field"),
+            (json!({"title": "x".repeat(201)}), "bad_field"),
+            (json!({"title": "bell\u{7}"}), "bad_field"),
+            (json!({"title": "a", "done": "yes"}), "bad_field"),
+            (json!({"title": "a", "colour": 1}), "unknown_field"),
+        ] {
+            let e = ev(Entity::Task, Op::Add, "t1", payload.clone());
+            assert_eq!(check_client_event(&e, NOW), Err(want), "{payload}");
+        }
+        let done = ev(
+            Entity::Task,
+            Op::Edit,
+            "t1",
+            json!({"done": true, "done_at": 1000}),
+        );
+        assert_eq!(check_client_event(&done, NOW), Ok(()));
     }
 
     #[test]

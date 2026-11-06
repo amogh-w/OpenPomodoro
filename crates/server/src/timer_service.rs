@@ -26,6 +26,7 @@ pub struct Command {
     pub at: Option<i64>,
     pub intention: Option<String>,
     pub category: Option<String>,
+    pub task: Option<String>,
     /// Focus length for `init_focus` / `start_focus`; the user's setting when omitted.
     pub duration_ms: Option<i64>,
     /// Extend (positive) or shrink (negative) by whole 5-minute steps.
@@ -43,6 +44,7 @@ impl Command {
             name: self.name.clone(),
             intention: self.intention.clone(),
             category: self.category.clone(),
+            task: self.task.clone(),
             duration_ms: self.duration_ms,
             delta_ms: self.delta_ms,
             kind: self.kind.clone(),
@@ -219,6 +221,7 @@ mod tests {
                 at: None,
                 intention: None,
                 category: None,
+                task: None,
                 duration_ms: None,
                 delta_ms: None,
                 kind: None,
@@ -303,6 +306,21 @@ mod tests {
         let (_, row) = rows.first().expect("one session");
         assert_eq!(row.data["intention"], "final report");
         assert_eq!(row.data["category"], "work");
+    }
+
+    #[test]
+    fn the_task_a_session_works_on_is_recorded_with_it() {
+        let mut h = Harness::new();
+        let mut start = h.cmd("init_focus");
+        start.task = Some("t1".into());
+        h.apply(&start);
+        h.advance(25 * MIN);
+        h.run("timer_ends");
+        h.run("stop");
+        h.run("done");
+        let rows = h.db.rows(ALICE, Entity::Session).expect("rows");
+        let (_, row) = rows.first().expect("one session");
+        assert_eq!(row.data["task"], "t1");
     }
 
     #[test]

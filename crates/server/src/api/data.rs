@@ -62,11 +62,17 @@ fn state_json(state: &Shared, user: &str, timer: &TimerState) -> Result<Value, A
         .iter()
         .map(|(k, r)| row_json(k, r))
         .collect();
+    let tasks: Vec<Value> = db
+        .rows(user, Entity::Task)?
+        .iter()
+        .map(|(k, r)| row_json(k, r))
+        .collect();
     Ok(json!({
         "server_time_ms": state.now_ms(),
         "timer": timer.to_json(),
         "settings": settings.to_json(),
         "categories": categories,
+        "tasks": tasks,
     }))
 }
 
@@ -221,7 +227,7 @@ async fn post_import(
     state.db().apply_batch(&auth.user.id, &plan.events)?;
     state.hub.publish(&auth.user.id, CHANGED);
     Ok(Json(json!({
-        "imported": { "categories": plan.categories, "sessions": plan.sessions, "settings": plan.settings },
+        "imported": { "categories": plan.categories, "tasks": plan.tasks, "sessions": plan.sessions, "settings": plan.settings },
         "skipped": plan.skipped,
     })))
 }
@@ -270,11 +276,12 @@ async fn get_export(
 ) -> Result<Response, ApiError> {
     let user = &auth.user.id;
     let now = state.now_ms();
-    let (sessions, categories, settings) = {
+    let (sessions, categories, tasks, settings) = {
         let db = state.db();
         (
             db.rows(user, Entity::Session)?,
             db.rows(user, Entity::Category)?,
+            db.rows(user, Entity::Task)?,
             Settings::load(&db, user)?,
         )
     };
@@ -311,6 +318,7 @@ async fn get_export(
                 "username": auth.user.username,
                 "settings": settings.to_json(),
                 "categories": categories.iter().map(|(k, r)| row_json(k, r)).collect::<Vec<_>>(),
+                "tasks": tasks.iter().map(|(k, r)| row_json(k, r)).collect::<Vec<_>>(),
                 "sessions": export::sorted(&sessions).into_iter().map(|(k, r)| row_json(k, r)).collect::<Vec<_>>(),
             });
             Ok(download(
@@ -1111,6 +1119,9 @@ mod tests {
         let cat = alice.id(&app);
         let ev = json!([{"id": alice.id(&app), "entity": "category", "op": "add", "key": cat, "payload": {"name": "Writing", "color": "peach"}}]);
         alice.events(&app, ev).await;
+        let task = alice.id(&app);
+        let ev = json!([{"id": alice.id(&app), "entity": "task", "op": "add", "key": task, "payload": {"title": "Write the report", "done": false}}]);
+        alice.events(&app, ev).await;
         work(&app, &mut alice, &["write", "read"]).await;
         let backup = export_json(&app, &alice).await;
 
@@ -1118,13 +1129,14 @@ mod tests {
         assert_eq!(res.status, StatusCode::OK, "{}", res.text);
         assert_eq!(
             res.json()["imported"],
-            json!({"categories": 1, "sessions": 2, "settings": 9})
+            json!({"categories": 1, "tasks": 1, "sessions": 2, "settings": 9})
         );
         assert_eq!(res.json()["skipped"], 0);
 
         let restored = export_json(&app, &bob).await;
         assert_eq!(sessions_of(&restored), sessions_of(&backup));
         assert_eq!(restored["categories"][0]["name"], "Writing");
+        assert_eq!(restored["tasks"][0]["title"], "Write the report");
         assert_eq!(restored["settings"], backup["settings"]);
         assert_eq!(
             bob.state(&app).await["timer"]["state"],
