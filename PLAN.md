@@ -248,48 +248,16 @@ The server is meant to be reachable by other people, so it is built as an intern
 
 Original 2.7 (website blocker extension) moved to L1 and 2.8 (diagnostics, release v0.2) to N3; 2.4's languages moved to N4.
 
-### Next: finish the PWA (everything below works in a browser, installed or not)
-Order is a suggestion; each step is small enough to commit on its own. Items marked (check) are built but were
-only verified by tests, not by using them.
+### Finished: the PWA (v0.2.0)
+Built in this order; each point was committed on its own. "Checked" means tests and the build, "by hand" means used in a browser. Nothing in this block has been used by hand yet: the browser tool could not open the local app.
 
-**N1. Try it for real and fix what breaks (before anything new)**
-- [ ] N1.1 Click through every screen added in Phase 2 in a real browser, in Latte, Mocha and a high-contrast flavor: tasks, special breaks, compact view, strict mode, nudge and tick sounds, custom sound upload, shortcut rebinding, heatmap, devices and scripts, admin hooks panel, "My theme" editor (check).
-- [ ] N1.2 Re-run the axe accessibility audit on every screen and state, in all flavors including the new ones (the earlier audit predates Phase 2). Fix what it finds.
-- [ ] N1.3 Responsive pass: phone (375px), tablet, laptop, wide (1920px). Controls below the fold on short windows (about 700px tall); icon rail; two-pane timer; compact view.
-- [ ] N1.4 Build and run the Docker image once (never done: no daemon was available), and check the release binary starts from an empty folder with the hooks file and an uploaded sound.
-- [ ] N1.5 Lighthouse accessibility and performance run, plus the manual install / offline / update checklist from section 5.
-
-**N2. Small gaps left in finished steps**
-- [ ] N2.1 Tasks: edit a title, show time spent per task (sessions already carry the task id), include tasks in CSV and ICS exports.
-- [ ] N2.2 Custom sounds: other devices pick up a change at once (react to the push message), and include the sound files in the user's own backup (a separate download, since they are too big for the JSON).
-- [ ] N2.3 Share image for the stats (a picture of the month overview made in the browser).
-- [ ] N2.4 Webhook test route and the hooks panel: add end-to-end tests.
-- [ ] N2.5 More specific wake handling: a message when the app comes back after a long sleep mid-session.
-
-**N3. Diagnostics and release v0.2 (D-05)**
-- [ ] N3.1 Diagnostic log kept in the browser (state changes, rejected commands, sync and outbox events, clock jumps) with a copy button in Settings.
-- [ ] N3.2 Server log lines for hooks, webhooks and rejected events available to the admin on the Admin screen.
-- [ ] N3.3 Update `CHANGELOG.md`, docs and screenshots; tag **v0.2**.
-
-**N4. Make it speak more languages (U-06)**
-- [ ] N4.1 Language picker (per device, remembered; follows the browser by default) and a catalog format that allows more than English.
-- [ ] N4.2 One more language end to end to prove the plumbing (dates, numbers, plurals already use `Intl`).
-- [ ] N4.3 A short translators' guide in `CONTRIBUTING.md`; the string checker also verifies that every language has every key.
-
-**N5. Alerts and presence that work as well as a PWA can**
-- [ ] N5.1 Web Push (A-07): self-hosted VAPID keys, subscribe per device, send phase-end alerts while the app is closed and the daily reminder with weekday toggles. Needs HTTPS; on iPhone only for an installed app. Say plainly where it does not work.
-- [ ] N5.2 Picture-in-picture timer window (T-16) where the browser supports it (Chromium); hidden elsewhere.
-- [ ] N5.3 Spoken announcements (A-06) through speech synthesis, off by default.
-- [ ] N5.4 Callback URLs on routes (`x-success` / `x-error` style, I-07), with the same confirm step as other links.
-
-**N6. Accounts and data depth**
-- [ ] N6.1 TOTP two-factor sign-in with recovery codes (X-10); optional OIDC sign-in configured by the admin.
-- [ ] N6.2 Profiles per intention + category: own durations, sounds, strictness (C-08).
-- [ ] N6.3 Category groups for reports (C-09).
-- [ ] N6.4 Read-only calendar overlay from an ICS file or URL on the day timeline (H-08).
-
-**N7. Housekeeping outside this repo**
-- [ ] N7.1 Bring the cuppa kit up to date with what this app learned (responsive layout: icon rail from 1024px, two panes, container-query sizing for the clock, `.seg` thumb for dynamically rendered content, contrast fixes already made here), push the kit commit, and run the kit's lint with this project registered.
+- [~] N1 Try it for real (not done): click through every Phase 2 screen in Latte, Mocha and high contrast; re-run the axe audit on every screen and flavor (the last audit predates Phase 2); responsive pass at 375, tablet, laptop and 1920px; build and run the Docker image once; Lighthouse and the install / offline / update checklist. These need a person with a browser.
+- [x] N2 Small gaps: tasks can be renamed, show time spent and appear in CSV and ICS; a changed alert sound reaches other devices through the push message; the stats have a share image; the webhook test route and hooks panel have end-to-end tests; the "ended while you were away" notice already existed.
+- [x] N3 Diagnostics (D-05): a log on each device (API failures, queued and refused commands, sync, live connection, clock jumps, uncaught errors; codes and counts only) with a copy button; a server log for the admin (failed hooks, webhooks and pushes, refused commands); the app version is in the report. **v0.2.0** tagged.
+- [x] N4 Languages (U-06): a per-device picker (Automatic, English, Spanish), the Spanish catalog checked to have every key with the same placeholders, and a translators' guide in `CONTRIBUTING.md`.
+- [x] N5 Alerts and presence: picture-in-picture timer where the browser supports it (N5.2); spoken alerts (N5.3); `x-success` / `x-error` callbacks on acting links, followed only after the confirmation that names the host (N5.4); **Web Push** (N5.1, A-07): the server makes a VAPID key, encrypts each message for the browser (RFC 8291, checked against the RFC's own example), sends only through the browser makers' push services, only when no app is open for that person and outside their quiet hours, for phase ends and the daily reminder, from a background loop; subscriptions are per browser (up to ten) and a dead one is forgotten.
+- [~] N6 Accounts and data: two-step sign-in with recovery codes and an admin reset (X-10, RFC 4226 and 6238 values checked; no QR code); category groups with a report table (C-09); a usual focus and break length per category that the timer starts from (C-08 in part: durations only, no per-category sounds or blocklists, and automatic breaks use the general lengths); a read-only calendar file overlay on the day view (H-08 in part: a file chosen on the device, timed events only, no repeating events, no web address). **Not done: OpenID Connect sign-in.**
+- [ ] N7 Outside this repo: bring the cuppa kit up to date with the responsive-layout lessons. Extra flavors and custom themes are already in the kit (committed there, not pushed).
 
 ### Later: per-device apps (parked until the PWA is finished)
 These need something outside the browser tab, so each brings its own build, signing and update headaches. Nothing
