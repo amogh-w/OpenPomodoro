@@ -6,6 +6,7 @@
   import { dayStartMs, groupByDay, localDayKey, moodTally } from "./days";
   import { formatSpan } from "./format";
   import { t, tn } from "./i18n";
+  import { calendar } from "./calendarStore.svelte";
   import { planPreview } from "./planPreview.svelte";
   import { recent, refreshRecent } from "./recentStore.svelte";
   import { addDays, weekStart } from "./stats";
@@ -78,6 +79,7 @@
     categories={app.categories}
     now={onToday ? tick.now : null}
     plannedMs={onToday ? planPreview.plannedMs : null}
+    events={calendar.events}
   />
 
   {#if sessions.length > 0}

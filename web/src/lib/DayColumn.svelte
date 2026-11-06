@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick as afterRender } from "svelte";
   import { timelineBlocks } from "./days";
+  import type { CalEvent } from "./ics";
   import { t } from "./i18n";
   import type { Category, SessionRecord } from "./types";
 
@@ -13,8 +14,10 @@
     now?: number | null;
     /** A session about to start now (length in ms), drawn as a hatched block from the current time. */
     plannedMs?: number | null;
+    /** Events from the calendar file, drawn as outlines behind the sessions. */
+    events?: CalEvent[];
   }
-  let { sessions, dayStart, categories, now = null, plannedMs = null }: Props = $props();
+  let { sessions, dayStart, categories, now = null, plannedMs = null, events = [] }: Props = $props();
 
   const HOUR_PX = 56;
   const DAY_MS = 86_400_000;
@@ -23,6 +26,15 @@
   const nowPct = $derived(now === null ? null : ((now - dayStart) / DAY_MS) * 100);
   const showNow = $derived(nowPct !== null && nowPct >= 0 && nowPct <= 100);
   const plan = $derived(showNow && plannedMs !== null ? { top: nowPct ?? 0, height: (plannedMs / DAY_MS) * 100 } : null);
+  const calBlocks = $derived(
+    events
+      .filter((e) => e.end > dayStart && e.start < dayStart + DAY_MS)
+      .map((e) => {
+        const start = Math.max(e.start, dayStart);
+        const end = Math.min(e.end, dayStart + DAY_MS);
+        return { id: e.id, title: e.title, top: ((start - dayStart) / DAY_MS) * 100, height: ((end - start) / DAY_MS) * 100 };
+      }),
+  );
   const clock = (ms: number): string => new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   const colorOf = (kind: string, category: string | null): string => {
     if (kind !== "focus") return "var(--ctp-green)";
@@ -57,6 +69,15 @@
     {#each hours as h (h)}
       <div class="absolute inset-x-0 border-t border-surface1/70" style="top: {(h / 24) * 100}%">
         <span class="t-foot absolute -left-12 -top-2.5 w-10 text-right tabular-nums text-subtext1" aria-hidden="true">{String(h).padStart(2, "0")}:00</span>
+      </div>
+    {/each}
+    {#each calBlocks as ev (ev.id)}
+      <div
+        class="absolute inset-x-1 overflow-hidden rounded-md border border-dashed border-overlay1 bg-surface1/30 px-1.5 text-[11px] leading-tight text-subtext1"
+        style="top: {ev.top}%; height: max({ev.height}%, 4px)"
+        title={ev.title}
+      >
+        {ev.title}
       </div>
     {/each}
     {#each blocks as block (block.id)}
