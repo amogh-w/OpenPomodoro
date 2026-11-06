@@ -29,7 +29,9 @@ export const app = $state<{
   pending: number;
   /** A message to show once, such as "a change made offline could not be applied". */
   notice: string | null;
-}>({ ready: false, online: true, timer: null, settings: null, categories: [], tasks: [], pending: 0, notice: null });
+  /** Counts the server's "something changed" pushes, so other parts of the app can refetch what they own. */
+  changes: number;
+}>({ ready: false, online: true, timer: null, settings: null, categories: [], tasks: [], pending: 0, notice: null, changes: 0 });
 
 const clock = new ServerClock();
 
@@ -269,7 +271,10 @@ function connect(): void {
   ws.onmessage = (event: MessageEvent<unknown>) => {
     try {
       const message = JSON.parse(String(event.data)) as { type?: string };
-      if (message.type === "changed") void refresh().catch(() => {});
+      if (message.type === "changed") {
+        app.changes += 1;
+        void refresh().catch(() => {});
+      }
     } catch {
       // Not ours; ignore.
     }

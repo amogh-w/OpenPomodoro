@@ -47,6 +47,7 @@ export function startAlerts(): () => void {
     // The person's own sounds come with the account: load them on sign-in, drop them on sign-out.
     $effect(() => {
       const id = session.user?.id;
+      void app.changes; // a change pushed from another device may be a new sound
       if (id) void loadCustomSounds(id);
       else clearCustomSounds();
     });

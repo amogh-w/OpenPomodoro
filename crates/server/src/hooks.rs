@@ -728,4 +728,112 @@ mod tests {
                 .any(|l| l["area"] == "test-route" && l["message"] == "something to see")
         );
     }
+
+    /// A receiver on localhost that answers 200 to one request.
+    fn one_shot_receiver() -> (String, std::thread::JoinHandle<()>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let url = format!("http://{}/hook", listener.local_addr().expect("addr"));
+        let handle = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .expect("timeout");
+            let mut buf = [0u8; 4096];
+            let _ = stream.read(&mut buf);
+            let _ = write!(
+                stream,
+                "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+            );
+        });
+        (url, handle)
+    }
+
+    #[tokio::test]
+    async fn the_admin_can_test_a_webhook_and_private_targets_need_the_admins_say_so() {
+        let app = crate::test_util::TestApp::new();
+        let boss = signed_in(&app, "admin", None).await;
+        let bob = signed_in(&app, "bob", Some(&boss)).await;
+        let (url, receiver) = one_shot_receiver();
+        let file = HooksFile {
+            webhooks: vec![crate::webhooks::WebhookDef {
+                event: "*".into(),
+                url,
+                secret: Some("s".into()),
+                timeout_s: 5,
+                enabled: true,
+            }],
+            allow_private_webhooks: true,
+            ..Default::default()
+        };
+        let (runner, worker) = HookRunner::new(file);
+        tokio::spawn(worker.run());
+        assert!(app.state.hooks.set(runner).is_ok());
+
+        let listed = app
+            .get("/api/admin/hooks")
+            .cookie(&boss)
+            .send()
+            .await
+            .json();
+        assert_eq!(listed["webhooks"][0]["signed"], true);
+        assert!(
+            !listed.to_string().contains("\"s\""),
+            "the secret is never sent back"
+        );
+        assert_eq!(
+            app.post("/api/admin/webhooks/0/test", None)
+                .cookie(&bob)
+                .send()
+                .await
+                .status,
+            axum::http::StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            app.post("/api/admin/webhooks/7/test", None)
+                .cookie(&boss)
+                .send()
+                .await
+                .status,
+            axum::http::StatusCode::NOT_FOUND
+        );
+        let tested = app
+            .post("/api/admin/webhooks/0/test", None)
+            .cookie(&boss)
+            .send()
+            .await
+            .json();
+        assert_eq!(
+            (tested["result"].clone(), tested["detail"].clone()),
+            (json!("delivered"), json!(200))
+        );
+        receiver.join().expect("receiver");
+    }
+
+    #[tokio::test]
+    async fn a_private_webhook_target_is_refused_by_default() {
+        let app = crate::test_util::TestApp::new();
+        let boss = signed_in(&app, "admin", None).await;
+        let (url, _receiver) = one_shot_receiver();
+        let file = HooksFile {
+            webhooks: vec![crate::webhooks::WebhookDef {
+                event: "*".into(),
+                url,
+                secret: None,
+                timeout_s: 3,
+                enabled: true,
+            }],
+            ..Default::default()
+        };
+        let (runner, worker) = HookRunner::new(file);
+        tokio::spawn(worker.run());
+        assert!(app.state.hooks.set(runner).is_ok());
+        let tested = app
+            .post("/api/admin/webhooks/0/test", None)
+            .cookie(&boss)
+            .send()
+            .await
+            .json();
+        assert_eq!(tested["result"], "failed");
+    }
 }

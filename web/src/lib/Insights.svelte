@@ -1,6 +1,7 @@
 <script lang="ts">
   import { completionRate } from "./completion";
   import { formatSpan } from "./format";
+  import { renderShareImage } from "./shareImage";
   import { t, tn } from "./i18n";
   import { byIntention, type Insights } from "./insights";
   import type { SessionRecord, Category } from "./types";
@@ -11,6 +12,43 @@
   const hour = (h: number | null): string => (h === null ? "–" : new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" }));
   const percent = (f: number | null): string => (f === null ? "" : `${f >= 0 ? "+" : "−"}${Math.round(Math.abs(f) * 100)}%`);
   const intentions = $derived(byIntention(sessions));
+  let sharing = $state(false);
+  let shareProblem = $state<string | null>(null);
+
+  /** Make a picture of the month and hand it to the share sheet, or save it as a file where sharing is not offered. */
+  async function share(): Promise<void> {
+    sharing = true;
+    shareProblem = null;
+    try {
+      const blob = await renderShareImage({
+        title: t("insights.share.title"),
+        subtitle: data.days[0] ? new Date(`${data.days[0].day}T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "",
+        figures: [
+          { label: t("insights.totalFocus"), value: formatSpan(data.focusMs) },
+          { label: t("insights.avgDay"), value: formatSpan(data.avgPerDayMs) },
+          { label: t("insights.share.sessions"), value: String(data.sessions) },
+        ],
+        days: data.days.map((d) => d.focusMs),
+        footer: t("app.name"),
+      });
+      if (!blob) throw new Error("no picture");
+      const file = new File([blob], "focus-month.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = file.name;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+    } catch (error) {
+      // Closing the share sheet is a choice, not a failure.
+      if (!(error instanceof DOMException && error.name === "AbortError")) shareProblem = t("insights.share.failed");
+    } finally {
+      sharing = false;
+    }
+  }
   const nameOf = (id: string | null): string => categories.find((c) => c.id === id)?.name ?? t("timer.category.none");
   const colorOf = (id: string | null): string => `var(--ctp-${categories.find((c) => c.id === id)?.color ?? "overlay1"})`;
   const peak = $derived(Math.max(1, ...data.days.map((d) => d.focusMs)));
@@ -21,6 +59,13 @@
 </script>
 
 <section class="grid gap-3" aria-label={t("insights.title")}>
+  <div class="flex items-center justify-between gap-2">
+    <h2 class="t-title3">{t("insights.title")}</h2>
+    <button class="btn btn-gray btn-sm" disabled={sharing || data.focusMs === 0} onclick={share}>
+      <svg class="size-4"><use href="/icons.svg#share" /></svg>{t("insights.share.button")}
+    </button>
+  </div>
+  {#if shareProblem}<p class="alert tone-warn" role="alert">{shareProblem}</p>{/if}
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
     <div class="card p-3">
       <div class="t-foot text-subtext1">{t("insights.totalFocus")}</div>
