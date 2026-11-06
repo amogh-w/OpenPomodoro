@@ -185,6 +185,4 @@ Each person can turn on two-step sign-in in Profile. It uses any authenticator a
 30 seconds). Turning it on needs the account password, a code from the app to prove it works, and gives eight
 one-time recovery codes (stored only as hashes; shown once). A code works once, and wrong codes count toward the same
 sign-in lockout as wrong passwords. Turning it off needs the password. There is no QR code yet: the key is shown to
-type in (or open as an `otpauth://` link). If someone loses their app and their recovery codes, an admin can reset the
-account's password but cannot switch two-step off for them; the way out is to restore from a database backup taken
-before it was turned on, or to delete the person's `totp` row in the database file while the server is stopped.
+type in (or open as an `otpauth://` link). If someone loses their app and their recovery codes, an admin can press "Reset two-step" next to their name on the Admin screen: it switches two-step off for that account and signs them out everywhere, and they can turn it on again after signing in with their password.

@@ -522,6 +522,8 @@ const es: Record<keyof typeof en, string> = {
   "admin.setPassword": "Poner una contraseña temporal",
   "admin.setPasswordDone": "Contraseña temporal establecida. Se cerró su sesión en todas partes.",
   "admin.apply": "Aplicar",
+  "admin.resetTwoStep": "Restablecer dos pasos",
+  "admin.resetTwoStepDone": "El inicio de sesión en dos pasos está desactivado para {name}. Se cerró su sesión en todas partes.",
 };
 
 export default es;

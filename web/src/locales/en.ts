@@ -520,6 +520,8 @@ const en = {
   "admin.setPassword": "Set a temporary password",
   "admin.setPasswordDone": "Temporary password set. They were signed out everywhere.",
   "admin.apply": "Apply",
+  "admin.resetTwoStep": "Reset two-step",
+  "admin.resetTwoStepDone": "Two-step sign-in is off for {name}. They were signed out everywhere.",
 } as const;
 
 export default en;

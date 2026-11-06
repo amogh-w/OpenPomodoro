@@ -83,6 +83,15 @@
     }
   }
 
+  async function resetTwoStep(user: User): Promise<void> {
+    try {
+      await api.adminResetTotp(user.id);
+      say("success", t("admin.resetTwoStepDone", { name: user.username }));
+    } catch (e) {
+      say("danger", errorMessage(e));
+    }
+  }
+
   onMount(load);
 </script>
 
@@ -134,6 +143,7 @@
           >
             {t("admin.setPassword")}
           </button>
+          <button class="btn btn-gray btn-sm" onclick={() => resetTwoStep(user)}>{t("admin.resetTwoStep")}</button>
           {#if user.id !== session.user?.id}
             <button class="btn btn-gray btn-sm" onclick={() => toggleDisabled(user)}>
               {user.disabled ? t("admin.enable") : t("admin.disable")}

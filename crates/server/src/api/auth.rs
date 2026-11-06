@@ -44,6 +44,10 @@ pub fn router() -> Router<Shared> {
         .route("/api/admin/users/{id}/password", post(set_user_password))
         .route("/api/admin/users/{id}/disabled", post(set_user_disabled))
         .route(
+            "/api/admin/users/{id}/totp",
+            axum::routing::delete(reset_user_totp),
+        )
+        .route(
             "/api/admin/registration",
             get(get_registration).put(put_registration),
         )
@@ -602,6 +606,16 @@ async fn set_user_disabled(
     state
         .accounts
         .admin_set_disabled(&state.db(), &admin, &id, body.disabled)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Switch two-step sign-in off for a person who has lost their app and recovery codes.
+async fn reset_user_totp(
+    State(state): State<Shared>,
+    AdminUser(admin): AdminUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    state.accounts.admin_reset_totp(&state.db(), &admin, &id)?;
     Ok(StatusCode::NO_CONTENT)
 }
 

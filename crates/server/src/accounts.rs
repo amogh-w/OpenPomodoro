@@ -485,6 +485,20 @@ impl Accounts {
         Ok(db.delete_totp(&user.id)?)
     }
 
+    /// An admin switches two-step sign-in off for someone who lost their app and recovery codes. Their other
+    /// sessions end, as with a temporary password.
+    pub fn admin_reset_totp(&self, db: &Db, admin: &User, target_id: &str) -> Result<()> {
+        if admin.role != Role::Admin {
+            return Err(AccountError::Forbidden);
+        }
+        if db.user_by_id(target_id)?.is_none() {
+            return Err(AccountError::NotFound);
+        }
+        db.delete_totp(target_id)?;
+        db.delete_auth_sessions_of(target_id, None)?;
+        Ok(())
+    }
+
     fn record_failure(&self, db: &Db, key: &str, free: u32, now_ms: i64) -> Result<()> {
         let previous = db
             .attempt(key)?
@@ -1314,5 +1328,27 @@ mod tests {
             accounts.sign_in(&db, "admin", PW, "a", now).is_ok(),
             "plain sign-in works again"
         );
+    }
+
+    #[test]
+    fn an_admin_can_switch_two_factor_off_for_someone_and_only_an_admin() {
+        let (accounts, db, admin) = setup();
+        open_registration(&accounts, &db, &admin);
+        let bob = accounts.register(&db, "bob", PW, T0).expect("bob").user;
+        let now = 1_700_000_000_000;
+        two_factor_on(&accounts, &db, &bob, now);
+        assert_eq!(
+            accounts.admin_reset_totp(&db, &bob, &bob.id).err(),
+            Some(AccountError::Forbidden)
+        );
+        assert_eq!(
+            accounts.admin_reset_totp(&db, &admin, "nobody").err(),
+            Some(AccountError::NotFound)
+        );
+        accounts
+            .admin_reset_totp(&db, &admin, &bob.id)
+            .expect("reset");
+        assert_eq!(accounts.totp_status(&db, &bob).expect("status"), (false, 0));
+        assert!(accounts.sign_in(&db, "bob", PW, "a", now).is_ok());
     }
 }

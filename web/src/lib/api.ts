@@ -152,6 +152,7 @@ export const api = {
     request<User>("POST", "/api/admin/users", { username, password, role }),
   adminSetPassword: (id: string, password: string) =>
     request<void>("POST", `/api/admin/users/${encodeURIComponent(id)}/password`, { password }),
+  adminResetTotp: (id: string) => request<void>("DELETE", `/api/admin/users/${id}/totp`),
   adminSetDisabled: (id: string, disabled: boolean) =>
     request<void>("POST", `/api/admin/users/${encodeURIComponent(id)}/disabled`, { disabled }),
   adminRegistration: () => request<{ policy: "open" | "closed" }>("GET", "/api/admin/registration"),
