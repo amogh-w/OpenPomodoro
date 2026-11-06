@@ -381,6 +381,8 @@ const en = {
   "settings.accent": "Accent color",
   "settings.radius": "Corner radius",
   "settings.app": "App",
+  "settings.language": "Language",
+  "settings.language.auto": "Automatic (follow the browser)",
   "flavor.auto": "Auto",
   "flavor.latte": "Latte",
   "flavor.frappe": "Frappé",

@@ -30,3 +30,15 @@ Run `scripts/check.sh`. It must pass.
 ## License
 
 By contributing you agree your work is released under the [MIT License](LICENSE).
+
+## Translating
+
+Every piece of text the app shows is a key in `web/src/locales/en.ts`; there is no text typed into components.
+
+To add a language (say French, `fr`):
+
+1. Copy `web/src/locales/es.ts` to `fr.ts` and translate every value. Keep the keys, and keep each `{placeholder}` exactly as written (it is filled in by the app). Strings ending in `.one` and `.other` are the singular and the plural form; add more forms only if the language needs them and say so in the pull request.
+2. Add the language to `LANGUAGES` in `web/src/lib/language.ts` (its code and its own name, in its own language) and to the `tables` list in `web/src/lib/i18n.ts`.
+3. Run `scripts/check.sh`. The type checker fails if a key is missing, and `language.test.ts` fails if a value is empty or a placeholder differs from the English one.
+
+Write in your own words, not copied from another app. Dates and numbers already follow the browser; only the strings need translating. When you add a string to `en.ts`, add it to every other language file in the same change (a rough translation is fine, mark it in the pull request so a speaker can polish it).

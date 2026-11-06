@@ -3,6 +3,7 @@
   import { t, tn } from "./lib/i18n";
   import { startAlerts } from "./lib/alerts.svelte";
   import { app, currentView, setTickRate } from "./lib/appState.svelte";
+  import { activeLanguage } from "./lib/language.svelte";
   import { tickInterval } from "./lib/motion";
   import { formatElapsed, formatRemaining, minutesLeft } from "./lib/format";
   import { phaseClass } from "./lib/timerView";
@@ -41,6 +42,10 @@
   });
   // Compact view only applies on the timer screen; the other screens always use the full layout.
   const compact = $derived(prefs.compact && router.route === "timer" && session.status === "signed_in");
+  // The page's declared language follows the app's, for screen readers and spell checking.
+  $effect(() => {
+    document.documentElement.lang = activeLanguage();
+  });
   const tint = $derived(view ? phaseClass(view.state) : "");
 
   // Time left in the page title and on the app icon (A-08), so it shows when the tab is in the background.

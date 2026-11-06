@@ -9,6 +9,8 @@
   import ShortcutSettings from "../lib/ShortcutSettings.svelte";
   import SpecialBreakSettings from "../lib/SpecialBreakSettings.svelte";
   import TimerSettings from "../lib/TimerSettings.svelte";
+  import { LANGUAGES } from "../lib/language";
+  import { language, setLanguage } from "../lib/language.svelte";
   import { install, promptInstall } from "../platform/install.svelte";
 
   // The kit marks the selected buttons (aria-pressed / ring) itself once they exist.
@@ -33,6 +35,16 @@
       <button class="chip" data-flavor="custom" onclick={() => (customOpen = true)}>{t("flavor.custom")}</button>
     </div>
     {#if customOpen}<CustomThemeEditor />{/if}
+  </div>
+
+  <div>
+    <div class="t-foot mb-2 text-subtext1">{t("settings.language")}</div>
+    <div class="flex flex-wrap gap-2" role="group" aria-label={t("settings.language")}>
+      <button class="chip" aria-pressed={language.choice === "auto"} onclick={() => setLanguage("auto")}>{t("settings.language.auto")}</button>
+      {#each LANGUAGES as lang (lang.code)}
+        <button class="chip" lang={lang.code} aria-pressed={language.choice === lang.code} onclick={() => setLanguage(lang.code)}>{lang.name}</button>
+      {/each}
+    </div>
   </div>
 
   <div>
