@@ -23,6 +23,7 @@ pub mod healthcheck;
 pub mod hub;
 pub mod security;
 pub mod settings;
+pub mod sounds;
 pub mod state;
 #[cfg(test)]
 mod test_util;

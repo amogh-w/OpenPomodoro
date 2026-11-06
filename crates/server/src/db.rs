@@ -13,7 +13,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: [&str; 3] = [
+const MIGRATIONS: [&str; 4] = [
     r#"
     CREATE TABLE users (
         id            TEXT PRIMARY KEY,
@@ -89,6 +89,18 @@ const MIGRATIONS: [&str; 3] = [
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         id      TEXT NOT NULL,
         PRIMARY KEY (user_id, id)
+    ) WITHOUT ROWID;
+"#,
+    r#"
+    -- Sounds a person uploaded to replace the built-in alert tones, kept in the database so a backup of the
+    -- file includes them. One per alert slot.
+    CREATE TABLE sounds (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        slot       TEXT NOT NULL,
+        mime       TEXT NOT NULL,
+        data       BLOB NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, slot)
     ) WITHOUT ROWID;
 "#,
 ];
@@ -467,10 +479,66 @@ impl Db {
         Ok(results)
     }
 
+    /// Store (or replace) the uploaded sound for an alert slot.
+    pub fn put_sound(
+        &self,
+        user: &str,
+        slot: &str,
+        mime: &str,
+        data: &[u8],
+        now_ms: i64,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO sounds (user_id, slot, mime, data, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT (user_id, slot) DO UPDATE SET mime = ?3, data = ?4, updated_at = ?5",
+            params![user, slot, mime, data, now_ms],
+        )?;
+        Ok(())
+    }
+
+    /// The uploaded sound for a slot: its type and bytes.
+    pub fn sound(&self, user: &str, slot: &str) -> Result<Option<(String, Vec<u8>)>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT mime, data FROM sounds WHERE user_id = ?1 AND slot = ?2",
+                params![user, slot],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?)
+    }
+
+    /// Which slots have an uploaded sound: slot, type, size in bytes and when it was set.
+    pub fn sounds(&self, user: &str) -> Result<Vec<(String, String, i64, i64)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT slot, mime, length(data), updated_at FROM sounds WHERE user_id = ?1 ORDER BY slot",
+        )?;
+        let rows = stmt
+            .query_map(params![user], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Remove the uploaded sound of a slot; false when there was none.
+    pub fn delete_sound(&self, user: &str, slot: &str) -> Result<bool> {
+        Ok(self.conn.execute(
+            "DELETE FROM sounds WHERE user_id = ?1 AND slot = ?2",
+            params![user, slot],
+        )? > 0)
+    }
+
     /// Delete everything a user has recorded (log, rows, waiting events, processed commands) but keep the account.
     pub fn wipe_user_data(&self, user: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
-        for table in ["rejected_events", "commands_seen", "rows", "events"] {
+        for table in [
+            "rejected_events",
+            "commands_seen",
+            "rows",
+            "events",
+            "sounds",
+        ] {
             tx.execute(
                 &format!("DELETE FROM {table} WHERE user_id = ?1"),
                 params![user],
@@ -899,7 +967,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("version");
-        assert_eq!(version, 3);
+        assert_eq!(version, 4);
         let mode: String = db
             .conn
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -922,7 +990,7 @@ mod tests {
             Db::open(&path),
             Err(DbError::FutureSchema {
                 found: 99,
-                supported: 3
+                supported: 4
             })
         ));
     }

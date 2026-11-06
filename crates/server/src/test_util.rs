@@ -104,6 +104,7 @@ pub struct Req<'a> {
     method: Method,
     path: String,
     body: Option<Value>,
+    raw: Option<Vec<u8>>,
     headers: Vec<(String, String)>,
     host: Option<String>,
     csrf: bool,
@@ -116,10 +117,17 @@ impl<'a> Req<'a> {
             method,
             path: path.to_string(),
             body,
+            raw: None,
             headers: Vec::new(),
             host: Some("localhost:3000".into()),
             csrf: true,
         }
+    }
+
+    /// Send these bytes as the body, as they are (for uploads).
+    pub fn raw(mut self, bytes: Vec<u8>) -> Self {
+        self.raw = Some(bytes);
+        self
     }
 
     pub fn header(mut self, name: &str, value: &str) -> Self {
@@ -161,12 +169,13 @@ impl<'a> Req<'a> {
         for (k, v) in &self.headers {
             builder = builder.header(k, v);
         }
-        let body = match &self.body {
-            Some(json) => {
+        let body = match (&self.raw, &self.body) {
+            (Some(bytes), _) => Body::from(bytes.clone()),
+            (None, Some(json)) => {
                 builder = builder.header("content-type", "application/json");
                 Body::from(json.to_string())
             }
-            None => Body::empty(),
+            (None, None) => Body::empty(),
         };
         let res = self
             .app
@@ -180,6 +189,7 @@ impl<'a> Req<'a> {
             status: parts.status,
             headers: parts.headers,
             text: String::from_utf8_lossy(&bytes).into_owned(),
+            bytes: bytes.to_vec(),
         }
     }
 }
@@ -188,6 +198,7 @@ pub struct Res {
     pub status: StatusCode,
     pub headers: axum::http::HeaderMap,
     pub text: String,
+    pub bytes: Vec<u8>,
 }
 
 impl Res {
