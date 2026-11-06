@@ -477,9 +477,6 @@
     <h1 class="t-title1">{t("timer.phase.reflect")}</h1>
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
-    {#if app.timer?.planned_ms != null && (app.timer?.focus_elapsed_ms ?? 0) < app.timer.planned_ms}
-      <p class="alert tone-warn text-left" role="status">{t("timer.reflect.early", { n: roundNow, total: cycleLength })}</p>
-    {/if}
     <div class="grid gap-2">
       <span class="t-foot text-subtext1">{t("timer.mood")}</span>
       <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.mood")}>

@@ -210,17 +210,13 @@ function extrasOf(action: Action): Extras {
   return { notes: clean(action.notes, MAX_NOTES_CHARS), mood };
 }
 
-/** A focus session this short with no intention and no notes is an accidental start, unless it ran its whole planned time. */
-const JUNK_MS = 30_000;
-
 /**
- * Save a finished focus session: it goes into `records`, unless it was accidental. It counts as a round only if it
- * ran its full planned length: a session ended early is kept in the log but does not move the cycle on.
+ * Save a finished focus session. Ending a session saves it and it moves the cycle on, however long it ran; the only
+ * way to keep nothing is to abandon it.
  */
 function keepFocus(next: TimerData, records: RecordData[], record: RecordData): void {
-  if (record.kind === "focus" && record.duration_ms <= JUNK_MS && record.duration_ms < record.planned_ms && record.intention === null && record.notes === null) return;
   records.push(record);
-  if (record.kind === "focus" && record.duration_ms >= record.planned_ms) next.rounds += 1;
+  next.rounds += 1;
 }
 
 function keepBreak(next: TimerData, record: RecordData): void {
