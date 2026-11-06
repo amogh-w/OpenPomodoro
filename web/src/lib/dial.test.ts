@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { angleOf, handleAngle, scrub, snap, turnBetween } from "./dial";
+import { angleOf, handleAngle, scrub, scrubRaw, snap, turnBetween } from "./dial";
 
 const range = { min: 5, max: 180, step: 5 };
 
@@ -48,5 +48,26 @@ describe("scrub", () => {
 describe("handleAngle", () => {
   it("wraps each hour", () => {
     expect([0, 15, 30, 60, 75, 90].map(handleAngle)).toEqual([0, 90, 180, 0, 90, 180]);
+  });
+});
+
+describe("scrubRaw", () => {
+  const r = { min: 5, max: 180 };
+
+  it("follows the pointer exactly, without snapping", () => {
+    expect(scrubRaw(25, 0, r)).toBe(25);
+    expect(scrubRaw(25, 7.2, r)).toBeCloseTo(26.2);
+    expect(scrubRaw(25, 360, r)).toBe(85);
+  });
+
+  it("stays within the range", () => {
+    expect(scrubRaw(25, -720, r)).toBe(5);
+    expect(scrubRaw(170, 360, r)).toBe(180);
+  });
+
+  it("snaps to the same value as scrub once rounded", () => {
+    for (const turn of [-40, -3, 0, 2.9, 14, 31, 100]) {
+      expect(snap(scrubRaw(25, turn, r), { ...r, step: 5 })).toBe(scrub(25, turn, { ...r, step: 5 }));
+    }
   });
 });

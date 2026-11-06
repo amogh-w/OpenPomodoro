@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { angleOf, handleAngle, scrub, snap, turnBetween } from "./dial";
+  import { onDestroy, untrack } from "svelte";
+  import { angleOf, handleAngle, scrubRaw, snap, turnBetween } from "./dial";
   import { t } from "./i18n";
 
   interface Props {
@@ -15,12 +16,42 @@
     tone?: "accent" | "green";
     /** What `value` counts: minutes (a turn is 60 of them) or seconds (a turn is a minute). */
     unit?: "min" | "sec";
-    /** Called when the hand is turned back past the start (counter-clockwise), to switch between focus and break. */
-    onflip?: () => void;
   }
-  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "", tone = "accent", unit = "min", onflip }: Props = $props();
+  let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "", tone = "accent", unit = "min" }: Props = $props();
 
   const range = $derived({ min, max, step });
+
+  // What is drawn. While dragging it follows the pointer exactly (smooth); the number you see and the value that is
+  // kept still snap to the step. Letting go, or any other change (keys, a typed "30m"), glides to the snapped value.
+  let display = $state(untrack(() => value));
+  let dragging = false;
+  let frame = 0;
+
+  const reduced = (): boolean =>
+    document.documentElement.classList.contains("reduce-motion") || matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function glideTo(target: number): void {
+    cancelAnimationFrame(frame);
+    const from = display;
+    if (reduced() || Math.abs(target - from) < 0.01) {
+      display = target;
+      return;
+    }
+    const began = performance.now();
+    const length = Math.min(260, 90 + Math.abs(target - from) * 5);
+    const tickFrame = (now: number): void => {
+      const t = Math.min(1, (now - began) / length);
+      display = from + (target - from) * (1 - (1 - t) ** 3);
+      if (t < 1) frame = requestAnimationFrame(tickFrame);
+    };
+    frame = requestAnimationFrame(tickFrame);
+  }
+
+  $effect(() => {
+    const target = value;
+    if (!dragging) untrack(() => glideTo(target));
+  });
+  onDestroy(() => cancelAnimationFrame(frame));
   // Geometry (viewBox 240): a ring of 60 tick marks, a pie that fills as the length grows, and a hand to turn.
   const WEDGE = 68;
   const HAND = 94;
@@ -32,9 +63,9 @@
   });
 
   // Fraction of the circle that is filled: a full lap at 60 minutes, then it starts a second lap.
-  const lap = $derived(((value - 1) % 60 + 1) / 60);
-  const secondLap = $derived(value > 60);
-  const angle = $derived((handleAngle(value) * Math.PI) / 180);
+  const lap = $derived(((display - 1) % 60 + 1) / 60);
+  const secondLap = $derived(display > 60);
+  const angle = $derived((handleAngle(display) * Math.PI) / 180);
   const tipX = $derived(120 + HAND * Math.sin(angle));
   const tipY = $derived(120 - HAND * Math.cos(angle));
   const edgeX = $derived(120 + WEDGE * Math.sin(angle));
@@ -59,7 +90,9 @@
   function down(event: PointerEvent): void {
     if (disabled) return;
     svg?.setPointerCapture(event.pointerId);
-    drag = { prev: pointerAngle(event), total: 0, start: value };
+    cancelAnimationFrame(frame);
+    dragging = true;
+    drag = { prev: pointerAngle(event), total: 0, start: display };
   }
 
   function move(event: PointerEvent): void {
@@ -67,17 +100,17 @@
     const now = pointerAngle(event);
     drag.total += turnBetween(drag.prev, now);
     drag.prev = now;
-    if (onflip && drag.start + (drag.total / 360) * 60 < min - step) {
-      drag = null;
-      onflip();
-      return;
-    }
-    const next = scrub(drag.start, drag.total, range);
+    const raw = scrubRaw(drag.start, drag.total, range);
+    display = raw;
+    const next = snap(raw, range);
     if (next !== value) onchange(next);
   }
 
   function up(): void {
+    if (!drag) return;
     drag = null;
+    dragging = false;
+    glideTo(value);
   }
 
   function key(event: KeyboardEvent): void {

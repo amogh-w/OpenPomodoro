@@ -422,7 +422,6 @@
         unit={secondsDial ? "sec" : "min"}
         tone={isBreak ? "green" : "accent"}
         disabled={!isBreak && fromText}
-        onflip={flip}
         onchange={(next) => {
           if (isBreak) {
             breakSec = next * unitSec;
@@ -436,7 +435,6 @@
       <div class="t-title1 text-center tabular-nums" aria-hidden="true">{formatRemaining(plannedMs)}</div>
       <div class="t-foot mx-auto rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
       {#if !isBreak && fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
-      <p class="t-foot text-center text-subtext1">{t("timer.dial.flipHint")}</p>
     </div>
 
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}

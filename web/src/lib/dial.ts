@@ -28,6 +28,11 @@ export function scrub(startMinutes: number, totalTurnDeg: number, range: DialRan
   return snap(startMinutes + (totalTurnDeg / 360) * 60, range);
 }
 
+/** Like `scrub` but not snapped: the exact (fractional) value under the pointer, kept in range, for smooth drawing. */
+export function scrubRaw(startMinutes: number, totalTurnDeg: number, { min, max }: Pick<DialRange, "min" | "max">): number {
+  return Math.min(max, Math.max(min, startMinutes + (totalTurnDeg / 360) * 60));
+}
+
 /** Where the handle sits on the ring, in degrees from the top, for a value in minutes. */
 export function handleAngle(minutes: number): number {
   return ((minutes % 60) / 60) * 360;

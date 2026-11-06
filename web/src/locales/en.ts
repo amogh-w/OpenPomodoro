@@ -103,7 +103,6 @@ const en = {
   "timer.again": "Another session",
   "timer.soundOn": "Turn sounds on",
   "timer.soundOff": "Turn sounds off",
-  "timer.dial.flipHint": "Turn the dial back past zero to switch between focus and break.",
   "insights.title": "Month overview",
   "insights.totalFocus": "Total focus",
   "insights.vsLast": "vs last month",
