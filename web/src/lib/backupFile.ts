@@ -1,14 +1,15 @@
 // Saving a backup to a file and restoring one. The backup is the server's JSON export; this adds the browser's look
 // (theme, accent, corner radius) when saving and puts it back when restoring.
 import { api } from "./api";
+import { BASE_FLAVORS, parseCustomTheme } from "./customTheme";
 
-const UI_KEYS = ["ui-flavor", "ui-accent", "ui-radius"] as const;
+const UI_KEYS = ["ui-flavor", "ui-accent", "ui-radius", "ui-custom"] as const;
 
-const FLAVORS = ["auto", "latte", "frappe", "macchiato", "mocha"];
+const FLAVORS = ["auto", "custom", ...BASE_FLAVORS];
 const ACCENTS = ["rosewater", "flamingo", "pink", "mauve", "red", "peach", "yellow", "green", "teal", "sky", "blue", "lavender"];
 const RADII = ["tight", "apple", "soft"];
 
-const ALLOWED: Record<(typeof UI_KEYS)[number], string[]> = { "ui-flavor": FLAVORS, "ui-accent": ACCENTS, "ui-radius": RADII };
+const ALLOWED: Record<Exclude<(typeof UI_KEYS)[number], "ui-custom">, string[]> = { "ui-flavor": FLAVORS, "ui-accent": ACCENTS, "ui-radius": RADII };
 
 /** The look settings a backup carries, keeping only known keys with known values. */
 export function validUi(raw: unknown): Record<string, string> {
@@ -17,7 +18,9 @@ export function validUi(raw: unknown): Record<string, string> {
   const source = raw as Record<string, unknown>;
   for (const key of UI_KEYS) {
     const value = source[key];
-    if (typeof value === "string" && ALLOWED[key].includes(value)) out[key] = value;
+    if (typeof value !== "string") continue;
+    // A custom theme is free text, so it is kept only if it parses as one.
+    if (key === "ui-custom" ? parseCustomTheme(value).ok : ALLOWED[key].includes(value)) out[key] = value;
   }
   return out;
 }

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t, type MessageKey } from "../lib/i18n";
-  import { accents, flavors, radii, setTheme, syncThemeButtons } from "../lib/theme";
+  import { accents, flavors, radii, readTheme, setTheme, syncThemeButtons } from "../lib/theme";
+  import CustomThemeEditor from "../lib/CustomThemeEditor.svelte";
   import AccessSettings from "../lib/AccessSettings.svelte";
   import AccountSection from "../lib/AccountSection.svelte";
   import AlertSettings from "../lib/AlertSettings.svelte";
@@ -14,6 +15,7 @@
 
   // The kit marks the selected buttons (aria-pressed / ring) itself once they exist.
   onMount(syncThemeButtons);
+  let customOpen = $state(readTheme().flavor === "custom");
 </script>
 
 <h1 class="t-large">{t("settings.title")}</h1>
@@ -30,7 +32,9 @@
           {t(`flavor.${flavor}`)}
         </button>
       {/each}
+      <button class="chip" data-flavor="custom" onclick={() => (customOpen = true)}>{t("flavor.custom")}</button>
     </div>
+    {#if customOpen}<CustomThemeEditor />{/if}
   </div>
 
   <div>

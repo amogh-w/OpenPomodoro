@@ -52,16 +52,16 @@ html.reduce-motion .breathe-circle {
    pairs that fall just short are nudged with tokens. Dark flavors are unchanged. */
 @layer components {
   .tab:not([aria-selected="true"]) { color: var(--ctp-subtext1); }
-  html.latte .btn-filled,
-  html.latte .chip[aria-pressed="true"] {
+  html.ui-light .btn-filled,
+  html.ui-light .chip[aria-pressed="true"] {
     background: color-mix(in oklab, var(--accent) 45%, var(--ctp-base));
     color: var(--ctp-text);
   }
-  html.latte .btn-danger { color: var(--ctp-base); }
+  html.ui-light .btn-danger { color: var(--ctp-base); }
   /* Mixing toward the flavor's text colour darkens red on a light page and lightens it on a dark one. */
   .btn-danger-tinted { color: color-mix(in oklab, var(--ctp-red) 45%, var(--ctp-text)); }
-  html.latte .tab[aria-selected="true"],
-  html.latte .btn-plain { color: color-mix(in oklab, var(--accent) 32%, var(--ctp-text)); }
+  html.ui-light .tab[aria-selected="true"],
+  html.ui-light .btn-plain { color: color-mix(in oklab, var(--accent) 32%, var(--ctp-text)); }
 }
 
 /* Wide screens. Phones keep the bottom tab bar; from 1024px it becomes a slim icon rail on the left, and the timer
@@ -98,5 +98,5 @@ html.reduce-motion .breathe-circle {
   }
   .app-nav .tab:hover { background: color-mix(in oklab, var(--ctp-surface0) 70%, transparent); }
   .app-nav .tab[aria-selected="true"] { background: color-mix(in oklab, var(--accent) 15%, transparent); }
-  html.latte .app-nav .tab[aria-selected="true"] { background: color-mix(in oklab, var(--accent) 22%, var(--ctp-mantle)); }
+  html.ui-light .app-nav .tab[aria-selected="true"] { background: color-mix(in oklab, var(--accent) 22%, var(--ctp-mantle)); }
 }

@@ -51,7 +51,8 @@
     --shadow-3: 0 24px 60px rgb(0 0 0 / 0.35);
     --seg-thumb: var(--ctp-surface2);
   }
-  .latte {
+  /* Every light flavor (Latte, high contrast light, Solarized, or a custom theme on one of them). */
+  .ui-light {
     --seg-thumb: var(--ctp-base);
     --shadow-2: 0 8px 24px rgb(76 79 105 / 0.14);
     --shadow-3: 0 24px 60px rgb(76 79 105 / 0.28);

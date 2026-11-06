@@ -119,3 +119,161 @@
   --ctp-mantle: #181825;
   --ctp-crust: #11111b;
 }
+
+/* Extra flavors (not Catppuccin): high contrast, Nord, Gruvbox, Solarized light. Same variable names, so every
+   component works unchanged. */
+
+/* High contrast, light: black on white, every accent at 4.5:1 or better on the page. */
+.contrast-light {
+  color-scheme: light;
+  --ctp-rosewater: #8a3b30;
+  --ctp-flamingo: #a6283a;
+  --ctp-pink: #a8156f;
+  --ctp-mauve: #6b21c8;
+  --ctp-red: #b00020;
+  --ctp-maroon: #8c1c13;
+  --ctp-peach: #9a3d00;
+  --ctp-yellow: #7a5200;
+  --ctp-green: #1b6e1b;
+  --ctp-teal: #006461;
+  --ctp-sky: #00618a;
+  --ctp-sapphire: #00566e;
+  --ctp-blue: #0b3fcc;
+  --ctp-lavender: #4a3fc4;
+  --ctp-text: #000000;
+  --ctp-subtext1: #1a1a1a;
+  --ctp-subtext0: #262626;
+  --ctp-overlay2: #404040;
+  --ctp-overlay1: #4d4d4d;
+  --ctp-overlay0: #595959;
+  --ctp-surface2: #b3b3b3;
+  --ctp-surface1: #c8c8c8;
+  --ctp-surface0: #d9d9d9;
+  --ctp-base: #ffffff;
+  --ctp-mantle: #f2f2f2;
+  --ctp-crust: #e6e6e6;
+}
+
+/* High contrast, dark: white on black, bright accents. */
+.contrast-dark {
+  color-scheme: dark;
+  --ctp-rosewater: #ffb8a8;
+  --ctp-flamingo: #ff9aa8;
+  --ctp-pink: #ff8fd8;
+  --ctp-mauve: #cf9bff;
+  --ctp-red: #ff6b6b;
+  --ctp-maroon: #ff8080;
+  --ctp-peach: #ffa24d;
+  --ctp-yellow: #ffe14d;
+  --ctp-green: #5df05d;
+  --ctp-teal: #3de0d6;
+  --ctp-sky: #4dd2ff;
+  --ctp-sapphire: #5cc0ff;
+  --ctp-blue: #7aa2ff;
+  --ctp-lavender: #a9a4ff;
+  --ctp-text: #ffffff;
+  --ctp-subtext1: #ebebeb;
+  --ctp-subtext0: #d6d6d6;
+  --ctp-overlay2: #bdbdbd;
+  --ctp-overlay1: #a3a3a3;
+  --ctp-overlay0: #8a8a8a;
+  --ctp-surface2: #4d4d4d;
+  --ctp-surface1: #333333;
+  --ctp-surface0: #1f1f1f;
+  --ctp-base: #000000;
+  --ctp-mantle: #0a0a0a;
+  --ctp-crust: #000000;
+}
+
+/* Nord: cool blue-grey dark. */
+.nord {
+  color-scheme: dark;
+  --ctp-rosewater: #e0b4a8;
+  --ctp-flamingo: #d99aa6;
+  --ctp-pink: #d89ab8;
+  --ctp-mauve: #b692b0;
+  --ctp-red: #cd8e96;
+  --ctp-maroon: #cf8d94;
+  --ctp-peach: #d18b75;
+  --ctp-yellow: #ebcb8b;
+  --ctp-green: #a3be8c;
+  --ctp-teal: #8fbcbb;
+  --ctp-sky: #88c0d0;
+  --ctp-sapphire: #8fb4d9;
+  --ctp-blue: #81a1c1;
+  --ctp-lavender: #a5b4e0;
+  --ctp-text: #eceff4;
+  --ctp-subtext1: #e5e9f0;
+  --ctp-subtext0: #d8dee9;
+  --ctp-overlay2: #9aa5b8;
+  --ctp-overlay1: #7b88a1;
+  --ctp-overlay0: #616e88;
+  --ctp-surface2: #4c566a;
+  --ctp-surface1: #434c5e;
+  --ctp-surface0: #3b4252;
+  --ctp-base: #2e3440;
+  --ctp-mantle: #292e39;
+  --ctp-crust: #242933;
+}
+
+/* Gruvbox: warm retro dark. */
+.gruvbox {
+  color-scheme: dark;
+  --ctp-rosewater: #e6b8a2;
+  --ctp-flamingo: #e0959c;
+  --ctp-pink: #d3869b;
+  --ctp-mauve: #c88fb5;
+  --ctp-red: #fa553e;
+  --ctp-maroon: #d07865;
+  --ctp-peach: #fe8019;
+  --ctp-yellow: #fabd2f;
+  --ctp-green: #b8bb26;
+  --ctp-teal: #8ec07c;
+  --ctp-sky: #83a598;
+  --ctp-sapphire: #7fb0b0;
+  --ctp-blue: #7aa7c7;
+  --ctp-lavender: #b3a9d6;
+  --ctp-text: #ebdbb2;
+  --ctp-subtext1: #d5c4a1;
+  --ctp-subtext0: #bdae93;
+  --ctp-overlay2: #a89984;
+  --ctp-overlay1: #928374;
+  --ctp-overlay0: #7c6f64;
+  --ctp-surface2: #665c54;
+  --ctp-surface1: #504945;
+  --ctp-surface0: #3c3836;
+  --ctp-base: #282828;
+  --ctp-mantle: #1d2021;
+  --ctp-crust: #171819;
+}
+
+/* Solarized light: low-glare cream. */
+.solarized {
+  color-scheme: light;
+  --ctp-rosewater: #9c5e57;
+  --ctp-flamingo: #b74873;
+  --ctp-pink: #c3367d;
+  --ctp-mauve: #865abf;
+  --ctp-red: #d33230;
+  --ctp-maroon: #b3302e;
+  --ctp-peach: #c34a18;
+  --ctp-yellow: #7d6e15;
+  --ctp-green: #5d7915;
+  --ctp-teal: #1d7a79;
+  --ctp-sky: #1f78a8;
+  --ctp-sapphire: #1f77af;
+  --ctp-blue: #1f6fb5;
+  --ctp-lavender: #606ab4;
+  --ctp-text: #073642;
+  --ctp-subtext1: #3f555c;
+  --ctp-subtext0: #4a6068;
+  --ctp-overlay2: #738083;
+  --ctp-overlay1: #839496;
+  --ctp-overlay0: #93a1a1;
+  --ctp-surface2: #bfb8a3;
+  --ctp-surface1: #cfc8b3;
+  --ctp-surface0: #ddd6c1;
+  --ctp-base: #fdf6e3;
+  --ctp-mantle: #eee8d5;
+  --ctp-crust: #e4ddc8;
+}
