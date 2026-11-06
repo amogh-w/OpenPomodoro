@@ -106,8 +106,17 @@ export interface HookInfo {
   enabled: boolean;
 }
 
+export interface WebhookInfo {
+  event: string;
+  url: string;
+  signed: boolean;
+  enabled: boolean;
+}
+
 export const api = {
-  adminHooks: () => request<{ hooks: HookInfo[] }>("GET", "/api/admin/hooks"),
+  adminTestWebhook: (index: number) =>
+    request<{ event: string; result: "delivered" | "status" | "failed"; detail: unknown }>("POST", `/api/admin/webhooks/${index}/test`),
+  adminHooks: () => request<{ hooks: HookInfo[]; webhooks: WebhookInfo[] }>("GET", "/api/admin/hooks"),
   adminTestHook: (index: number) =>
     request<{ event: string; result: "exited" | "timed_out" | "failed"; detail: unknown }>("POST", `/api/admin/hooks/${index}/test`),
   listTokens: () => request<{ tokens: TokenInfo[] }>("GET", "/api/me/tokens"),

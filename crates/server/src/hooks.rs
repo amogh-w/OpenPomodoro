@@ -6,6 +6,7 @@
 
 use std::{path::Path, process::Stdio, sync::Arc, time::Duration};
 
+use crate::webhooks::{self, WebhookDef};
 use op_core::{PausedFrom, State, TimerState};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -58,6 +59,13 @@ pub struct HookDef {
 pub struct HooksFile {
     #[serde(default)]
     pub hooks: Vec<HookDef>,
+    /// Outgoing webhooks (I-06), sent for the same events.
+    #[serde(default)]
+    pub webhooks: Vec<WebhookDef>,
+    /// Let webhooks call private, loopback and link-local addresses (a home automation server on the same network,
+    /// say). Off unless the admin turns it on.
+    #[serde(default)]
+    pub allow_private_webhooks: bool,
 }
 
 impl HooksFile {
@@ -83,6 +91,29 @@ impl HooksFile {
             }
             if !(1..=MAX_TIMEOUT_S).contains(&hook.timeout_s) {
                 return Err(format!("hook {n}: timeout_s must be 1 to {MAX_TIMEOUT_S}"));
+            }
+        }
+        for (i, hook) in file.webhooks.iter().enumerate() {
+            let n = i + 1;
+            if hook.event != "*" && !EVENTS.contains(&hook.event.as_str()) {
+                return Err(format!("webhook {n}: unknown event \"{}\"", hook.event));
+            }
+            let ok_url = hook
+                .url
+                .strip_prefix("https://")
+                .or_else(|| hook.url.strip_prefix("http://"))
+                .is_some_and(|rest| {
+                    !rest.is_empty() && !rest.starts_with('/') && !rest.contains(['@', ' '])
+                });
+            if !ok_url {
+                return Err(format!(
+                    "webhook {n}: url must be http:// or https:// with a host and no user name"
+                ));
+            }
+            if !(1..=MAX_TIMEOUT_S).contains(&hook.timeout_s) {
+                return Err(format!(
+                    "webhook {n}: timeout_s must be 1 to {MAX_TIMEOUT_S}"
+                ));
             }
         }
         Ok(file)
@@ -200,13 +231,26 @@ impl HookRunner {
         &self.file.hooks
     }
 
+    pub fn webhooks(&self) -> &[WebhookDef] {
+        &self.file.webhooks
+    }
+
+    pub fn allow_private_webhooks(&self) -> bool {
+        self.file.allow_private_webhooks
+    }
+
     /// Queue an event for every enabled hook that wants it. Never waits.
     pub fn emit(&self, event: &'static str, body: &Value) {
         let wanted = self
             .file
             .hooks
             .iter()
-            .any(|h| h.enabled && (h.event == "*" || h.event == event));
+            .any(|h| h.enabled && (h.event == "*" || h.event == event))
+            || self
+                .file
+                .webhooks
+                .iter()
+                .any(|h| h.enabled && (h.event == "*" || h.event == event));
         if !wanted {
             return;
         }
@@ -285,6 +329,33 @@ impl Worker {
                             "hooks: {} for {event} ended with {other:?}",
                             hook.command[0]
                         ),
+                    }
+                    drop(permit);
+                });
+            }
+            for hook in self
+                .file
+                .webhooks
+                .iter()
+                .filter(|h| h.enabled && (h.event == "*" || h.event == job.event))
+            {
+                let Ok(permit) = slots.clone().acquire_owned().await else {
+                    return;
+                };
+                let (hook, event, body) = (hook.clone(), job.event, job.body.clone());
+                let allow_private = self.file.allow_private_webhooks;
+                tokio::spawn(async move {
+                    let target = hook.url.clone();
+                    let sent = tokio::task::spawn_blocking(move || {
+                        webhooks::deliver(&hook, event, &body, allow_private)
+                    })
+                    .await;
+                    match sent {
+                        Ok(Ok(_)) => {}
+                        Ok(Err(failure)) => {
+                            eprintln!("webhooks: {target} for {event} failed: {failure:?}")
+                        }
+                        Err(e) => eprintln!("webhooks: {target} for {event} crashed: {e}"),
                     }
                     drop(permit);
                 });
@@ -469,6 +540,7 @@ mod tests {
                 timeout_s: 5,
                 enabled: true,
             }],
+            ..Default::default()
         };
         let (runner, mut worker) = HookRunner::new(file);
         runner.emit("resumed", &json!({}));
@@ -539,6 +611,7 @@ mod tests {
                 timeout_s: 5,
                 enabled: true,
             }],
+            ..Default::default()
         };
         let (runner, worker) = HookRunner::new(file);
         tokio::spawn(worker.run());
@@ -583,6 +656,7 @@ mod tests {
                 timeout_s: 5,
                 enabled: true,
             }],
+            ..Default::default()
         };
         let (runner, worker) = HookRunner::new(file);
         tokio::spawn(worker.run());

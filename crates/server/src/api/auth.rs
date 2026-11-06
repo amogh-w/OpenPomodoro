@@ -35,6 +35,7 @@ pub fn router() -> Router<Shared> {
         .route("/api/admin/backup", get(admin_backup))
         .route("/api/admin/hooks", get(list_hooks))
         .route("/api/admin/hooks/{index}/test", post(test_hook))
+        .route("/api/admin/webhooks/{index}/test", post(test_webhook))
         .route("/api/admin/users", get(list_users).post(create_user))
         .route("/api/admin/users/{id}/password", post(set_user_password))
         .route("/api/admin/users/{id}/disabled", post(set_user_disabled))
@@ -289,7 +290,56 @@ async fn list_hooks(State(state): State<Shared>, _admin: AdminUser) -> Json<serd
                 .collect()
         })
         .unwrap_or_default();
-    Json(serde_json::json!({ "hooks": hooks }))
+    // The secret of a webhook is never sent back, only whether there is one.
+    let webhooks: Vec<serde_json::Value> = state
+        .hooks
+        .get()
+        .map(|r| {
+            r.webhooks()
+                .iter()
+                .map(|h| serde_json::json!({"event": h.event, "url": h.url, "signed": h.secret.is_some(), "enabled": h.enabled}))
+                .collect()
+        })
+        .unwrap_or_default();
+    Json(serde_json::json!({ "hooks": hooks, "webhooks": webhooks }))
+}
+
+/// Send one webhook now with a sample event and say what came back.
+async fn test_webhook(
+    State(state): State<Shared>,
+    AdminUser(admin): AdminUser,
+    Path(index): Path<usize>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let Some(runner) = state.hooks.get().cloned() else {
+        return Err(ApiError::not_found());
+    };
+    let Some(hook) = runner.webhooks().get(index).cloned() else {
+        return Err(ApiError::not_found());
+    };
+    let event = if hook.event == "*" {
+        "focus_started"
+    } else {
+        hook.event.as_str()
+    }
+    .to_string();
+    let timer = op_core::TimerState::idle();
+    let body = crate::hooks::payload(&event, state.now_ms(), &admin.id, &admin.username, &timer)
+        .to_string();
+    let allow_private = runner.allow_private_webhooks();
+    let sent = tokio::task::spawn_blocking({
+        let (hook, event) = (hook.clone(), event.clone());
+        move || crate::webhooks::deliver(&hook, &event, &body, allow_private)
+    })
+    .await
+    .map_err(ApiError::internal)?;
+    let (result, detail) = match sent {
+        Ok(status) => ("delivered", serde_json::json!(status)),
+        Err(crate::webhooks::Failure::Status(status)) => ("status", serde_json::json!(status)),
+        Err(crate::webhooks::Failure::Network(why)) => ("failed", serde_json::json!(why)),
+    };
+    Ok(Json(
+        serde_json::json!({ "event": event, "result": result, "detail": detail }),
+    ))
 }
 
 /// Run one hook now with a sample event and say how it ended.

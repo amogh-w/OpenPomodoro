@@ -154,3 +154,27 @@ to. The web app can show them and test them (Admin screen) but never change them
   only list programs you trust with everyone's activity.
 
 On a server with Docker, the program has to exist inside the container.
+
+### Webhooks
+
+The same file can send events to a web address instead of running a program:
+
+```json
+{
+  "webhooks": [
+    { "event": "focus_started", "url": "https://example.com/hooks/focus", "secret": "a long random string" }
+  ],
+  "allow_private_webhooks": false
+}
+```
+
+- The body is the same JSON the hooks get, sent as a `POST` with `Content-Type: application/json`, an
+  `X-OpenPomodoro-Event` header and a `User-Agent` of `OpenPomodoro/<version>`.
+- With a `secret`, each request also has `X-OpenPomodoro-Signature: sha256=<hex>`, the HMAC-SHA256 of the exact
+  body bytes using the secret as the key. Check it before trusting a request.
+- `timeout_s` and `enabled` work as for hooks. A network error or a 5xx answer is tried once more after two
+  seconds; nothing else is retried, and failures only appear in the server's output.
+- Addresses on this machine or your local network (`127.0.0.1`, `10.x`, `192.168.x`, `169.254.x`, unique-local
+  IPv6 and similar) are refused, including names that resolve to them, unless `allow_private_webhooks` is `true`.
+  Redirects are never followed.
+- The Admin screen lists the webhooks (never their secrets) and has a Test button for each.
