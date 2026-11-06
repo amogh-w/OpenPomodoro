@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { t, type MessageKey } from "../lib/i18n";
   import { accents, flavors, radii, setTheme, syncThemeButtons } from "../lib/theme";
+  import AccessSettings from "../lib/AccessSettings.svelte";
   import AccountSection from "../lib/AccountSection.svelte";
   import AlertSettings from "../lib/AlertSettings.svelte";
   import CategorySettings from "../lib/CategorySettings.svelte";
@@ -81,6 +82,8 @@
 <DataSection />
 
 <AccountSection />
+
+<AccessSettings />
 
 <ShortcutSettings />
 </div>

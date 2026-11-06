@@ -15,6 +15,8 @@ const messages: Record<string, MessageKey> = {
   bad_backup: "error.bad_backup",
   backup_too_large: "error.backup_too_large",
   payload_too_large: "error.payload_too_large",
+  too_many_tokens: "error.too_many_tokens",
+  name_required: "error.name_required",
 };
 
 /** A sentence a person can read for whatever went wrong. */

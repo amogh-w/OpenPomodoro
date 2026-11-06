@@ -84,7 +84,27 @@ async function soundFetch(method: "GET" | "PUT", slot: string, body?: Blob): Pro
   return res;
 }
 
+export interface TokenInfo {
+  id: string;
+  name: string;
+  created_at: number;
+  last_used: number | null;
+}
+
+export interface SignedInBrowser {
+  id: string;
+  created_at: number;
+  last_seen: number;
+  agent: string;
+  current: boolean;
+}
+
 export const api = {
+  listTokens: () => request<{ tokens: TokenInfo[] }>("GET", "/api/me/tokens"),
+  createToken: (name: string) => request<TokenInfo & { token: string }>("POST", "/api/me/tokens", { name }),
+  revokeToken: (id: string) => request<void>("DELETE", `/api/me/tokens/${id}`),
+  listSessions: () => request<{ sessions: SignedInBrowser[] }>("GET", "/api/me/sessions"),
+  revokeSession: (id: string) => request<void>("DELETE", `/api/me/sessions/${id}`),
   listSounds: () => request<{ sounds: SoundInfo[] }>("GET", "/api/sounds"),
   uploadSound: async (slot: string, file: Blob): Promise<SoundInfo> => (await soundFetch("PUT", slot, file)).json() as Promise<SoundInfo>,
   downloadSound: async (slot: string): Promise<ArrayBuffer> => (await soundFetch("GET", slot)).arrayBuffer(),
