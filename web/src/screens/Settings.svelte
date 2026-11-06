@@ -4,6 +4,7 @@
   import { accents, flavors, radii, readTheme, setTheme, syncThemeButtons } from "../lib/theme";
   import CustomThemeEditor from "../lib/CustomThemeEditor.svelte";
   import AlertSettings from "../lib/AlertSettings.svelte";
+  import DiagnosticsSection from "../lib/DiagnosticsSection.svelte";
   import CategorySettings from "../lib/CategorySettings.svelte";
   import ShortcutSettings from "../lib/ShortcutSettings.svelte";
   import SpecialBreakSettings from "../lib/SpecialBreakSettings.svelte";
@@ -81,4 +82,6 @@
 </section>
 
 <ShortcutSettings />
+
+<DiagnosticsSection />
 </div>

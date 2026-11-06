@@ -1,4 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
+
+const version = (JSON.parse(readFileSync("package.json", "utf8")) as { version: string }).version;
 import { createHash } from "node:crypto";
 import { defineConfig, type Plugin } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
@@ -26,6 +28,7 @@ function serviceWorker(): Plugin {
 
 // Static bundle only: no SSR, no meta-framework. /api and /ws go to the Rust server in dev.
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [svelte(), serviceWorker()],
   server: {
     proxy: {

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import HooksPanel from "../lib/HooksPanel.svelte";
+  import ServerLogPanel from "../lib/ServerLogPanel.svelte";
   import { errorMessage } from "../lib/errors";
   import { t } from "../lib/i18n";
   import { session } from "../lib/session.svelte";
@@ -190,3 +191,5 @@
 </form>
 
 <HooksPanel />
+
+<ServerLogPanel />

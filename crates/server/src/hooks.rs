@@ -262,7 +262,7 @@ impl HookRunner {
             })
             .is_err()
         {
-            eprintln!("hooks: queue full, dropped the {event} event");
+            crate::serverlog::record("hooks", format!("queue full, dropped the {event} event"));
         }
     }
 }
@@ -325,9 +325,9 @@ impl Worker {
                 tokio::spawn(async move {
                     match run_hook(&hook, event, &body).await {
                         Outcome::Exited(0) => {}
-                        other => eprintln!(
-                            "hooks: {} for {event} ended with {other:?}",
-                            hook.command[0]
+                        other => crate::serverlog::record(
+                            "hooks",
+                            format!("{} for {event} ended with {other:?}", hook.command[0]),
                         ),
                     }
                     drop(permit);
@@ -352,10 +352,14 @@ impl Worker {
                     .await;
                     match sent {
                         Ok(Ok(_)) => {}
-                        Ok(Err(failure)) => {
-                            eprintln!("webhooks: {target} for {event} failed: {failure:?}")
-                        }
-                        Err(e) => eprintln!("webhooks: {target} for {event} crashed: {e}"),
+                        Ok(Err(failure)) => crate::serverlog::record(
+                            "webhooks",
+                            format!("{target} for {event} failed: {failure:?}"),
+                        ),
+                        Err(e) => crate::serverlog::record(
+                            "webhooks",
+                            format!("{target} for {event} crashed: {e}"),
+                        ),
                     }
                     drop(permit);
                 });
@@ -698,6 +702,30 @@ mod tests {
                 .await
                 .status,
             axum::http::StatusCode::NOT_FOUND
+        );
+    }
+
+    #[tokio::test]
+    async fn only_the_admin_reads_the_server_log() {
+        let app = crate::test_util::TestApp::new();
+        let boss = signed_in(&app, "admin", None).await;
+        let bob = signed_in(&app, "bob", Some(&boss)).await;
+        crate::serverlog::record("test-route", "something to see");
+        assert_eq!(
+            app.get("/api/admin/log").cookie(&bob).send().await.status,
+            axum::http::StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            app.get("/api/admin/log").send().await.status,
+            axum::http::StatusCode::UNAUTHORIZED
+        );
+        let log = app.get("/api/admin/log").cookie(&boss).send().await.json();
+        assert!(
+            log["lines"]
+                .as_array()
+                .expect("lines")
+                .iter()
+                .any(|l| l["area"] == "test-route" && l["message"] == "something to see")
         );
     }
 }

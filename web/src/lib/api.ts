@@ -114,6 +114,7 @@ export interface WebhookInfo {
 }
 
 export const api = {
+  adminLog: () => request<{ lines: { at: number; area: string; message: string }[] }>("GET", "/api/admin/log"),
   adminTestWebhook: (index: number) =>
     request<{ event: string; result: "delivered" | "status" | "failed"; detail: unknown }>("POST", `/api/admin/webhooks/${index}/test`),
   adminHooks: () => request<{ hooks: HookInfo[]; webhooks: WebhookInfo[] }>("GET", "/api/admin/hooks"),

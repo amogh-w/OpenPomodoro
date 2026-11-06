@@ -14,6 +14,7 @@ import { kvDelete, kvGet, kvSet, outboxAdd, outboxClear, outboxList, outboxStore
 import { flush } from "./outbox";
 import { plan } from "./planner";
 import { type TimerView, rulesOf, viewOf } from "./timerView";
+import { note } from "./diag.svelte";
 import type { Category, CommandInput, EventInput, ServerState, Settings, Task, TimerData } from "./types";
 import { leader } from "../platform/leader.svelte";
 
@@ -128,7 +129,10 @@ export const pendingCount = (): number => app.pending;
 // ---- talking to the server ----
 
 function applyServerState(state: ServerState, sentAt: number, receivedAt: number): void {
+  const before = clock.offsetMs;
   clock.sync(state.server_time_ms, sentAt, receivedAt);
+  const moved = clock.offsetMs - before;
+  if (Math.abs(moved) > 5000) note("clock", `offset to the server moved by ${Math.round(moved / 1000)} s`);
   setFromState(state);
   app.online = true;
   persistState();
@@ -140,10 +144,12 @@ const unreachable = (error: ApiError): boolean => error.isNetwork || error.statu
 function handleFailure(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false;
   if (error.status === 401) {
+    note("api", "signed out by the server (401)");
     onUnauthorized();
     return true;
   }
   if (unreachable(error)) {
+    if (app.online) note("api", `server unreachable (${error.status || "network"})`);
     app.online = false;
     return true;
   }
@@ -160,7 +166,11 @@ export async function flushOutbox(): Promise<boolean> {
   try {
     const result = await flush(userId, outboxStore, api);
     app.pending = (await outboxList(userId)).length;
-    for (const d of result.dropped) console.warn("the server refused something done offline:", d.code, d.item);
+    for (const d of result.dropped) {
+      console.warn("the server refused something done offline:", d.code, d.item);
+      note("sync", `server refused a queued item: ${d.code}`);
+    }
+    if (result.sent > 0) note("sync", `sent ${result.sent} queued item(s)`);
     if (result.dropped.length > 0) app.notice = t("common.dropped");
     if (result.unauthorized) onUnauthorized();
     else if (!result.complete) app.online = false;
@@ -196,7 +206,11 @@ export type CommandOutcome =
 async function queueCommand(id: string, input: CommandInput, at: number): Promise<CommandOutcome> {
   if (!userId || !app.timer || !app.settings) return { ok: false, code: "offline" };
   const planned = plan(app.timer, input, at, app.settings);
-  if (!planned.ok) return { ok: false, code: planned.error.replace(":", "_") };
+  if (!planned.ok) {
+    note("timer", `${input.name} refused offline: ${planned.error}`);
+    return { ok: false, code: planned.error.replace(":", "_") };
+  }
+  note("timer", `${input.name} queued (offline)`);
 
   app.timer = planned.next;
   await outboxAdd({ userId, kind: "command", id, input: { ...input, at }, createdAt: Date.now() });
@@ -228,6 +242,7 @@ export async function sendCommand(input: CommandInput): Promise<CommandOutcome> 
       return queueCommand(id, input, at);
     }
     handleFailure(error);
+    note("timer", `${input.name} refused: ${error.code}`);
     return { ok: false, code: error.code };
   }
 }
@@ -246,6 +261,7 @@ function connect(): void {
   const ws = new WebSocket(`${scheme}://${location.host}/api/ws`);
   socket = ws;
   ws.onopen = () => {
+    note("live", attempt > 0 ? `reconnected after ${attempt} attempt(s)` : "connected");
     attempt = 0;
     // Anything that changed while we were not listening is picked up by this fetch.
     void refresh().catch(() => {});
@@ -260,6 +276,7 @@ function connect(): void {
   };
   ws.onclose = () => {
     if (socket === ws) socket = null;
+    if (running) note("live", "connection closed, retrying");
     if (running) retry = setTimeout(connect, reconnectDelay(attempt++));
   };
 }

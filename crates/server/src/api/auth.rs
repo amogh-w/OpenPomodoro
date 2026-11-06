@@ -33,6 +33,7 @@ pub fn router() -> Router<Shared> {
             axum::routing::delete(delete_session),
         )
         .route("/api/admin/backup", get(admin_backup))
+        .route("/api/admin/log", get(admin_log))
         .route("/api/admin/hooks", get(list_hooks))
         .route("/api/admin/hooks/{index}/test", post(test_hook))
         .route("/api/admin/webhooks/{index}/test", post(test_webhook))
@@ -276,6 +277,11 @@ async fn delete_session(
     } else {
         Err(ApiError::not_found())
     }
+}
+
+/// What the server noted lately (failed hooks and webhooks, refused timer commands), oldest first.
+async fn admin_log(_admin: AdminUser) -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "lines": crate::serverlog::lines() }))
 }
 
 /// The configured hooks, for the admin to see (the file is the only place they are changed).

@@ -118,9 +118,14 @@ pub(super) fn run_command(state: &Shared, user: &str, cmd: &Command) -> Result<V
     let (status, timer) = {
         let mut db = state.db();
         let mut ids = state.ids();
-        match timer_service::apply_command(&mut db, user, cmd, state.now_ms(), &mut ids)
-            .map_err(command_error)?
-        {
+        match timer_service::apply_command(&mut db, user, cmd, state.now_ms(), &mut ids).map_err(
+            |e| {
+                if let CommandError::Rejected(reason) = &e {
+                    crate::serverlog::record("timer", format!("{} refused: {reason}", cmd.name));
+                }
+                command_error(e)
+            },
+        )? {
             CommandResult::Applied(timer) => {
                 state.hub.publish(user, CHANGED);
                 ("applied", timer)
