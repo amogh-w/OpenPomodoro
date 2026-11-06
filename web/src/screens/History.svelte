@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import AddSession from "../lib/AddSession.svelte";
   import DayTimeline from "../lib/DayTimeline.svelte";
+  import Heatmap from "../lib/Heatmap.svelte";
   import Insights from "../lib/Insights.svelte";
   import SessionEditor from "../lib/SessionEditor.svelte";
   import { ApiError, api } from "../lib/api";
@@ -130,6 +131,8 @@
     <svg class="size-5"><use href="/icons.svg#chevron-right" /></svg>
   </button>
 </div>
+
+<div class="mt-3"><Heatmap {totals} {todayKey} /></div>
 
 <div class="mt-3 grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
   <Insights data={insights} categories={app.categories} {sessions} />
