@@ -14,6 +14,7 @@
   import { formatElapsed, formatRemaining, formatSpan } from "../lib/format";
   import { t } from "../lib/i18n";
   import { parseIntention } from "../lib/intention";
+  import { planPreview } from "../lib/planPreview.svelte";
   import { recentIntentions } from "../lib/recent";
   import { actionFor } from "../lib/shortcuts";
   import { recent, refreshRecent } from "../lib/recentStore.svelte";
@@ -84,6 +85,14 @@
     return `${hhmm(timer.start)} → ${hhmm(end)}`;
   });
   const categoryOf = (id: string | null | undefined) => app.categories.find((c) => c.id === id);
+
+  // Tell the day view beside the timer what is about to start, so it can show where it would land.
+  $effect(() => {
+    planPreview.plannedMs = view?.phase === "idle" && !isBreak ? plannedMs : null;
+    return () => {
+      planPreview.plannedMs = null;
+    };
+  });
 
   let busy = $state(false);
   let problem = $state<string | null>(null);

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { app, tick } from "./appState.svelte";
   import { completion } from "./completion";
-  import DayTimeline from "./DayTimeline.svelte";
+  import AddSession from "./AddSession.svelte";
+  import DayColumn from "./DayColumn.svelte";
   import { dayStartMs, groupByDay, localDayKey, moodTally } from "./days";
   import { formatSpan } from "./format";
   import { t, tn } from "./i18n";
-  import { recent } from "./recentStore.svelte";
+  import { planPreview } from "./planPreview.svelte";
+  import { recent, refreshRecent } from "./recentStore.svelte";
   import { addDays, weekStart } from "./stats";
   import type { SessionRecord } from "./types";
 
@@ -19,7 +21,9 @@
   const focused = (key: string): boolean => (groups.find((g) => g.day === key)?.focusCount ?? 0) > 0;
   const tally = $derived(moodTally(group?.sessions ?? []));
   const sessions = $derived((group?.sessions ?? []).filter((s) => s.kind === "focus").toReversed());
-  const onCurrentWeek = $derived(week.includes(todayKey));
+  const onToday = $derived(day === todayKey);
+  const hoursOf = (key: string): string => ((groups.find((g) => g.day === key)?.focusMs ?? 0) / 3_600_000).toFixed(2);
+  let add: AddSession | undefined = $state();
 
   const label = (key: string, opts: Intl.DateTimeFormatOptions): string => new Date(dayStartMs(key)).toLocaleDateString(undefined, opts);
   const time = (ms: number): string => new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -32,13 +36,15 @@
   };
 </script>
 
-<section class="card grid content-start gap-3 p-4" aria-labelledby="today-title">
+<section class="card relative grid content-start gap-3 p-4" aria-labelledby="today-title">
   <div class="flex items-center justify-between gap-2">
-    <button class="btn btn-gray btn-sm size-9 !px-0" aria-label={t("today.prevWeek")} onclick={() => shift(-7)}>
+    <button class="btn btn-gray btn-sm size-9 !px-0" aria-label={t("today.prevDay")} onclick={() => shift(-1)}>
       <svg class="size-4"><use href="/icons.svg#chevron-left" /></svg>
     </button>
-    <h2 id="today-title" class="t-headline">{day === todayKey ? t("today.title") : label(day, { weekday: "long", day: "numeric", month: "short" })}</h2>
-    <button class="btn btn-gray btn-sm size-9 !px-0" aria-label={t("today.nextWeek")} disabled={onCurrentWeek} onclick={() => shift(7)}>
+    <button class="btn btn-gray btn-sm min-w-0 flex-1" aria-label={t("today.backToToday")} disabled={onToday} onclick={() => (picked = null)}>
+      <span id="today-title" class="truncate">{onToday ? t("today.title") : label(day, { weekday: "long", day: "numeric", month: "short" })}</span>
+    </button>
+    <button class="btn btn-gray btn-sm size-9 !px-0" aria-label={t("today.nextDay")} disabled={onToday} onclick={() => shift(1)}>
       <svg class="size-4"><use href="/icons.svg#chevron-right" /></svg>
     </button>
   </div>
@@ -46,7 +52,7 @@
   <div class="grid grid-cols-7 gap-1" role="group" aria-label={t("today.week")}>
     {#each week as key (key)}
       <button
-        class="grid min-h-12 justify-items-center rounded-lg py-1 text-subtext1 hover:bg-surface0 aria-pressed:bg-accent/15 aria-pressed:text-accent {key > todayKey ? 'opacity-50' : ''}"
+        class="grid min-h-14 justify-items-center rounded-lg bg-surface0/60 py-1 text-subtext1 hover:bg-surface0 aria-pressed:bg-accent/15 aria-pressed:text-accent {key > todayKey ? 'opacity-50' : ''}"
         aria-pressed={key === day}
         aria-label={label(key, { weekday: "long", day: "numeric", month: "long" })}
         disabled={key > todayKey}
@@ -54,20 +60,25 @@
       >
         <span class="text-[11px] uppercase">{label(key, { weekday: "short" })}</span>
         <span class="font-semibold tabular-nums">{Number(key.slice(8))}</span>
-        <span class="size-1 rounded-full {focused(key) ? 'bg-accent' : ''}" aria-hidden="true"></span>
+        <span class="size-1 rounded-full {key === todayKey ? 'bg-accent' : ''}" aria-hidden="true"></span>
+        <span class="text-[10px] tabular-nums opacity-80">{hoursOf(key)}</span>
       </button>
     {/each}
   </div>
 
-  <div>
-    <div class="t-title1 tabular-nums">{formatSpan(group?.focusMs ?? 0)}</div>
-    <div class="t-foot text-subtext1">
-      {tn("history.sessions", group?.focusCount ?? 0)}{#if tally.focused + tally.neutral + tally.distracted > 0}
-        · {tally.focused} {t("mood.focused").toLowerCase()} · {tally.neutral} {t("mood.neutral").toLowerCase()} · {tally.distracted} {t("mood.distracted").toLowerCase()}{/if}
-    </div>
-  </div>
+  <p class="t-foot text-center font-semibold uppercase tracking-wide text-subtext1">
+    <span aria-label={t("mood.focused")}>{tally.focused} ↑</span> · <span aria-label={t("mood.neutral")}>{tally.neutral} →</span> ·
+    <span aria-label={t("mood.distracted")}>{tally.distracted} ↓</span>
+    <span class="ml-2">{t("today.focusTotal", { time: formatSpan(group?.focusMs ?? 0) })}</span>
+  </p>
 
-  <DayTimeline sessions={group?.sessions ?? []} dayStart={dayStartMs(day)} categories={app.categories} now={day === todayKey ? tick.now : null} />
+  <DayColumn
+    sessions={group?.sessions ?? []}
+    dayStart={dayStartMs(day)}
+    categories={app.categories}
+    now={onToday ? tick.now : null}
+    plannedMs={onToday ? planPreview.plannedMs : null}
+  />
 
   {#if sessions.length > 0}
     <ul class="grid gap-1 border-t border-surface0 pt-3">
@@ -87,4 +98,9 @@
   {:else}
     <p class="t-foot border-t border-surface0 pt-3 text-subtext1">{t(day === todayKey ? "today.empty" : "today.emptyDay")}</p>
   {/if}
+  <button class="btn btn-filled absolute bottom-4 right-4 size-12 !px-0 shadow-lg" aria-label={t("history.add")} onclick={() => add?.show()}>
+    <svg class="size-6"><use href="/icons.svg#plus" /></svg>
+  </button>
 </section>
+
+<AddSession bind:this={add} onsaved={() => void refreshRecent()} />
