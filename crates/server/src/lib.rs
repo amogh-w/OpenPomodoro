@@ -33,6 +33,7 @@ pub mod timer_service;
 pub mod totp;
 pub mod validate;
 pub mod webhooks;
+pub mod webpush;
 
 use state::Shared;
 
