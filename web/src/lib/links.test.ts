@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changesTimer, commandFor, hashFromProtocolLink, parseLink } from "./links";
+import { changesTimer, commandFor, hashFromProtocolLink, parseLink, safeCallbackUrl } from "./links";
 import type { TimerView } from "./timerView";
 import type { Category } from "./types";
 
@@ -108,5 +108,27 @@ describe("commandFor", () => {
 
   it("cannot start while a session is already running", () => {
     expect(commandFor({ kind: "start", intention: "x", durationMs: null, category: null, notes: null }, view({ init_focus: false }), cats)).toEqual({ unavailable: true });
+  });
+});
+
+describe("callbacks", () => {
+  it("accepts plain web addresses", () => {
+    expect(safeCallbackUrl("https://example.com/done?x=1")).toBe("https://example.com/done?x=1");
+    expect(safeCallbackUrl("http://localhost:8080/ok")).toBe("http://localhost:8080/ok");
+  });
+
+  it("drops anything that is not a plain http or https address", () => {
+    for (const bad of [null, "", "javascript:alert(1)", "data:text/html,x", "ftp://example.com", "/relative", "//evil.example", "https://user:pw@example.com", "https://", "x".repeat(600)]) {
+      expect(safeCallbackUrl(bad), String(bad)).toBeNull();
+    }
+  });
+
+  it("are read from acting links and left out when absent or unusable", () => {
+    expect(parseLink("#/finish?x-success=https%3A%2F%2Fa.example%2Fok&x-error=https%3A%2F%2Fa.example%2Fno")).toEqual({
+      kind: "finish",
+      callbacks: { success: "https://a.example/ok", error: "https://a.example/no" },
+    });
+    expect(parseLink("#/pause?x-success=javascript%3Aalert(1)")).toEqual({ kind: "pause" });
+    expect(parseLink("#/analytics?x-success=https%3A%2F%2Fa.example")).toEqual({ kind: "navigate", route: "history" });
   });
 });

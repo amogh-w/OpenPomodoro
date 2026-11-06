@@ -340,6 +340,7 @@ const es: Record<keyof typeof en, string> = {
   "links.ask.finish": "Un enlace quiere terminar tu sesión de concentración.",
   "links.always": "Permitir siempre que los enlaces controlen el temporizador",
   "links.allow": "Permitir",
+  "links.returnsTo": "Después te lleva a {host}.",
   "links.unavailable": "El enlace no pudo hacer eso ahora mismo.",
   "links.failed": "La acción del enlace no se llevó a cabo.",
   "settings.reduceMotion": "Reducir el movimiento y ahorrar energía",

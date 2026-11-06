@@ -6,13 +6,19 @@ import type { Route } from "./router";
 import type { TimerView } from "./timerView";
 import type { Category, CommandInput } from "./types";
 
+/** Where to go afterwards: `x-success` when the action worked, `x-error` when it did not. Only on links that act. */
+export interface Callbacks {
+  success: string | null;
+  error: string | null;
+}
+
 export type LinkAction =
   | { kind: "navigate"; route: Route }
-  | { kind: "start"; intention: string | null; durationMs: number | null; category: string | null; notes: string | null }
-  | { kind: "pause" }
-  | { kind: "resume" }
-  | { kind: "break" }
-  | { kind: "finish" };
+  | { kind: "start"; intention: string | null; durationMs: number | null; category: string | null; notes: string | null; callbacks?: Callbacks }
+  | { kind: "pause"; callbacks?: Callbacks }
+  | { kind: "resume"; callbacks?: Callbacks }
+  | { kind: "break"; callbacks?: Callbacks }
+  | { kind: "finish"; callbacks?: Callbacks };
 
 const SCHEME = /^web\+openpomodoro:(?:\/\/)?/i;
 const MAX_INTENTION = 200;
@@ -32,6 +38,31 @@ function minutes(value: string | null): number | null {
   return n >= 1 && n <= 720 ? n * 60_000 : null;
 }
 
+const MAX_CALLBACK = 500;
+
+/**
+ * A callback address we are willing to go to: a plain http or https address with a host and no user name or password.
+ * Anything else (other schemes such as `javascript:`, relative paths, very long text) is dropped. Returns the address
+ * in its normal written form.
+ */
+export function safeCallbackUrl(value: string | null): string | null {
+  if (value === null || value.length > MAX_CALLBACK) return null;
+  try {
+    const url = new URL(value);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.host === "" || url.username !== "" || url.password !== "") return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+/** The `x-success` and `x-error` addresses of a link, or nothing when it has neither. */
+function callbacksOf(params: URLSearchParams): { callbacks: Callbacks } | Record<string, never> {
+  const success = safeCallbackUrl(params.get("x-success"));
+  const error = safeCallbackUrl(params.get("x-error"));
+  return success !== null || error !== null ? { callbacks: { success, error } } : {};
+}
+
 /** Read a hash (`#/start?...`) or a protocol link into an action. Anything unknown is null, and ignored. */
 export function parseLink(raw: string): LinkAction | null {
   const body = raw.trim().replace(/^#/, "").replace(SCHEME, "").replace(/^\/+/, "");
@@ -47,15 +78,16 @@ export function parseLink(raw: string): LinkAction | null {
         durationMs: minutes(params.get("duration")),
         category: text(params.get("category"), MAX_CATEGORY),
         notes: text(params.get("notes"), MAX_NOTES),
+        ...callbacksOf(params),
       };
     case "pause":
-      return { kind: "pause" };
+      return { kind: "pause", ...callbacksOf(params) };
     case "resume":
-      return { kind: "resume" };
+      return { kind: "resume", ...callbacksOf(params) };
     case "break":
-      return { kind: "break" };
+      return { kind: "break", ...callbacksOf(params) };
     case "finish":
-      return { kind: "finish" };
+      return { kind: "finish", ...callbacksOf(params) };
     case "analytics":
       return { kind: "navigate", route: "history" };
     default:

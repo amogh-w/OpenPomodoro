@@ -37,19 +37,39 @@
     }
   }
 
-  async function carryOut(action: LinkAction): Promise<void> {
+  /** Go to the link's own callback address afterwards (only ever after the person saw and agreed to it). */
+  function callBack(action: LinkAction, honour: boolean, ok: boolean, code?: string): void {
+    if (!honour || action.kind === "navigate" || !action.callbacks) return;
+    const target = ok ? action.callbacks.success : action.callbacks.error;
+    if (target === null) return;
+    const url = new URL(target);
+    if (!ok && code) url.searchParams.set("error", code);
+    location.assign(url.href);
+  }
+
+  /** Where the link says it will return to, for the confirmation. */
+  function returnHost(action: LinkAction): string | null {
+    if (action.kind === "navigate" || !action.callbacks) return null;
+    const target = action.callbacks.success ?? action.callbacks.error;
+    return target === null ? null : new URL(target).host;
+  }
+
+  async function carryOut(action: LinkAction, honourCallbacks = false): Promise<void> {
     links.pending = null;
     const view = currentView();
     const planned = view ? commandFor(action, view, app.categories) : { unavailable: true as const };
     if ("unavailable" in planned) {
       app.notice = t("links.unavailable");
+      callBack(action, honourCallbacks, false, "unavailable");
       return;
     }
     const result = await sendCommand(planned.command);
     if (!result.ok) {
       app.notice = t("links.failed");
+      callBack(action, honourCallbacks, false, result.code);
       return;
     }
+    callBack(action, honourCallbacks, true);
     // Notes from a start link become the session's draft notes.
     const key = app.timer?.focus_started_at;
     if (planned.notes !== null && key != null) {
@@ -68,7 +88,7 @@
   function allow(): void {
     if (always) setAllowLinks(true);
     dialog?.close();
-    if (pending) void carryOut(pending);
+    if (pending) void carryOut(pending, true);
   }
 
   function refuse(): void {
@@ -89,6 +109,9 @@
   <div class="grid gap-3 p-5">
     <h2 id="link-title" class="t-title3">{t("links.title")}</h2>
     <p class="text-subtext1">{pending ? describe(pending) : ""}</p>
+    {#if pending && returnHost(pending)}
+      <p class="t-foot text-subtext1">{t("links.returnsTo", { host: returnHost(pending) ?? "" })}</p>
+    {/if}
     <label class="flex min-h-11 items-center gap-3">
       <input class="check" type="checkbox" bind:checked={always} />
       <span class="t-foot">{t("links.always")}</span>

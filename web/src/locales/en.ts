@@ -338,6 +338,7 @@ const en = {
   "links.ask.finish": "A link wants to finish your focus session.",
   "links.always": "Always allow links to control the timer",
   "links.allow": "Allow",
+  "links.returnsTo": "Afterwards it takes you to {host}.",
   "links.unavailable": "The link could not do that right now.",
   "links.failed": "The link's action did not go through.",
   "settings.reduceMotion": "Reduce motion and save power",

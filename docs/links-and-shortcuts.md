@@ -20,6 +20,15 @@ link wants to do and you choose Allow or Cancel. Turn on "Let links control the 
 "Always allow" in the dialog) to skip the question. The setting is per device. A link that is not possible in the
 current state (pausing when nothing runs, starting while a session is running) does nothing and says so.
 
+### Callbacks
+
+An acting link (`#/start`, `#/pause`, `#/resume`, `#/break`, `#/finish`) may carry `x-success` and `x-error`, plain
+`http://` or `https://` addresses (no user name or password; anything else is ignored). Once the action has been
+tried, the app goes to `x-success` if it worked, or to `x-error` with `error=<code>` added if it did not. This is
+for other tools that open a link and want to be sent back. Because it sends you to another site, a callback is only
+followed after you have seen the confirmation, which names the host it will take you to. With "Let links control
+the timer" on, links run without asking and their callbacks are ignored.
+
 Unknown links, and values out of range, are ignored rather than guessed at.
 
 ## Keyboard shortcuts (timer screen)
