@@ -24,7 +24,7 @@ pub fn router() -> Router<Shared> {
 /// The clock, the timer, the settings, the categories and the tasks.
 async fn get_state(
     State(state): State<Shared>,
-    TokenUser(user): TokenUser,
+    TokenUser(user, _): TokenUser,
 ) -> Result<Json<Value>, ApiError> {
     let timer = timer_service::load_state(&state.db(), &user.id)?;
     Ok(Json(state_json(&state, &user.id, &timer)?))
@@ -33,7 +33,7 @@ async fn get_state(
 /// A timer command, exactly as the app sends it (`id` makes a retry harmless).
 async fn post_command(
     State(state): State<Shared>,
-    TokenUser(user): TokenUser,
+    TokenUser(user, _): TokenUser,
     ApiJson(cmd): ApiJson<Command>,
 ) -> Result<Json<Value>, ApiError> {
     run_command(&state, &user.id, &cmd).map(Json)
@@ -42,7 +42,7 @@ async fn post_command(
 /// Sessions that started between `from` (included) and `to` (excluded), Unix milliseconds, up to a year.
 async fn get_sessions(
     State(state): State<Shared>,
-    TokenUser(user): TokenUser,
+    TokenUser(user, _): TokenUser,
     Query(q): Query<HistoryQuery>,
 ) -> Result<Json<Value>, ApiError> {
     history(&state, &user.id, &q).map(Json)

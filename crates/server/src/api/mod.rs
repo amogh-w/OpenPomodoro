@@ -84,7 +84,7 @@ impl FromRequestParts<Shared> for AuthUser {
 
 /// The user behind a personal API token (`Authorization: Bearer opt_...`). Cookies are never accepted here, so the
 /// `/api/v1` routes cannot be reached by a page riding on someone's signed-in browser.
-pub struct TokenUser(pub User);
+pub struct TokenUser(pub User, pub String);
 
 impl FromRequestParts<Shared> for TokenUser {
     type Rejection = ApiError;
@@ -104,7 +104,7 @@ impl FromRequestParts<Shared> for TokenUser {
             .accounts
             .user_for_api_token(&state.db(), token, state.now_ms())?
             .ok_or_else(ApiError::unauthorized)?;
-        Ok(TokenUser(user))
+        Ok(TokenUser(user, token.to_string()))
     }
 }
 

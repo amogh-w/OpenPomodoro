@@ -13,7 +13,8 @@ use axum::{
 };
 use serde_json::json;
 
-use super::AuthUser;
+use super::data::state_json;
+use super::{AuthUser, TokenUser};
 use crate::hub::CHANGED;
 use crate::state::Shared;
 
@@ -26,12 +27,83 @@ const CHECK_EVERY: Duration = if cfg!(test) {
 };
 
 pub fn router() -> Router<Shared> {
-    Router::new().route("/api/ws", get(upgrade))
+    Router::new()
+        .route("/api/ws", get(upgrade))
+        .route("/api/v1/stream", get(upgrade_stream))
 }
 
 /// The browser's `Origin` was already checked by the host/origin guard, and the cookie by [`AuthUser`].
 async fn upgrade(State(state): State<Shared>, auth: AuthUser, ws: WebSocketUpgrade) -> Response {
     ws.on_upgrade(move |socket| run(socket, state, auth))
+}
+
+/// `GET /api/v1/stream`: the same push channel for scripts and overlays, authenticated by a personal token. Instead
+/// of "something changed" it sends the whole current state (`{"type":"state","state":{...}}`) on connect and after
+/// every change, so a listener never needs a second request.
+async fn upgrade_stream(
+    State(state): State<Shared>,
+    auth: TokenUser,
+    ws: WebSocketUpgrade,
+) -> Response {
+    ws.on_upgrade(move |socket| run_stream(socket, state, auth))
+}
+
+async fn state_message(state: &Shared, user: &str) -> Option<String> {
+    let timer = crate::timer_service::load_state(&state.db(), user).ok()?;
+    let body = state_json(state, user, &timer).ok()?;
+    Some(json!({ "type": "state", "state": body }).to_string())
+}
+
+async fn run_stream(mut socket: WebSocket, state: Shared, auth: TokenUser) {
+    let TokenUser(user, token) = auth;
+    let Some(mut changes) = state.hub.subscribe(&user.id) else {
+        let _ = socket
+            .send(Message::Close(Some(axum::extract::ws::CloseFrame {
+                code: 1013,
+                reason: "busy".into(),
+            })))
+            .await;
+        return;
+    };
+    let _slot = Slot {
+        state: state.clone(),
+        user: user.id.clone(),
+    };
+
+    let Some(first) = state_message(&state, &user.id).await else {
+        return;
+    };
+    if socket.send(Message::Text(first.into())).await.is_err() {
+        return;
+    }
+
+    let mut check = tokio::time::interval(CHECK_EVERY);
+    check.tick().await;
+    loop {
+        tokio::select! {
+            _ = changes.recv() => {
+                // Whether one change or several were missed, the newest state is what matters.
+                let Some(text) = state_message(&state, &user.id).await else { break };
+                if socket.send(Message::Text(text.into())).await.is_err() {
+                    break;
+                }
+            }
+            incoming = socket.recv() => match incoming {
+                None | Some(Err(_) | Ok(Message::Close(_))) => break,
+                Some(Ok(_)) => {}
+            },
+            _ = check.tick() => {
+                let valid = state.accounts.user_for_api_token(&state.db(), &token, state.now_ms());
+                if !matches!(valid, Ok(Some(_))) {
+                    let _ = socket.send(Message::Close(None)).await;
+                    break;
+                }
+                if socket.send(Message::Ping(Vec::new().into())).await.is_err() {
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /// Releases the user's connection slot however the socket ends.
@@ -207,6 +279,67 @@ mod tests {
         })
         .await
         .is_ok()
+    }
+
+    async fn connect_stream(addr: SocketAddr, token: &str) -> Result<Client, WsError> {
+        let mut request = format!("ws://{addr}/api/v1/stream")
+            .into_client_request()
+            .expect("request");
+        request.headers_mut().insert(
+            "authorization",
+            format!("Bearer {token}").parse().expect("header"),
+        );
+        tokio_tungstenite::connect_async(request)
+            .await
+            .map(|(socket, _)| socket)
+    }
+
+    #[tokio::test]
+    async fn the_token_stream_sends_the_whole_state_on_connect_and_after_each_change_and_ends_on_revoke()
+     {
+        let app = TestApp::new();
+        let cookie = setup(&app).await;
+        let made = app
+            .post("/api/me/tokens", Some(json!({"name": "overlay"})))
+            .cookie(&cookie)
+            .send()
+            .await
+            .json();
+        let token = made["token"].as_str().expect("token").to_string();
+        let id = made["id"].as_str().expect("id").to_string();
+        let addr = serve(&app).await;
+
+        assert!(connect_stream(addr, "opt_wrong").await.is_err());
+        assert!(
+            connect(addr, Some(&cookie), None).await.is_ok(),
+            "the cookie socket still works"
+        );
+
+        let mut socket = connect_stream(addr, &token).await.expect("connect");
+        let first = next_json(&mut socket).await;
+        assert_eq!(first["type"], "state");
+        assert_eq!(first["state"]["timer"]["state"], "idle");
+
+        let cmd = json!({"id": op_core::IdGen::new("t").next(app.state.now_ms()), "name": "init_focus", "intention": "watch me"});
+        let res = app
+            .post("/api/commands", Some(cmd))
+            .cookie(&cookie)
+            .send()
+            .await;
+        assert!(res.status.is_success(), "{}", res.text);
+        let pushed = next_json(&mut socket).await;
+        assert_eq!(pushed["state"]["timer"]["intention"], "watch me");
+
+        let del = app
+            .delete(&format!("/api/me/tokens/{id}"), None)
+            .cookie(&cookie)
+            .send()
+            .await;
+        assert!(del.status.is_success());
+        assert!(
+            ended(&mut socket).await,
+            "the stream ends when its token is revoked"
+        );
     }
 
     async fn setup(app: &TestApp) -> String {
