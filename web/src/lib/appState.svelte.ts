@@ -14,7 +14,7 @@ import { kvDelete, kvGet, kvSet, outboxAdd, outboxClear, outboxList, outboxStore
 import { flush } from "./outbox";
 import { plan } from "./planner";
 import { type TimerView, rulesOf, viewOf } from "./timerView";
-import type { Category, CommandInput, EventInput, ServerState, Settings, TimerData } from "./types";
+import type { Category, CommandInput, EventInput, ServerState, Settings, Task, TimerData } from "./types";
 import { leader } from "../platform/leader.svelte";
 
 export const app = $state<{
@@ -23,11 +23,12 @@ export const app = $state<{
   timer: TimerData | null;
   settings: Settings | null;
   categories: Category[];
+  tasks: Task[];
   /** Things done offline that have not reached the server yet. */
   pending: number;
   /** A message to show once, such as "a change made offline could not be applied". */
   notice: string | null;
-}>({ ready: false, online: true, timer: null, settings: null, categories: [], pending: 0, notice: null });
+}>({ ready: false, online: true, timer: null, settings: null, categories: [], tasks: [], pending: 0, notice: null });
 
 const clock = new ServerClock();
 
@@ -88,6 +89,7 @@ function setFromState(state: ServerState): void {
   app.timer = state.timer;
   app.settings = state.settings;
   app.categories = state.categories;
+  app.tasks = state.tasks ?? [];
   app.ready = true;
 }
 
@@ -100,6 +102,7 @@ function persistState(): void {
     timer: $state.snapshot(app.timer),
     settings: $state.snapshot(app.settings),
     categories: $state.snapshot(app.categories),
+    tasks: $state.snapshot(app.tasks),
     offset_ms: clock.offsetMs,
   };
   void kvSet(stateKey(userId), cached).catch((error: unknown) => console.warn("could not save state locally", error));
@@ -316,6 +319,7 @@ export function stop(): void {
   app.timer = null;
   app.settings = null;
   app.categories = [];
+  app.tasks = [];
   app.pending = 0;
   app.notice = null;
 }
@@ -410,6 +414,64 @@ export async function removeCategory(id: string): Promise<boolean> {
     },
     () => {
       app.categories = before;
+    },
+  );
+}
+
+// ---- tasks ----
+
+export async function addTask(title: string, category: string | null = null): Promise<boolean> {
+  const id = nextId();
+  const before = app.tasks;
+  const row: Task = { id, title, done: false, done_at: null, category };
+  return commitEvents(
+    [{ id, entity: "task", op: "add", key: id, payload: { title, done: false, category } }],
+    () => {
+      app.tasks = [...before, row];
+    },
+    () => {
+      app.tasks = before;
+    },
+  );
+}
+
+export async function updateTask(id: string, change: { title?: string; category?: string | null }): Promise<boolean> {
+  const before = app.tasks;
+  return commitEvents(
+    [{ id: nextId(), entity: "task", op: "edit", key: id, payload: change }],
+    () => {
+      app.tasks = before.map((x) => (x.id === id ? { ...x, ...change } : x));
+    },
+    () => {
+      app.tasks = before;
+    },
+  );
+}
+
+/** Tick a task off (or put it back). The time it was ticked off is kept, so the list can show recent wins. */
+export async function setTaskDone(id: string, done: boolean): Promise<boolean> {
+  const before = app.tasks;
+  const done_at = done ? Date.now() : null;
+  return commitEvents(
+    [{ id: nextId(), entity: "task", op: "edit", key: id, payload: { done, done_at } }],
+    () => {
+      app.tasks = before.map((x) => (x.id === id ? { ...x, done, done_at } : x));
+    },
+    () => {
+      app.tasks = before;
+    },
+  );
+}
+
+export async function removeTask(id: string): Promise<boolean> {
+  const before = app.tasks;
+  return commitEvents(
+    [{ id: nextId(), entity: "task", op: "delete", key: id }],
+    () => {
+      app.tasks = before.filter((x) => x.id !== id);
+    },
+    () => {
+      app.tasks = before;
     },
   );
 }

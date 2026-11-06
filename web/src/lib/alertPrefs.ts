@@ -12,6 +12,11 @@ export interface AlertPrefs {
   warnMin: number;
   /** Minutes between reminders while a phase is in overtime; 0 is off. */
   reminderMin: number;
+  /** Minutes between soft presence sounds while focusing; 0 is off. */
+  nudgeMin: number;
+  /** A faint tick every second while a focus session / a break counts down. */
+  tickFocus: boolean;
+  tickBreak: boolean;
   quietEnabled: boolean;
   /** "HH:MM", local time. Quiet hours may cross midnight. */
   quietStart: string;
@@ -30,6 +35,9 @@ export const defaultAlertPrefs: AlertPrefs = {
   notify: false,
   warnMin: 1,
   reminderMin: 5,
+  nudgeMin: 0,
+  tickFocus: false,
+  tickBreak: false,
   quietEnabled: false,
   quietStart: "22:00",
   quietEnd: "07:00",
@@ -58,6 +66,9 @@ export function parseAlertPrefs(raw: unknown): AlertPrefs {
     notify: flag(o.notify, d.notify),
     warnMin: num(o.warnMin, 0, 30, d.warnMin),
     reminderMin: num(o.reminderMin, 0, 60, d.reminderMin),
+    nudgeMin: num(o.nudgeMin, 0, 60, d.nudgeMin),
+    tickFocus: flag(o.tickFocus, d.tickFocus),
+    tickBreak: flag(o.tickBreak, d.tickBreak),
     quietEnabled: flag(o.quietEnabled, d.quietEnabled),
     quietStart: time(o.quietStart, d.quietStart),
     quietEnd: time(o.quietEnd, d.quietEnd),

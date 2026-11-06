@@ -85,6 +85,15 @@
     {/each}
 
     <label class="flex min-h-11 items-center justify-between gap-3">
+      <span class="block">{t("settings.strict")}
+        <span class="t-foot block text-subtext1">{t("settings.strict.hint")}</span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={Boolean(app.settings.strict)} onchange={(e) => saveSetting("strict", e.currentTarget.checked)} />
+      </span>
+    </label>
+
+    <label class="flex min-h-11 items-center justify-between gap-3">
       <span class="block">{t("settings.askReflection")}
         <span class="t-foot block text-subtext1">{t("settings.askReflection.hint")}</span>
       </span>

@@ -6,8 +6,9 @@
   import AlertSettings from "../lib/AlertSettings.svelte";
   import CategorySettings from "../lib/CategorySettings.svelte";
   import DataSection from "../lib/DataSection.svelte";
+  import ShortcutSettings from "../lib/ShortcutSettings.svelte";
+  import SpecialBreakSettings from "../lib/SpecialBreakSettings.svelte";
   import TimerSettings from "../lib/TimerSettings.svelte";
-  import { SHORTCUT_HELP } from "../lib/shortcuts";
   import { install, promptInstall } from "../platform/install.svelte";
 
   // The kit marks the selected buttons (aria-pressed / ring) itself once they exist.
@@ -60,6 +61,8 @@
 
 <TimerSettings />
 
+<SpecialBreakSettings />
+
 <CategorySettings />
 
 <AlertSettings />
@@ -79,15 +82,5 @@
 
 <AccountSection />
 
-<section class="card mt-4 grid gap-3 p-4" aria-labelledby="shortcuts-title">
-  <h2 id="shortcuts-title" class="t-title3">{t("shortcuts.title")}</h2>
-  <dl class="grid gap-2">
-    {#each SHORTCUT_HELP as shortcut (shortcut.keys)}
-      <div class="flex items-center justify-between gap-3">
-        <dt class="text-subtext1">{t(shortcut.action as MessageKey)}</dt>
-        <dd><kbd class="rounded-md bg-surface0 px-2 py-1 text-sm">{shortcut.keys}</kbd></dd>
-      </div>
-    {/each}
-  </dl>
-</section>
+<ShortcutSettings />
 </div>

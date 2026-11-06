@@ -56,6 +56,7 @@ export async function downloadBackup(day: string): Promise<boolean> {
 
 export interface Restored {
   categories: number;
+  tasks: number;
   sessions: number;
   settings: number;
   skipped: number;

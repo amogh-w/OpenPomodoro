@@ -10,13 +10,16 @@ describe("parseAlertPrefs", () => {
   });
 
   it("keeps valid values", () => {
-    const p = parseAlertPrefs({ sound: false, volume: 30, notify: true, warnMin: 2, reminderMin: 10, quietEnabled: true, quietStart: "23:30", quietEnd: "06:15" });
+    const p = parseAlertPrefs({ sound: false, volume: 30, notify: true, warnMin: 2, reminderMin: 10, nudgeMin: 15, tickFocus: true, quietEnabled: true, quietStart: "23:30", quietEnd: "06:15" });
     expect(p).toEqual({
       sound: false,
       volume: 30,
       notify: true,
       warnMin: 2,
       reminderMin: 10,
+      nudgeMin: 15,
+      tickFocus: true,
+      tickBreak: false,
       quietEnabled: true,
       quietStart: "23:30",
       quietEnd: "06:15",

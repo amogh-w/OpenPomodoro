@@ -6,8 +6,9 @@
   import EditSessionDialog from "../lib/EditSessionDialog.svelte";
   import NotesPane from "../lib/NotesPane.svelte";
   import NotesColumn from "../lib/NotesColumn.svelte";
+  import TaskList from "../lib/TaskList.svelte";
   import TodayPanel from "../lib/TodayPanel.svelte";
-  import { app, currentView, sendCommand, tick } from "../lib/appState.svelte";
+  import { app, currentView, sendCommand, setTaskDone, tick } from "../lib/appState.svelte";
   import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
   import { formatElapsed, formatRemaining, formatSpan } from "../lib/format";
   import { t } from "../lib/i18n";
@@ -15,9 +16,11 @@
   import { recentIntentions } from "../lib/recent";
   import { actionFor } from "../lib/shortcuts";
   import { recent, refreshRecent } from "../lib/recentStore.svelte";
+  import { dueSpecialBreak } from "../lib/specialBreaks";
+  import { markHandled, special } from "../lib/specialBreaksStore.svelte";
   import { shouldSendTimerEnds } from "../lib/timerView";
-  import { alertPrefs, prefs, updateAlertPrefs } from "../platform/prefs.svelte";
-  import type { CommandInput } from "../lib/types";
+  import { alertPrefs, keymap, prefs, updateAlertPrefs } from "../platform/prefs.svelte";
+  import type { CommandInput, Task } from "../lib/types";
 
   type Mood = "focused" | "neutral" | "distracted";
   const moods: Mood[] = ["focused", "neutral", "distracted"];
@@ -31,6 +34,18 @@
   let focusSec = $state(25 * 60);
   let touchedLength = $state(false);
   let categoryId = $state("");
+  // The task the next session works on (picked from the list); its title fills the intention.
+  let taskId = $state<string | null>(null);
+  const chosenTask = $derived(app.tasks.find((x) => x.id === taskId) ?? null);
+  // On the reflect screen: tick the task off along with saving the session.
+  let finishTask = $state(false);
+  const sessionTask = $derived(app.tasks.find((x) => x.id === app.timer?.task && !x.done) ?? null);
+
+  function pickTask(task: Task): void {
+    taskId = task.id;
+    intention = task.title;
+    if (task.category) categoryId = task.category;
+  }
   // What the dial sets: a focus session, or (turned counter-clockwise) a break.
   let mode = $state<"focus" | "break">("focus");
   let breakSec = $state(5 * 60);
@@ -107,7 +122,10 @@
   /** Leave the reflect screen: save the session with its notes and mood, then take a break or finish. */
   async function endReflect(name: "take_rest" | "done"): Promise<void> {
     const notes = draft.notes.trim();
+    const taskDone = finishTask && sessionTask !== null ? sessionTask.id : null;
     if (await run({ name, ...(notes !== "" ? { notes } : {}), ...(mood ? { mood } : {}) })) {
+      if (taskDone) void setTaskDone(taskDone, true);
+      finishTask = false;
       clearDraft();
       void refreshRecent();
     }
@@ -120,6 +138,7 @@
   async function finishFocus(then: "reflect" | "break" | "again" = "reflect"): Promise<void> {
     const intentionNow = app.timer?.intention ?? undefined;
     const categoryNow = app.timer?.category ?? undefined;
+    const taskNow = app.timer?.task ?? undefined;
     const lengthNow = app.timer?.planned_ms ?? undefined;
     if (!(await run({ name: "stop" }))) return;
     if (then === "reflect" && prefs.askReflection) return;
@@ -132,9 +151,20 @@
         name: "init_focus",
         ...(intentionNow ? { intention: intentionNow } : {}),
         ...(categoryNow ? { category: categoryNow } : {}),
+        ...(taskNow ? { task: taskNow } : {}),
         ...(lengthNow ? { duration_ms: lengthNow } : {}),
       });
     }
+  }
+
+  // A special break (lunch, a snack) that is due now; offered only on the idle screen.
+  const offered = $derived(
+    view?.phase === "idle" ? dueSpecialBreak(new Date(tick.now), special.list, special.handled) : null,
+  );
+
+  async function startSpecial(id: string, minutes: number): Promise<void> {
+    markHandled(id);
+    await run({ name: "take_rest", duration_ms: minutes * 60_000 });
   }
 
   async function startBreak(): Promise<void> {
@@ -152,10 +182,14 @@
       name: "init_focus",
       intention: parsed.text,
       category: chosenCategory ?? undefined,
+      ...(chosenTask ? { task: chosenTask.id } : {}),
       duration_ms: plannedMs,
     });
     // The next session starts with a blank field; the earlier text is one tap away in the suggestions.
-    if (started) intention = "";
+    if (started) {
+      intention = "";
+      taskId = null;
+    }
   }
 
   function start(event: SubmitEvent): void {
@@ -192,6 +226,7 @@
     const action = actionFor(
       { key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey, target: event.target as HTMLElement | null },
       { dialogOpen: document.querySelector("dialog[open]") !== null },
+      $state.snapshot(keymap),
     );
     if (action === null || !view) return;
     const act = (go: () => void): void => {
@@ -285,11 +320,22 @@
   cancel={t("timer.endEarly.keep")}
 />
 
-<div class="lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12">
+<div class={prefs.compact ? "" : "lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12"}>
 <div>
 {#if !app.ready || !view}
   <p class="mt-8 text-center text-subtext1" role="status">{t("common.loading")}</p>
 {:else if view.phase === "idle"}
+  {#if offered}
+    <div class="card mx-auto mb-4 flex max-w-xl flex-wrap items-center justify-between gap-3 p-4" role="status">
+      <span>{t("special.offer", { name: offered.label || t("special.default"), minutes: offered.minutes })}</span>
+      <span class="flex gap-2">
+        <button class="btn btn-gray" onclick={() => markHandled(offered.id)}>{t("special.dismiss")}</button>
+        <button class="btn btn-filled" disabled={busy || !view.can.take_rest} onclick={() => startSpecial(offered.id, offered.minutes)}>
+          {t("special.start")}
+        </button>
+      </span>
+    </div>
+  {/if}
   <form class="mx-auto grid max-w-xl gap-5" onsubmit={start}>
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="t-large">{t("timer.title")}</h1>
@@ -299,7 +345,7 @@
       </div>
     </div>
 
-    {#if app.settings}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
+    {#if app.settings && !prefs.compact}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
 
     {#if !isBreak}
       <label class="grid gap-1.5">
@@ -317,6 +363,15 @@
           {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
         </datalist>
       </label>
+
+      {#if chosenTask}
+        <div class="flex items-center gap-2">
+          <span class="chip" aria-pressed="true">{t("tasks.workingOn", { title: chosenTask.title })}</span>
+          <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.clear")} onclick={() => (taskId = null)}>
+            <svg class="size-5"><use href="/icons.svg#x" /></svg>
+          </button>
+        </div>
+      {/if}
 
       {#if fromText || parsed.categoryId}
         <div class="flex flex-wrap gap-2" aria-live="polite">
@@ -385,6 +440,9 @@
       {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
   </form>
+  {#if !prefs.compact}
+    <div class="mx-auto mt-5 max-w-xl"><TaskList selected={taskId} onpick={pickTask} /></div>
+  {/if}
 {:else if view.phase === "breathe"}
   <div class="grid justify-items-center gap-6 pt-8 text-center">
     <h1 class="t-title1">{t("timer.phase.breathe")}</h1>
@@ -418,6 +476,12 @@
         {/each}
       </div>
     </div>
+    {#if sessionTask}
+      <label class="flex min-h-11 items-center justify-between gap-3 text-left">
+        <span>{t("tasks.finishIt", { title: sessionTask.title })}</span>
+        <span class="switch"><input type="checkbox" bind:checked={finishTask} /></span>
+      </label>
+    {/if}
     <NotesPane open={draft.notes !== ""} />
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
     <div class="grid gap-2">
@@ -433,7 +497,9 @@
   <div class="grid justify-items-center gap-5 pt-4 text-center">
     {#if app.settings}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} running={view.phase === "focus"} />{/if}
 
-    {#if view.phase === "focus"}
+    {#if prefs.compact}
+      <!-- the compact view keeps only the clock and the buttons -->
+    {:else if view.phase === "focus"}
       <span class="chip" aria-pressed="true">
         {#if categoryOf(app.timer?.category)}
           <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(app.timer?.category)?.color})" aria-hidden="true"></span>
@@ -562,7 +628,9 @@
   </div>
 {/if}
 </div>
+{#if !prefs.compact}
 <aside class="hidden lg:sticky lg:top-6 lg:block" aria-label={t("today.title")}>
   {#if view?.phase === "focus"}<NotesColumn />{:else}<TodayPanel />{/if}
 </aside>
+{/if}
 </div>

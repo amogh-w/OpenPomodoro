@@ -1,13 +1,19 @@
 // Plays the alerts while the app is open: asks the pure planner what is due on every tick and does the sounds and
 // notifications. Only the leader tab does this, so several open tabs make one sound, not several.
 import { dailyReminderDue, inQuietHours } from "./alertPrefs";
+import { emptyTickMemory, nextTick, type TickMemory } from "./ticking";
+import { emptyNudgeMemory, nextNudge, type NudgeMemory } from "./nudge";
 import { type AlertInput, type AlertMemory, emptyMemory, nextAlerts } from "./alertPlan";
+import { dueSpecialBreak } from "./specialBreaks";
+import { markAlerted, special } from "./specialBreaksStore.svelte";
 import { app, currentView } from "./appState.svelte";
 import { localDayKey } from "./days";
 import { t } from "./i18n";
 import type { AlertKind } from "./sounds";
+import { clearCustomSounds, loadCustomSounds } from "../platform/customSounds.svelte";
+import { session } from "./session.svelte";
 import { leader } from "../platform/leader.svelte";
-import { playAlert } from "../platform/audio";
+import { playAlert, playTick } from "../platform/audio";
 import { notify } from "../platform/notify";
 import { alertPrefs } from "../platform/prefs.svelte";
 
@@ -27,14 +33,24 @@ function describe(kind: AlertKind, intention: string | null, overflowMs: number)
     case "break_reminder":
       return { title: t("alerts.reminder.title"), body: t("alerts.reminder.break", { minutes }) };
     case "warn":
+    case "nudge":
       return { title: "", body: "" };
   }
 }
 
 export function startAlerts(): () => void {
   let memory: AlertMemory = emptyMemory;
+  let nudgeMemory: NudgeMemory = emptyNudgeMemory;
+  let tickMemory: TickMemory = emptyTickMemory;
 
   const stopEffect = $effect.root(() => {
+    // The person's own sounds come with the account: load them on sign-in, drop them on sign-out.
+    $effect(() => {
+      const id = session.user?.id;
+      if (id) void loadCustomSounds(id);
+      else clearCustomSounds();
+    });
+
     $effect(() => {
       const view = currentView();
       const timer = app.timer;
@@ -44,6 +60,8 @@ export function startAlerts(): () => void {
       // whatever is already over as old news instead of playing it late.
       if (!leader.isLeader || !view || !timer) {
         memory = emptyMemory;
+        nudgeMemory = emptyNudgeMemory;
+        tickMemory = emptyTickMemory;
         return;
       }
 
@@ -60,6 +78,36 @@ export function startAlerts(): () => void {
               totalMs: view.totalMs,
             }
           : null;
+
+      // The presence nudge: only while a focus session is counting down.
+      const nudge = nextNudge(
+        phase === "focus" && timer.start !== null
+          ? {
+              key: `${timer.start}:${timer.total}`,
+              elapsedMs: view.totalMs - view.remainingMs,
+              running: !view.paused && !view.ended && !view.overflow,
+            }
+          : null,
+        nudgeMemory,
+        prefs.nudgeMin * MIN,
+      );
+      nudgeMemory = nudge.memory;
+      if (nudge.play && prefs.sound && !inQuietHours(new Date(), prefs)) playAlert("nudge", prefs.volume);
+
+      // The optional tick, for focus and for breaks on their own.
+      const wantsTick = phase === "focus" ? prefs.tickFocus : phase === "break" ? prefs.tickBreak : false;
+      const tick = nextTick(
+        wantsTick && timer.start !== null
+          ? {
+              key: `${timer.kind}:${timer.start}:${timer.total}`,
+              elapsedMs: view.totalMs - view.remainingMs,
+              running: !view.paused && !view.ended && !view.overflow,
+            }
+          : null,
+        tickMemory,
+      );
+      tickMemory = tick.memory;
+      if (tick.play && prefs.sound && !inQuietHours(new Date(), prefs)) playTick(prefs.volume);
 
       const planned = nextAlerts(input, memory, { warnLeadMs: prefs.warnMin * MIN, reminderMs: prefs.reminderMin * MIN });
       memory = planned.memory;
@@ -101,6 +149,21 @@ export function startAlerts(): () => void {
     if (prefs.notify) void notify(t("alerts.daily.title"), t("alerts.daily.body"), "op-daily");
   }, 30_000);
 
+  // A special break coming due: one sound and notification a day for each, if nothing is running.
+  const specialTimer = setInterval(() => {
+    const view = currentView();
+    if (!leader.isLeader || !view || view.phase !== "idle") return;
+    const now = new Date();
+    const due = dueSpecialBreak(now, $state.snapshot(special.list), $state.snapshot(special.alerted));
+    if (!due) return;
+    markAlerted(due.id, now);
+    const prefs = $state.snapshot(alertPrefs);
+    if (inQuietHours(now, prefs)) return;
+    const name = due.label || t("special.default");
+    if (prefs.sound) playAlert("break_end", prefs.volume);
+    if (prefs.notify) void notify(t("alerts.special.title", { name }), t("alerts.special.body", { minutes: due.minutes }), `op-special-${due.id}`);
+  }, 30_000);
+
   // Coming back after a while: say if a phase ended while we were not looking (the sound was skipped on purpose).
   let hiddenAt = 0;
   const onVisibility = (): void => {
@@ -126,6 +189,7 @@ export function startAlerts(): () => void {
   return () => {
     stopEffect();
     clearInterval(dailyTimer);
+    clearInterval(specialTimer);
     document.removeEventListener("visibilitychange", onVisibility);
   };
 }

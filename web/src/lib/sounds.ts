@@ -3,7 +3,7 @@
 // apart without looking: a rising run for the end of focus, a falling pair for the end of a break, one soft tone
 // for "ending soon", and plain repeated pings for overtime.
 
-export type AlertKind = "warn" | "focus_end" | "break_end" | "focus_reminder" | "break_reminder";
+export type AlertKind = "warn" | "focus_end" | "break_end" | "focus_reminder" | "break_reminder" | "nudge";
 
 export interface Note {
   /** Hertz. */
@@ -22,6 +22,7 @@ const SCORES: Record<AlertKind, Note[]> = {
   break_end: [note(783.99, 0, 0.22), note(587.33, 0.24, 0.5)],
   focus_reminder: [note(440, 0, 0.14), note(440, 0.22, 0.14)],
   break_reminder: [note(392, 0, 0.3)],
+  nudge: [note(329.63, 0, 0.12)],
 };
 
 export function scoreFor(kind: AlertKind): readonly Note[] {

@@ -6,7 +6,7 @@
   import { tickInterval } from "./lib/motion";
   import { formatElapsed, formatRemaining, minutesLeft } from "./lib/format";
   import { phaseClass } from "./lib/timerView";
-  import { prefs } from "./platform/prefs.svelte";
+  import { prefs, setCompact } from "./platform/prefs.svelte";
   import { installAudioUnlock } from "./platform/audio";
   import { setBadge } from "./platform/badge";
   import { holdAwake, releaseAwake } from "./platform/wakeLock";
@@ -37,6 +37,8 @@
     document.documentElement.classList.toggle("reduce-motion", prefs.reduceMotion);
     setTickRate(tickInterval(prefs.reduceMotion));
   });
+  // Compact view only applies on the timer screen; the other screens always use the full layout.
+  const compact = $derived(prefs.compact && router.route === "timer" && session.status === "signed_in");
   const tint = $derived(view ? phaseClass(view.state) : "");
 
   // Time left in the page title and on the app icon (A-08), so it shows when the tab is in the background.
@@ -74,8 +76,12 @@
   {#if tint}<div class="phase-layer {tint}" aria-hidden="true"></div>{/if}
 {/key}
 
-<div class="relative z-10 {session.status === 'signed_in' ? 'lg:pl-[4.5rem]' : ''}">
-<div class="mx-auto min-h-dvh max-w-[480px] px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))] md:max-w-xl lg:max-w-5xl lg:px-10 lg:pb-12 lg:pt-10">
+<div class="relative z-10 {session.status === 'signed_in' && !compact ? 'lg:pl-[4.5rem]' : ''}">
+<div
+  class="mx-auto min-h-dvh px-4 pt-[max(1rem,env(safe-area-inset-top))] {compact
+    ? 'max-w-[22rem] pb-6'
+    : 'max-w-[480px] pb-24 md:max-w-xl lg:max-w-5xl lg:px-10 lg:pb-12 lg:pt-10'}"
+>
   {#if sw.updateReady}
     <div class="alert tone-info mb-3" role="status">
       <svg class="size-5 shrink-0"><use href="/icons.svg#info" /></svg>
@@ -137,6 +143,15 @@
 
 {#if session.status === "signed_in"}
   <Announcer />
-  <TabBar />
+  {#if router.route === "timer"}
+    <button
+      class="btn btn-gray fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 size-11 !px-0"
+      aria-label={compact ? t("compact.off") : t("compact.on")}
+      onclick={() => setCompact(!prefs.compact)}
+    >
+      <svg class="size-5"><use href="/icons.svg#{compact ? 'maximize-2' : 'minimize-2'}" /></svg>
+    </button>
+  {/if}
+  {#if !compact}<TabBar />{/if}
   <LinkHandler />
 {/if}

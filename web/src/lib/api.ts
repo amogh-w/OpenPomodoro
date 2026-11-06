@@ -57,7 +57,38 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   return data as T;
 }
 
+export interface SoundInfo {
+  slot: string;
+  mime: string;
+  size: number;
+  updated_at: number;
+}
+
+/** Upload or download raw sound bytes; unlike the JSON calls the body and the answer are the file itself. */
+async function soundFetch(method: "GET" | "PUT", slot: string, body?: Blob): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/sounds/${slot}`, {
+      method,
+      headers: { "x-requested-with": "openpomodoro" },
+      credentials: "same-origin",
+      body,
+    });
+  } catch {
+    throw new ApiError(0, "network");
+  }
+  if (!res.ok) {
+    const info = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, info.error ?? "unknown");
+  }
+  return res;
+}
+
 export const api = {
+  listSounds: () => request<{ sounds: SoundInfo[] }>("GET", "/api/sounds"),
+  uploadSound: async (slot: string, file: Blob): Promise<SoundInfo> => (await soundFetch("PUT", slot, file)).json() as Promise<SoundInfo>,
+  downloadSound: async (slot: string): Promise<ArrayBuffer> => (await soundFetch("GET", slot)).arrayBuffer(),
+  removeSound: (slot: string) => request<void>("DELETE", `/api/sounds/${slot}`),
   setupStatus: () => request<SetupStatus>("GET", "/api/setup"),
   setup: (username: string, password: string) => request<User>("POST", "/api/setup", { username, password }),
   register: (username: string, password: string) => request<User>("POST", "/api/register", { username, password }),
@@ -68,7 +99,7 @@ export const api = {
     request<void>("POST", "/api/me/password", { current, new: next }),
   wipeData: (password: string) => request<void>("POST", "/api/me/wipe", { password }),
   importBackup: (backup: unknown) =>
-    request<{ imported: { categories: number; sessions: number; settings: number }; skipped: number }>("POST", "/api/me/import", backup),
+    request<{ imported: { categories: number; tasks: number; sessions: number; settings: number }; skipped: number }>("POST", "/api/me/import", backup),
   deleteAccount: (password: string) => request<void>("DELETE", "/api/me", { password }),
 
   adminUsers: () => request<User[]>("GET", "/api/admin/users"),

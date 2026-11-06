@@ -3,7 +3,7 @@ import { ALERT_KINDS, durationOf, scoreFor } from "./sounds";
 
 describe("alert sounds", () => {
   it("has a pattern for every kind", () => {
-    expect(ALERT_KINDS.sort()).toEqual(["break_end", "break_reminder", "focus_end", "focus_reminder", "warn"]);
+    expect(ALERT_KINDS.sort()).toEqual(["break_end", "break_reminder", "focus_end", "focus_reminder", "nudge", "warn"]);
     for (const kind of ALERT_KINDS) expect(scoreFor(kind).length, kind).toBeGreaterThan(0);
   });
 

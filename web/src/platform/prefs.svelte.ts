@@ -1,6 +1,7 @@
 // Per-device preferences: things that belong to this screen, not to the account (so they are not synced).
 // Stored under the app's `op_` prefix.
 import { type AlertPrefs, parseAlertPrefs } from "../lib/alertPrefs";
+import { defaultKeymap, type Keymap, parseKeymap } from "../lib/shortcuts";
 
 const KEEP_AWAKE = "op_keep_awake";
 const ALERTS = "op_alerts";
@@ -9,6 +10,8 @@ const REDUCE_MOTION = "op_reduce_motion";
 const DIAL_STEP = "op_dial_step_s";
 const ASK_REFLECTION = "op_ask_reflection";
 const FOCUS_ON_CATEGORY = "op_focus_on_category";
+const COMPACT = "op_compact";
+const SHORTCUTS = "op_shortcuts";
 
 /** Seconds the timer dial snaps to. 5 seconds turns the dial into a seconds dial, for trying the whole flow quickly. */
 export const DIAL_STEPS = [5, 60, 300, 600, 900] as const;
@@ -63,12 +66,19 @@ export const prefs = $state({
   askReflection: read(ASK_REFLECTION) !== "0",
   /** Move to the intention field after choosing a category. */
   focusOnCategory: read(FOCUS_ON_CATEGORY) === "1",
+  /** Compact view: just the timer and its buttons, in a small column (for a corner of the screen). */
+  compact: read(COMPACT) === "1",
 });
 
 
 export function setDialStep(step: DialStep): void {
   prefs.dialStep = step;
   write(DIAL_STEP, String(step));
+}
+
+export function setCompact(on: boolean): void {
+  prefs.compact = on;
+  write(COMPACT, on ? "1" : "0");
 }
 
 export function setAskReflection(on: boolean): void {
@@ -105,4 +115,16 @@ export function updateAlertPrefs(change: Partial<AlertPrefs>): void {
   const next = parseAlertPrefs({ ...$state.snapshot(alertPrefs), ...change });
   Object.assign(alertPrefs, next);
   write(ALERTS, JSON.stringify(next));
+}
+
+/** The keys for the timer screen's shortcuts on this device. */
+export const keymap = $state<Keymap>(parseKeymap(readJson(SHORTCUTS)));
+
+export function setKeymap(next: Keymap): void {
+  Object.assign(keymap, next);
+  write(SHORTCUTS, JSON.stringify(next));
+}
+
+export function resetKeymap(): void {
+  setKeymap(parseKeymap(defaultKeymap));
 }

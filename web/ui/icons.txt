@@ -54,3 +54,5 @@ volume-x
 coffee
 repeat
 square
+minimize-2
+maximize-2

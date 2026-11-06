@@ -1,12 +1,16 @@
 <script lang="ts">
+  import { ApiError } from "./api";
   import { t } from "./i18n";
+  import { session } from "./session.svelte";
   import { ALERT_KINDS, type AlertKind } from "./sounds";
   import { audioUnlocked, playAlert } from "../platform/audio";
   import { notificationsSupported, permission, requestPermission } from "../platform/notify";
+  import { customSounds, removeCustomSound, uploadCustomSound } from "../platform/customSounds.svelte";
   import { alertPrefs, updateAlertPrefs } from "../platform/prefs.svelte";
 
   const warnChoices = [0, 1, 2, 5];
   const reminderChoices = [0, 1, 5, 10, 15];
+  const nudgeChoices = [0, 5, 10, 15, 30];
 
   let perm = $state(permission());
   let locked = $state(!audioUnlocked());
@@ -16,6 +20,39 @@
     // Browsers only show the permission question in answer to a tap, so it is asked here.
     perm = await requestPermission();
     updateAlertPrefs({ notify: perm === "granted" });
+  }
+
+  let soundProblem = $state<string | null>(null);
+
+  async function chooseFile(kind: AlertKind, event: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    const id = session.user?.id;
+    if (!file || !id) return;
+    soundProblem = null;
+    try {
+      await uploadCustomSound(id, kind, file);
+      preview(kind);
+    } catch (error) {
+      soundProblem =
+        error instanceof ApiError && error.code === "sound_too_large"
+          ? t("settings.sounds.tooLarge")
+          : error instanceof ApiError && error.isNetwork
+            ? t("settings.sounds.offline")
+            : t("settings.sounds.notPlayable");
+    }
+  }
+
+  async function reset(kind: AlertKind): Promise<void> {
+    const id = session.user?.id;
+    if (!id) return;
+    soundProblem = null;
+    try {
+      await removeCustomSound(id, kind);
+    } catch {
+      soundProblem = t("settings.sounds.offline");
+    }
   }
 
   function preview(kind: AlertKind): void {
@@ -94,6 +131,35 @@
     </div>
   </div>
 
+  <div class="grid gap-1">
+    <span class="t-foot text-subtext1">{t("settings.tick")}</span>
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>{t("settings.tick.focus")}</span>
+      <span class="switch">
+        <input type="checkbox" checked={alertPrefs.tickFocus} onchange={(e) => updateAlertPrefs({ tickFocus: e.currentTarget.checked })} />
+      </span>
+    </label>
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>{t("settings.tick.break")}</span>
+      <span class="switch">
+        <input type="checkbox" checked={alertPrefs.tickBreak} onchange={(e) => updateAlertPrefs({ tickBreak: e.currentTarget.checked })} />
+      </span>
+    </label>
+  </div>
+
+  <div class="grid gap-2">
+    <span>{t("settings.nudge")}
+      <span class="t-foot block text-subtext1">{t("settings.nudge.hint")}</span>
+    </span>
+    <div class="flex flex-wrap gap-2">
+      {#each nudgeChoices as minutes (minutes)}
+        <button class="chip" aria-pressed={alertPrefs.nudgeMin === minutes} onclick={() => updateAlertPrefs({ nudgeMin: minutes })}>
+          {minutes === 0 ? t("settings.nudge.off") : t("settings.nudge.every", { minutes })}
+        </button>
+      {/each}
+    </div>
+  </div>
+
   <div class="grid gap-2">
     <label class="flex min-h-11 items-center justify-between gap-3">
       <span>
@@ -152,11 +218,28 @@
 
   <div class="grid gap-2">
     <span>{t("settings.preview")}</span>
-    <div class="flex flex-wrap gap-2">
+    <p class="t-foot text-subtext1">{t("settings.sounds.hint")}</p>
+    <ul class="grid gap-2">
       {#each ALERT_KINDS as kind (kind)}
-        <button class="btn btn-gray btn-sm" onclick={() => preview(kind)}>{t(`settings.sounds.${kind}`)}</button>
+        <li class="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {t(`settings.sounds.${kind}`)}
+            {#if customSounds.slots[kind]}<span class="t-foot block text-subtext1">{t("settings.sounds.custom")}</span>{/if}
+          </span>
+          <span class="flex flex-wrap gap-2">
+            <button class="btn btn-gray btn-sm" onclick={() => preview(kind)}>{t("settings.sounds.play")}</button>
+            <label class="btn btn-gray btn-sm cursor-pointer">
+              {t("settings.sounds.choose")}
+              <input class="sr-only" type="file" accept="audio/*" onchange={(e) => chooseFile(kind, e)} />
+            </label>
+            {#if customSounds.slots[kind]}
+              <button class="btn btn-plain btn-sm" onclick={() => reset(kind)}>{t("settings.sounds.reset")}</button>
+            {/if}
+          </span>
+        </li>
       {/each}
-    </div>
+    </ul>
+    {#if soundProblem}<p class="alert tone-warn" role="alert">{soundProblem}</p>{/if}
     {#if locked}<p class="t-foot text-subtext1">{t("settings.audioLocked")}</p>{/if}
   </div>
 </section>
