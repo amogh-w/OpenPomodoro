@@ -15,6 +15,7 @@
   import { applyUpdate, sw } from "./platform/serviceWorker.svelte";
   import Announcer from "./lib/Announcer.svelte";
   import LinkHandler from "./lib/LinkHandler.svelte";
+  import MiniBar from "./lib/MiniBar.svelte";
   import TabBar from "./lib/TabBar.svelte";
   import Admin from "./screens/Admin.svelte";
   import Auth from "./screens/Auth.svelte";
@@ -81,7 +82,7 @@
 <div
   class="mx-auto min-h-dvh px-4 pt-[max(1rem,env(safe-area-inset-top))] {compact
     ? 'max-w-[22rem] pb-6'
-    : 'max-w-[480px] pb-24 md:max-w-xl lg:max-w-5xl lg:px-10 lg:pb-12 lg:pt-10'}"
+    : `max-w-[480px] md:max-w-xl lg:max-w-5xl lg:px-10 lg:pt-10 ${router.route === 'timer' ? 'pb-24 lg:pb-12' : 'pb-40 lg:pb-28'}`}"
 >
   {#if sw.updateReady}
     <div class="alert tone-info mb-3" role="status">
@@ -156,5 +157,6 @@
     </button>
   {/if}
   {#if !compact}<TabBar />{/if}
+  {#if router.route !== "timer"}<MiniBar />{/if}
   <LinkHandler />
 {/if}
