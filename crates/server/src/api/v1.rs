@@ -383,4 +383,101 @@ mod tests {
             assert_eq!(res.status, StatusCode::NOT_FOUND, "{bad}");
         }
     }
+
+    #[tokio::test]
+    async fn two_factor_over_http_set_up_sign_in_and_turn_off() {
+        let app = TestApp::new();
+        let me = admin(&app).await;
+        let started = app
+            .post("/api/me/totp/start", Some(json!({"password": PW})))
+            .cookie(&me)
+            .send()
+            .await;
+        assert_eq!(started.status, StatusCode::OK, "{}", started.text);
+        let secret_text = started.json()["secret"]
+            .as_str()
+            .expect("secret")
+            .to_string();
+        let secret = crate::totp::base32_decode(&secret_text).expect("base32");
+        assert!(
+            started.json()["uri"]
+                .as_str()
+                .expect("uri")
+                .starts_with("otpauth://totp/")
+        );
+
+        let step = u64::try_from(app.state.now_ms() / 1000).expect("t") / crate::totp::STEP_SECS;
+        let bad = app
+            .post("/api/me/totp/enable", Some(json!({"code": "000000"})))
+            .cookie(&me)
+            .send()
+            .await;
+        assert_eq!(bad.json()["error"], "invalid_code");
+        let enabled = app
+            .post(
+                "/api/me/totp/enable",
+                Some(json!({"code": crate::totp::code_for_step(&secret, step)})),
+            )
+            .cookie(&me)
+            .send()
+            .await;
+        assert_eq!(enabled.status, StatusCode::OK, "{}", enabled.text);
+        assert_eq!(
+            enabled.json()["recovery_codes"]
+                .as_array()
+                .expect("codes")
+                .len(),
+            8
+        );
+        assert_eq!(
+            app.get("/api/me/totp").cookie(&me).send().await.json(),
+            json!({"enabled": true, "recovery_left": 8})
+        );
+
+        let creds = |code: Option<&str>| match code {
+            Some(c) => json!({"username": "admin", "password": PW, "code": c}),
+            None => json!({"username": "admin", "password": PW}),
+        };
+        let none = app.post("/api/signin", Some(creds(None))).send().await;
+        assert_eq!(
+            (none.status, none.json()["error"].clone()),
+            (StatusCode::UNAUTHORIZED, json!("totp_required"))
+        );
+        assert!(
+            none.header("set-cookie").is_none(),
+            "no session without the code"
+        );
+        let wrong = app
+            .post("/api/signin", Some(creds(Some("123456"))))
+            .send()
+            .await;
+        assert_eq!(wrong.json()["error"], "invalid_code");
+        let next = crate::totp::code_for_step(&secret, step + 1);
+        let ok = app
+            .post("/api/signin", Some(creds(Some(&next))))
+            .send()
+            .await;
+        assert_eq!(ok.status, StatusCode::OK, "{}", ok.text);
+        assert!(ok.header("set-cookie").is_some());
+
+        let off = app
+            .delete("/api/me/totp", Some(json!({"password": "wrong password!"})))
+            .cookie(&me)
+            .send()
+            .await;
+        assert_eq!(off.status, StatusCode::UNAUTHORIZED);
+        let off = app
+            .delete("/api/me/totp", Some(json!({"password": PW})))
+            .cookie(&me)
+            .send()
+            .await;
+        assert_eq!(off.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            app.post("/api/signin", Some(creds(None)))
+                .send()
+                .await
+                .status,
+            StatusCode::OK
+        );
+    }
 }

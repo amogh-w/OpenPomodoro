@@ -27,6 +27,9 @@ pub fn router() -> Router<Shared> {
         .route("/api/me/wipe", post(wipe_me))
         .route("/api/me/tokens", get(list_tokens).post(create_token))
         .route("/api/me/tokens/{id}", axum::routing::delete(delete_token))
+        .route("/api/me/totp", get(totp_status).delete(totp_disable))
+        .route("/api/me/totp/start", post(totp_start))
+        .route("/api/me/totp/enable", post(totp_enable))
         .route("/api/me/sessions", get(list_sessions))
         .route(
             "/api/me/sessions/{id}",
@@ -133,6 +136,9 @@ async fn setup_status(State(state): State<Shared>) -> Result<Json<SetupStatus>, 
 struct Credentials {
     username: String,
     password: String,
+    /// A one-time code or recovery code, for accounts with two-factor sign-in.
+    #[serde(default)]
+    code: Option<String>,
 }
 
 /// First-run only: create the admin account and sign in.
@@ -170,8 +176,14 @@ async fn sign_in(
 ) -> Result<Response, ApiError> {
     let now = state.now_ms();
     let session = blocking(&state, move |s| {
-        s.accounts
-            .sign_in(&s.db(), &body.username, &body.password, &address, now)
+        s.accounts.sign_in_with_code(
+            &s.db(),
+            &body.username,
+            &body.password,
+            body.code.as_deref(),
+            &address,
+            now,
+        )
     })
     .await??;
     let agent = headers
@@ -381,6 +393,63 @@ async fn test_hook(
     ))
 }
 
+#[derive(Deserialize)]
+struct PasswordOnly {
+    password: String,
+}
+
+#[derive(Deserialize)]
+struct CodeOnly {
+    code: String,
+}
+
+async fn totp_status(
+    State(state): State<Shared>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let (enabled, recovery_left) = state.accounts.totp_status(&state.db(), &auth.user)?;
+    Ok(Json(
+        serde_json::json!({ "enabled": enabled, "recovery_left": recovery_left }),
+    ))
+}
+
+/// Start two-factor setup: the key to put into an authenticator app (and the address that a QR code would hold).
+async fn totp_start(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    ApiJson(body): ApiJson<PasswordOnly>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let (secret, uri) = blocking(&state, move |s| {
+        s.accounts.totp_begin(&s.db(), &auth.user, &body.password)
+    })
+    .await??;
+    Ok(Json(serde_json::json!({ "secret": secret, "uri": uri })))
+}
+
+/// Finish setup with a code from the app. The recovery codes are in this answer and nowhere else.
+async fn totp_enable(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    ApiJson(body): ApiJson<CodeOnly>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let codes = state
+        .accounts
+        .totp_enable(&state.db(), &auth.user, &body.code, state.now_ms())?;
+    Ok(Json(serde_json::json!({ "recovery_codes": codes })))
+}
+
+async fn totp_disable(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    ApiJson(body): ApiJson<PasswordOnly>,
+) -> Result<StatusCode, ApiError> {
+    blocking(&state, move |s| {
+        s.accounts.totp_disable(&s.db(), &auth.user, &body.password)
+    })
+    .await??;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 async fn me(auth: AuthUser) -> Json<UserJson> {
     Json(UserJson::from(&auth.user))
 }
@@ -402,11 +471,6 @@ async fn change_password(
     })
     .await??;
     Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Deserialize)]
-struct PasswordOnly {
-    password: String,
 }
 
 async fn delete_me(

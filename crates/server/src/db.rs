@@ -13,7 +13,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: [&str; 5] = [
+const MIGRATIONS: [&str; 6] = [
     r#"
     CREATE TABLE users (
         id            TEXT PRIMARY KEY,
@@ -117,6 +117,17 @@ const MIGRATIONS: [&str; 5] = [
         last_used  INTEGER
     ) WITHOUT ROWID;
     CREATE INDEX api_tokens_by_user ON api_tokens (user_id);
+"#,
+    r#"
+    -- Two-factor sign-in: the secret (base32), whether it is switched on, the hashes of the unused recovery codes
+    -- (a JSON list) and the last time step a code was accepted for, so no code works twice.
+    CREATE TABLE totp (
+        user_id   TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        secret    TEXT NOT NULL,
+        enabled   INTEGER NOT NULL DEFAULT 0,
+        recovery  TEXT NOT NULL DEFAULT '[]',
+        last_step INTEGER
+    ) WITHOUT ROWID;
 "#,
 ];
 
@@ -227,6 +238,15 @@ pub struct SessionInfo {
     pub created_at: i64,
     pub last_seen: i64,
     pub agent: String,
+}
+
+/// A person's two-factor settings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Totp {
+    pub secret: String,
+    pub enabled: bool,
+    pub recovery: Vec<String>,
+    pub last_step: Option<i64>,
 }
 
 /// A personal API token, without its secret.
@@ -528,6 +548,46 @@ impl Db {
             "UPDATE api_tokens SET last_used = ?2 WHERE id = ?1",
             params![id, now_ms],
         )?;
+        Ok(())
+    }
+
+    pub fn totp(&self, user_id: &str) -> Result<Option<Totp>> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT secret, enabled, recovery, last_step FROM totp WHERE user_id = ?1",
+                params![user_id],
+                |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, i64>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                    ))
+                },
+            )
+            .optional()?;
+        Ok(row.map(|(secret, enabled, recovery, last_step)| Totp {
+            secret,
+            enabled: enabled != 0,
+            recovery: serde_json::from_str(&recovery).unwrap_or_default(),
+            last_step,
+        }))
+    }
+
+    pub fn put_totp(&self, user_id: &str, totp: &Totp) -> Result<()> {
+        let recovery = serde_json::to_string(&totp.recovery)?;
+        self.conn.execute(
+            "INSERT INTO totp (user_id, secret, enabled, recovery, last_step) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT (user_id) DO UPDATE SET secret = ?2, enabled = ?3, recovery = ?4, last_step = ?5",
+            params![user_id, totp.secret, i64::from(totp.enabled), recovery, totp.last_step],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_totp(&self, user_id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM totp WHERE user_id = ?1", params![user_id])?;
         Ok(())
     }
 
@@ -1101,7 +1161,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("version");
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
         let mode: String = db
             .conn
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -1124,7 +1184,7 @@ mod tests {
             Db::open(&path),
             Err(DbError::FutureSchema {
                 found: 99,
-                supported: 5
+                supported: 6
             })
         ));
     }

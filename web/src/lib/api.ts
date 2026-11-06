@@ -132,7 +132,12 @@ export const api = {
   setupStatus: () => request<SetupStatus>("GET", "/api/setup"),
   setup: (username: string, password: string) => request<User>("POST", "/api/setup", { username, password }),
   register: (username: string, password: string) => request<User>("POST", "/api/register", { username, password }),
-  signIn: (username: string, password: string) => request<User>("POST", "/api/signin", { username, password }),
+  signIn: (username: string, password: string, code?: string) =>
+    request<User>("POST", "/api/signin", code ? { username, password, code } : { username, password }),
+  totpStatus: () => request<{ enabled: boolean; recovery_left: number }>("GET", "/api/me/totp"),
+  totpStart: (password: string) => request<{ secret: string; uri: string }>("POST", "/api/me/totp/start", { password }),
+  totpEnable: (code: string) => request<{ recovery_codes: string[] }>("POST", "/api/me/totp/enable", { code }),
+  totpDisable: (password: string) => request<void>("DELETE", "/api/me/totp", { password }),
   signOut: () => request<void>("POST", "/api/signout"),
   me: () => request<User>("GET", "/api/me"),
   changePassword: (current: string, next: string) =>

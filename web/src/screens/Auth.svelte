@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ApiError } from "../lib/api";
   import { errorMessage } from "../lib/errors";
   import { t } from "../lib/i18n";
   import { bootstrap, createFirstAccount, register, session, signIn } from "../lib/session.svelte";
@@ -10,6 +11,9 @@
   let username = $state("");
   let password = $state("");
   let confirm = $state("");
+  /** The one-time code, asked for once the password has been accepted by an account with two-step sign-in. */
+  let code = $state("");
+  let needsCode = $state(false);
   let busy = $state(false);
   let error = $state<string | null>(null);
 
@@ -26,10 +30,13 @@
     try {
       if (mode === "setup") await createFirstAccount(username, password);
       else if (mode === "register") await register(username, password);
-      else await signIn(username, password);
-      password = confirm = "";
+      else await signIn(username, password, needsCode ? code : undefined);
+      password = confirm = code = "";
     } catch (e) {
-      error = errorMessage(e);
+      if (e instanceof ApiError && e.code === "totp_required") {
+        needsCode = true;
+        error = null;
+      } else error = errorMessage(e);
     } finally {
       busy = false;
     }
@@ -84,6 +91,14 @@
           required
         />
       </label>
+      {#if needsCode && !creating}
+        <label class="grid gap-1.5">
+          <span class="t-foot text-subtext1">{t("auth.code")}</span>
+          <!-- svelte-ignore a11y_autofocus -->
+          <input class="field" bind:value={code} inputmode="text" autocomplete="one-time-code" autocapitalize="none" spellcheck="false" autofocus required />
+          <span class="t-foot text-subtext1">{t("auth.code.hint")}</span>
+        </label>
+      {/if}
       {#if creating}
         <label class="grid gap-1.5">
           <span class="t-foot text-subtext1">{t("auth.confirm")}</span>

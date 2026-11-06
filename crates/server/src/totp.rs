@@ -31,7 +31,9 @@ pub fn base32_decode(text: &str) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     let (mut buffer, mut bits) = (0u32, 0u32);
     for ch in text.chars().filter(|c| !matches!(c, ' ' | '-' | '=')) {
-        let value = ALPHABET.iter().position(|&a| char::from(a) == ch.to_ascii_uppercase())?;
+        let value = ALPHABET
+            .iter()
+            .position(|&a| char::from(a) == ch.to_ascii_uppercase())?;
         buffer = (buffer << 5) | u32::try_from(value).ok()?;
         bits += 5;
         if bits >= 8 {
@@ -63,7 +65,12 @@ fn hmac_sha1(key: &[u8], message: &[u8]) -> [u8; 20] {
 pub fn code_for_step(secret: &[u8], step: u64) -> String {
     let mac = hmac_sha1(secret, &step.to_be_bytes());
     let offset = usize::from(mac[19] & 0x0f);
-    let number = u32::from_be_bytes([mac[offset] & 0x7f, mac[offset + 1], mac[offset + 2], mac[offset + 3]]);
+    let number = u32::from_be_bytes([
+        mac[offset] & 0x7f,
+        mac[offset + 1],
+        mac[offset + 2],
+        mac[offset + 3],
+    ]);
     format!("{:06}", number % 1_000_000)
 }
 
@@ -81,7 +88,11 @@ pub fn verify(secret: &[u8], code: &str, now_s: u64, last_used: Option<u64>) -> 
         .find(|step| {
             let expected = code_for_step(secret, *step);
             // Compare every digit so the time taken does not say how many were right.
-            expected.bytes().zip(code.bytes()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0
+            expected
+                .bytes()
+                .zip(code.bytes())
+                .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+                == 0
         })
 }
 
@@ -108,13 +119,19 @@ pub fn provisioning_uri(issuer: &str, account: &str, secret_base32: &str) -> Str
 
 /// One recovery code as shown (`ABCDE-FGHJK`), made from ten random base32 characters.
 pub fn recovery_code(random: &[u8; 10]) -> String {
-    let text: String = random.iter().map(|b| char::from(ALPHABET[usize::from(b & 31)])).collect();
+    let text: String = random
+        .iter()
+        .map(|b| char::from(ALPHABET[usize::from(b & 31)]))
+        .collect();
     format!("{}-{}", &text[..5], &text[5..])
 }
 
 /// A recovery code as typed (any case, with or without the dash, spaces ignored) in the form that is hashed.
 pub fn normalize_recovery(code: &str) -> String {
-    code.chars().filter(|c| c.is_ascii_alphanumeric()).collect::<String>().to_ascii_uppercase()
+    code.chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect::<String>()
+        .to_ascii_uppercase()
 }
 
 #[cfg(test)]
@@ -125,25 +142,48 @@ mod tests {
 
     #[test]
     fn hotp_matches_the_rfc_4226_values() {
-        let expected = ["755224", "287082", "359152", "969429", "338314", "254676", "287922", "162583", "399871", "520489"];
+        let expected = [
+            "755224", "287082", "359152", "969429", "338314", "254676", "287922", "162583",
+            "399871", "520489",
+        ];
         for (counter, want) in expected.iter().enumerate() {
-            assert_eq!(&code_for_step(RFC_SECRET, counter as u64), want, "counter {counter}");
+            assert_eq!(
+                &code_for_step(RFC_SECRET, counter as u64),
+                want,
+                "counter {counter}"
+            );
         }
     }
 
     #[test]
     fn totp_matches_the_rfc_6238_time_points() {
         // The RFC's eight-digit values end in these six digits.
-        for (time, want) in [(59u64, "287082"), (1_111_111_109, "081804"), (1_111_111_111, "050471"), (1_234_567_890, "005924"), (2_000_000_000, "279037")] {
-            assert_eq!(code_for_step(RFC_SECRET, time / STEP_SECS), want, "time {time}");
+        for (time, want) in [
+            (59u64, "287082"),
+            (1_111_111_109, "081804"),
+            (1_111_111_111, "050471"),
+            (1_234_567_890, "005924"),
+            (2_000_000_000, "279037"),
+        ] {
+            assert_eq!(
+                code_for_step(RFC_SECRET, time / STEP_SECS),
+                want,
+                "time {time}"
+            );
         }
     }
 
     #[test]
     fn base32_round_trips_and_is_forgiving() {
         assert_eq!(base32_encode(b"foobar"), "MZXW6YTBOI");
-        assert_eq!(base32_decode("MZXW6YTBOI").as_deref(), Some(b"foobar".as_slice()));
-        assert_eq!(base32_decode("mzxw 6ytb-oi").as_deref(), Some(b"foobar".as_slice()));
+        assert_eq!(
+            base32_decode("MZXW6YTBOI").as_deref(),
+            Some(b"foobar".as_slice())
+        );
+        assert_eq!(
+            base32_decode("mzxw 6ytb-oi").as_deref(),
+            Some(b"foobar".as_slice())
+        );
         assert_eq!(base32_decode("not base32!"), None);
         for len in 0..12usize {
             let bytes: Vec<u8> = (0..len).map(|i| (i * 37 + 11) as u8).collect();
@@ -157,10 +197,26 @@ mod tests {
         let step = now / STEP_SECS;
         let code = code_for_step(RFC_SECRET, step);
         assert_eq!(verify(RFC_SECRET, &code, now, None), Some(step));
-        assert_eq!(verify(RFC_SECRET, &code_for_step(RFC_SECRET, step - 1), now, None), Some(step - 1), "one step early");
-        assert_eq!(verify(RFC_SECRET, &code_for_step(RFC_SECRET, step + 1), now, None), Some(step + 1), "one step late");
-        assert_eq!(verify(RFC_SECRET, &code_for_step(RFC_SECRET, step - 3), now, None), None, "too old");
-        assert_eq!(verify(RFC_SECRET, &code, now, Some(step)), None, "already used");
+        assert_eq!(
+            verify(RFC_SECRET, &code_for_step(RFC_SECRET, step - 1), now, None),
+            Some(step - 1),
+            "one step early"
+        );
+        assert_eq!(
+            verify(RFC_SECRET, &code_for_step(RFC_SECRET, step + 1), now, None),
+            Some(step + 1),
+            "one step late"
+        );
+        assert_eq!(
+            verify(RFC_SECRET, &code_for_step(RFC_SECRET, step - 3), now, None),
+            None,
+            "too old"
+        );
+        assert_eq!(
+            verify(RFC_SECRET, &code, now, Some(step)),
+            None,
+            "already used"
+        );
         assert_eq!(verify(RFC_SECRET, &code, now, Some(step - 1)), Some(step));
         for junk in ["", "12345", "1234567", "abcdef", "12 34 5x"] {
             assert_eq!(verify(RFC_SECRET, junk, now, None), None, "{junk}");
@@ -173,14 +229,20 @@ mod tests {
     #[test]
     fn the_provisioning_address_is_escaped() {
         let uri = provisioning_uri("Open Pomodoro", "a b@c", "ABCD");
-        assert_eq!(uri, "otpauth://totp/Open%20Pomodoro:a%20b%40c?secret=ABCD&issuer=Open%20Pomodoro&algorithm=SHA1&digits=6&period=30");
+        assert_eq!(
+            uri,
+            "otpauth://totp/Open%20Pomodoro:a%20b%40c?secret=ABCD&issuer=Open%20Pomodoro&algorithm=SHA1&digits=6&period=30"
+        );
     }
 
     #[test]
     fn recovery_codes_read_back_however_they_are_typed() {
         let code = recovery_code(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
         assert_eq!(code.len(), 11);
-        assert_eq!(normalize_recovery(&code.to_lowercase()), normalize_recovery(&code));
+        assert_eq!(
+            normalize_recovery(&code.to_lowercase()),
+            normalize_recovery(&code)
+        );
         assert_eq!(normalize_recovery(" ab-cd ef "), "ABCDEF");
     }
 }

@@ -68,6 +68,9 @@ impl From<AccountError> for ApiError {
             NotFound => Self::not_found(),
             LastAdmin => Self::new(StatusCode::CONFLICT, "last_admin"),
             SelfAction => Self::new(StatusCode::CONFLICT, "self_action"),
+            TotpRequired => Self::new(StatusCode::UNAUTHORIZED, "totp_required"),
+            InvalidCode => Self::new(StatusCode::UNAUTHORIZED, "invalid_code"),
+            TotpState => Self::new(StatusCode::CONFLICT, "totp_state"),
             Db(cause) => Self::internal(cause),
         }
     }

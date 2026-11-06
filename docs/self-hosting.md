@@ -178,3 +178,13 @@ The same file can send events to a web address instead of running a program:
   IPv6 and similar) are refused, including names that resolve to them, unless `allow_private_webhooks` is `true`.
   Redirects are never followed.
 - The Admin screen lists the webhooks (never their secrets) and has a Test button for each.
+
+## Two-step sign-in
+
+Each person can turn on two-step sign-in in Profile. It uses any authenticator app (time-based codes, SHA-1, 6 digits,
+30 seconds). Turning it on needs the account password, a code from the app to prove it works, and gives eight
+one-time recovery codes (stored only as hashes; shown once). A code works once, and wrong codes count toward the same
+sign-in lockout as wrong passwords. Turning it off needs the password. There is no QR code yet: the key is shown to
+type in (or open as an `otpauth://` link). If someone loses their app and their recovery codes, an admin can reset the
+account's password but cannot switch two-step off for them; the way out is to restore from a database backup taken
+before it was turned on, or to delete the person's `totp` row in the database file while the server is stopped.

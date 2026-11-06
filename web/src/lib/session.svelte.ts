@@ -67,8 +67,8 @@ export async function bootstrap(): Promise<void> {
   }
 }
 
-export async function signIn(username: string, password: string): Promise<void> {
-  enter(await api.signIn(username, password));
+export async function signIn(username: string, password: string, code?: string): Promise<void> {
+  enter(await api.signIn(username, password, code));
 }
 
 export async function createFirstAccount(username: string, password: string): Promise<void> {

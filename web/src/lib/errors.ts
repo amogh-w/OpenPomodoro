@@ -16,6 +16,8 @@ const messages: Record<string, MessageKey> = {
   backup_too_large: "error.backup_too_large",
   payload_too_large: "error.payload_too_large",
   too_many_tokens: "error.too_many_tokens",
+  invalid_code: "error.invalid_code",
+  totp_state: "error.totp_state",
   name_required: "error.name_required",
 };
 

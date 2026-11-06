@@ -52,6 +52,12 @@ pub enum AccountError {
     NotFound,
     /// The action would leave no enabled admin.
     LastAdmin,
+    /// The password was right but this account has two-factor sign-in on and no code was given.
+    TotpRequired,
+    /// The one-time code or recovery code was wrong, or already used.
+    InvalidCode,
+    /// Two-factor setup was asked for in the wrong state (already on, or not started).
+    TotpState,
     /// An admin tried to disable or delete their own account here.
     SelfAction,
     Db(String),
@@ -303,6 +309,19 @@ impl Accounts {
         address: &str,
         now_ms: i64,
     ) -> Result<Session> {
+        self.sign_in_with_code(db, username, password, None, address, now_ms)
+    }
+
+    /// Sign in; an account with two-factor on also needs a current one-time code (or an unused recovery code).
+    pub fn sign_in_with_code(
+        &self,
+        db: &Db,
+        username: &str,
+        password: &str,
+        code: Option<&str>,
+        address: &str,
+        now_ms: i64,
+    ) -> Result<Session> {
         let account_key = format!("user:{}", username.trim().to_ascii_lowercase());
         let address_key = format!("ip:{address}");
 
@@ -328,6 +347,16 @@ impl Accounts {
 
         match user {
             Some(user) if matches && !user.disabled => {
+                if let Some(second) = db.totp(&user.id)?.filter(|t| t.enabled) {
+                    let Some(code) = code.filter(|c| !c.trim().is_empty()) else {
+                        return Err(AccountError::TotpRequired);
+                    };
+                    if !self.accept_second_factor(db, &user.id, &second, code, now_ms)? {
+                        self.record_failure(db, &account_key, FREE_FAILURES_ACCOUNT, now_ms)?;
+                        self.record_failure(db, &address_key, FREE_FAILURES_ADDRESS, now_ms)?;
+                        return Err(AccountError::InvalidCode);
+                    }
+                }
                 db.delete_attempt(&account_key)?;
                 self.start_session(db, user, now_ms)
             }
@@ -338,6 +367,122 @@ impl Accounts {
                 Err(AccountError::InvalidCredentials)
             }
         }
+    }
+
+    /// Accept a one-time code (once per time step) or burn one recovery code.
+    fn accept_second_factor(
+        &self,
+        db: &Db,
+        user_id: &str,
+        totp: &crate::db::Totp,
+        code: &str,
+        now_ms: i64,
+    ) -> Result<bool> {
+        let secret = crate::totp::base32_decode(&totp.secret).unwrap_or_default();
+        let now_s = u64::try_from(now_ms / 1000).unwrap_or(0);
+        let last = totp.last_step.and_then(|s| u64::try_from(s).ok());
+        if let Some(step) = crate::totp::verify(&secret, code, now_s, last) {
+            let mut next = totp.clone();
+            next.last_step = i64::try_from(step).ok();
+            db.put_totp(user_id, &next)?;
+            return Ok(true);
+        }
+        let hash = sha256_hex(&crate::totp::normalize_recovery(code));
+        if totp.recovery.contains(&hash) {
+            let mut next = totp.clone();
+            next.recovery.retain(|h| h != &hash);
+            db.put_totp(user_id, &next)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    // ---- two-factor setup ----
+
+    /// Whether two-factor is on, and how many recovery codes are left.
+    pub fn totp_status(&self, db: &Db, user: &User) -> Result<(bool, usize)> {
+        Ok(db
+            .totp(&user.id)?
+            .filter(|t| t.enabled)
+            .map_or((false, 0), |t| (true, t.recovery.len())))
+    }
+
+    /// Start setting up two-factor: a fresh secret, not yet in force. Needs the password.
+    pub fn totp_begin(&self, db: &Db, user: &User, password: &str) -> Result<(String, String)> {
+        if !self.hasher.verify(&user.password_hash, password) {
+            return Err(AccountError::InvalidCredentials);
+        }
+        if db.totp(&user.id)?.is_some_and(|t| t.enabled) {
+            return Err(AccountError::TotpState);
+        }
+        let raw = format!(
+            "{}{}",
+            uuid::Uuid::new_v4().simple(),
+            uuid::Uuid::new_v4().simple()
+        );
+        let bytes: Vec<u8> = (0..20)
+            .map(|i| u8::from_str_radix(&raw[i * 2..i * 2 + 2], 16).unwrap_or(0))
+            .collect();
+        let secret = crate::totp::base32_encode(&bytes);
+        db.put_totp(
+            &user.id,
+            &crate::db::Totp {
+                secret: secret.clone(),
+                enabled: false,
+                recovery: Vec::new(),
+                last_step: None,
+            },
+        )?;
+        let uri = crate::totp::provisioning_uri("OpenPomodoro", &user.username, &secret);
+        Ok((secret, uri))
+    }
+
+    /// Finish setup with a code from the app: two-factor goes into force and the recovery codes are made (shown once).
+    pub fn totp_enable(
+        &self,
+        db: &Db,
+        user: &User,
+        code: &str,
+        now_ms: i64,
+    ) -> Result<Vec<String>> {
+        let Some(pending) = db.totp(&user.id)?.filter(|t| !t.enabled) else {
+            return Err(AccountError::TotpState);
+        };
+        let secret = crate::totp::base32_decode(&pending.secret).unwrap_or_default();
+        let now_s = u64::try_from(now_ms / 1000).unwrap_or(0);
+        let Some(step) = crate::totp::verify(&secret, code, now_s, None) else {
+            return Err(AccountError::InvalidCode);
+        };
+        let codes: Vec<String> = (0..8)
+            .map(|_| {
+                let raw = uuid::Uuid::new_v4();
+                let mut bytes = [0u8; 10];
+                bytes.copy_from_slice(&raw.as_bytes()[..10]);
+                crate::totp::recovery_code(&bytes)
+            })
+            .collect();
+        let recovery = codes
+            .iter()
+            .map(|c| sha256_hex(&crate::totp::normalize_recovery(c)))
+            .collect();
+        db.put_totp(
+            &user.id,
+            &crate::db::Totp {
+                secret: pending.secret,
+                enabled: true,
+                recovery,
+                last_step: i64::try_from(step).ok(),
+            },
+        )?;
+        Ok(codes)
+    }
+
+    /// Turn two-factor off. Needs the password.
+    pub fn totp_disable(&self, db: &Db, user: &User, password: &str) -> Result<()> {
+        if !self.hasher.verify(&user.password_hash, password) {
+            return Err(AccountError::InvalidCredentials);
+        }
+        Ok(db.delete_totp(&user.id)?)
     }
 
     fn record_failure(&self, db: &Db, key: &str, free: u32, now_ms: i64) -> Result<()> {
@@ -1015,5 +1160,159 @@ mod tests {
         let (accounts, db, admin) = setup();
         accounts.delete_account(&db, &admin, PW).expect("delete");
         assert!(accounts.needs_setup(&db).expect("needs"));
+    }
+
+    // ---- two-factor sign-in ----
+
+    /// Turn two-factor on for the admin and return the secret bytes and the recovery codes.
+    fn two_factor_on(
+        accounts: &Accounts,
+        db: &Db,
+        user: &User,
+        now: i64,
+    ) -> (Vec<u8>, Vec<String>) {
+        let (secret, uri) = accounts.totp_begin(db, user, PW).expect("begin");
+        assert!(uri.contains(&secret));
+        assert_eq!(
+            accounts.totp_status(db, user).expect("status"),
+            (false, 0),
+            "not in force yet"
+        );
+        let bytes = crate::totp::base32_decode(&secret).expect("secret");
+        let code = crate::totp::code_for_step(
+            &bytes,
+            u64::try_from(now / 1000).expect("t") / crate::totp::STEP_SECS,
+        );
+        let codes = accounts.totp_enable(db, user, &code, now).expect("enable");
+        (bytes, codes)
+    }
+
+    #[test]
+    fn sign_in_with_two_factor_needs_a_code_and_a_code_works_once() {
+        let (accounts, db, admin) = setup();
+        let now = 1_700_000_000_000;
+        let (secret, codes) = two_factor_on(&accounts, &db, &admin, now);
+        assert_eq!(codes.len(), 8);
+        assert_eq!(
+            accounts.totp_status(&db, &admin).expect("status"),
+            (true, 8)
+        );
+
+        // Right password, no code: asked for one, and that is not counted as a failure.
+        for _ in 0..12 {
+            assert_eq!(
+                accounts
+                    .sign_in_with_code(&db, "admin", PW, None, "a", now)
+                    .err(),
+                Some(AccountError::TotpRequired)
+            );
+        }
+        let step = u64::try_from(now / 1000).expect("t") / crate::totp::STEP_SECS + 1;
+        let later = now + i64::try_from(crate::totp::STEP_SECS * 1000).expect("ms");
+        let code = crate::totp::code_for_step(&secret, step);
+        assert!(
+            accounts
+                .sign_in_with_code(&db, "admin", PW, Some(&code), "a", later)
+                .is_ok()
+        );
+        assert_eq!(
+            accounts
+                .sign_in_with_code(&db, "admin", PW, Some(&code), "a", later)
+                .err(),
+            Some(AccountError::InvalidCode),
+            "the same code does not work twice"
+        );
+        // A wrong password still looks like any other wrong password.
+        assert_eq!(
+            accounts
+                .sign_in_with_code(&db, "admin", "nope nope nope", Some(&code), "a", later)
+                .err(),
+            Some(AccountError::InvalidCredentials)
+        );
+    }
+
+    #[test]
+    fn a_recovery_code_works_once_however_it_is_typed() {
+        let (accounts, db, admin) = setup();
+        let now = 1_700_000_000_000;
+        let (_, codes) = two_factor_on(&accounts, &db, &admin, now);
+        let typed = codes[0].to_lowercase().replace('-', " ");
+        assert!(
+            accounts
+                .sign_in_with_code(&db, "admin", PW, Some(&typed), "a", now)
+                .is_ok()
+        );
+        assert_eq!(
+            accounts.totp_status(&db, &admin).expect("status"),
+            (true, 7)
+        );
+        assert_eq!(
+            accounts
+                .sign_in_with_code(&db, "admin", PW, Some(&codes[0]), "a", now)
+                .err(),
+            Some(AccountError::InvalidCode)
+        );
+        assert!(
+            accounts
+                .sign_in_with_code(&db, "admin", PW, Some(&codes[1]), "b", now)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn wrong_codes_count_towards_the_lockout() {
+        let (accounts, db, admin) = setup();
+        let now = 1_700_000_000_000;
+        two_factor_on(&accounts, &db, &admin, now);
+        let mut locked = false;
+        for _ in 0..30 {
+            if let Some(AccountError::RateLimited { .. }) = accounts
+                .sign_in_with_code(&db, "admin", PW, Some("000000"), "a", now)
+                .err()
+            {
+                locked = true;
+                break;
+            }
+        }
+        assert!(locked, "guessing codes is rate limited");
+    }
+
+    #[test]
+    fn setup_needs_the_password_the_right_state_and_a_real_code_and_disabling_needs_the_password() {
+        let (accounts, db, admin) = setup();
+        let now = 1_700_000_000_000;
+        assert_eq!(
+            accounts.totp_begin(&db, &admin, "wrong password!").err(),
+            Some(AccountError::InvalidCredentials)
+        );
+        assert_eq!(
+            accounts.totp_enable(&db, &admin, "123456", now).err(),
+            Some(AccountError::TotpState),
+            "not started"
+        );
+        accounts.totp_begin(&db, &admin, PW).expect("begin");
+        assert_eq!(
+            accounts.totp_enable(&db, &admin, "000000", now).err(),
+            Some(AccountError::InvalidCode)
+        );
+        two_factor_on(&accounts, &db, &admin, now);
+        assert_eq!(
+            accounts.totp_begin(&db, &admin, PW).err(),
+            Some(AccountError::TotpState),
+            "already on"
+        );
+        assert_eq!(
+            accounts.totp_disable(&db, &admin, "wrong password!").err(),
+            Some(AccountError::InvalidCredentials)
+        );
+        accounts.totp_disable(&db, &admin, PW).expect("off");
+        assert_eq!(
+            accounts.totp_status(&db, &admin).expect("status"),
+            (false, 0)
+        );
+        assert!(
+            accounts.sign_in(&db, "admin", PW, "a", now).is_ok(),
+            "plain sign-in works again"
+        );
     }
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import AccessSettings from "../lib/AccessSettings.svelte";
   import AccountSection from "../lib/AccountSection.svelte";
+  import TwoStepSection from "../lib/TwoStepSection.svelte";
   import DataSection from "../lib/DataSection.svelte";
   import { t } from "../lib/i18n";
   import { session } from "../lib/session.svelte";
@@ -18,6 +19,7 @@
 
 <div class="mt-4 lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid lg:[&>*]:mt-0 lg:[&>*]:mb-6">
   <AccountSection />
+  <TwoStepSection />
   <AccessSettings />
   <DataSection />
 </div>
