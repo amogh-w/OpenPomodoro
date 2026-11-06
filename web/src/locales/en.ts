@@ -78,6 +78,8 @@ const en = {
   "tasks.workingOn": "Working on: {title}",
   "tasks.clear": "Stop working on this task",
   "tasks.finishIt": "Mark \"{title}\" as done",
+  "pip.open": "Float the timer",
+  "pip.label": "Floating timer",
   "compact.on": "Compact view",
   "compact.off": "Full view",
   "special.title": "Special breaks",

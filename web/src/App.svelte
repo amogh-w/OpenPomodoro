@@ -17,6 +17,7 @@
   import Announcer from "./lib/Announcer.svelte";
   import LinkHandler from "./lib/LinkHandler.svelte";
   import MiniBar from "./lib/MiniBar.svelte";
+  import PipTimer from "./lib/PipTimer.svelte";
   import TabBar from "./lib/TabBar.svelte";
   import Admin from "./screens/Admin.svelte";
   import Auth from "./screens/Auth.svelte";
@@ -152,6 +153,7 @@
 
 {#if session.status === "signed_in"}
   <Announcer />
+  <PipTimer />
   {#if router.route === "timer"}
     <button
       class="btn btn-gray fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 size-11 !px-0"

@@ -80,6 +80,8 @@ const es: Record<keyof typeof en, string> = {
   "tasks.workingOn": "Trabajando en: {title}",
   "tasks.clear": "Dejar de trabajar en esta tarea",
   "tasks.finishIt": "Marcar \"{title}\" como hecha",
+  "pip.open": "Sacar el temporizador",
+  "pip.label": "Temporizador flotante",
   "compact.on": "Vista compacta",
   "compact.off": "Vista completa",
   "special.title": "Descansos especiales",

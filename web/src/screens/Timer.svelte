@@ -21,6 +21,7 @@
   import { dueSpecialBreak } from "../lib/specialBreaks";
   import { markHandled, special } from "../lib/specialBreaksStore.svelte";
   import { shouldSendTimerEnds } from "../lib/timerView";
+  import { openPip, pip, pipSupported } from "../platform/pip.svelte";
   import { alertPrefs, keymap, prefs, updateAlertPrefs } from "../platform/prefs.svelte";
   import type { CommandInput, Task } from "../lib/types";
 
@@ -635,6 +636,12 @@
 
     {#if view.phase === "break" && view.can.init_focus}
       <button class="btn btn-filled" disabled={busy} onclick={() => leaveBreak("init_focus")}>{t("timer.startFocus")}</button>
+    {/if}
+
+    {#if pipSupported() && !pip.open}
+      <button class="btn btn-plain btn-sm" onclick={() => void openPip()}>
+        <svg class="size-4"><use href="/icons.svg#timer" /></svg>{t("pip.open")}
+      </button>
     {/if}
   </div>
 {/if}
