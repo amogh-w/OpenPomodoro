@@ -111,9 +111,9 @@ fn hmac_sha256_hex(key: &[u8], body: &[u8]) -> String {
 
 /// Resolves like the default resolver, then drops every address the policy forbids.
 #[derive(Debug)]
-struct PublicOnly {
-    inner: DefaultResolver,
-    allow_private: bool,
+pub(crate) struct PublicOnly {
+    pub(crate) inner: DefaultResolver,
+    pub(crate) allow_private: bool,
 }
 
 impl Resolver for PublicOnly {

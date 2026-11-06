@@ -94,6 +94,7 @@ async fn main() -> ExitCode {
             }
         }
     }
+    tokio::spawn(op_server::push::run(state.clone()));
     let service = op_server::app(state).into_make_service_with_connect_info::<SocketAddr>();
     match axum::serve(listener, service).await {
         Ok(()) => ExitCode::SUCCESS,

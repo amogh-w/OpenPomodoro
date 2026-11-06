@@ -12,6 +12,7 @@ use crate::state::Shared;
 
 pub mod auth;
 pub mod data;
+pub mod push;
 pub mod sounds;
 pub mod v1;
 pub mod ws;
@@ -19,6 +20,7 @@ pub mod ws;
 pub fn router() -> Router<Shared> {
     auth::router()
         .merge(data::router())
+        .merge(push::router())
         .merge(sounds::router())
         .merge(v1::router())
         .merge(ws::router())

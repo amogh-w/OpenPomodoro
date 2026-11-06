@@ -13,7 +13,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: [&str; 6] = [
+const MIGRATIONS: [&str; 7] = [
     r#"
     CREATE TABLE users (
         id            TEXT PRIMARY KEY,
@@ -129,6 +129,20 @@ const MIGRATIONS: [&str; 6] = [
         last_step INTEGER
     ) WITHOUT ROWID;
 "#,
+    r#"
+    -- Browsers that asked for alerts while the app is closed (Web Push): where to send, the keys to encrypt with,
+    -- and what the device wants (a JSON blob: quiet hours, daily reminder, its own wording).
+    CREATE TABLE push_subs (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint   TEXT NOT NULL UNIQUE,
+        p256dh     TEXT NOT NULL,
+        auth       TEXT NOT NULL,
+        prefs      TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    ) WITHOUT ROWID;
+    CREATE INDEX push_subs_by_user ON push_subs (user_id);
+"#,
 ];
 
 #[derive(Debug)]
@@ -238,6 +252,17 @@ pub struct SessionInfo {
     pub created_at: i64,
     pub last_seen: i64,
     pub agent: String,
+}
+
+/// A browser's push subscription.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PushSub {
+    pub id: String,
+    pub user_id: String,
+    pub endpoint: String,
+    pub p256dh: String,
+    pub auth: String,
+    pub prefs: String,
 }
 
 /// A person's two-factor settings.
@@ -547,6 +572,72 @@ impl Db {
         self.conn.execute(
             "UPDATE api_tokens SET last_used = ?2 WHERE id = ?1",
             params![id, now_ms],
+        )?;
+        Ok(())
+    }
+
+    /// Add or update a push subscription (an endpoint belongs to one user: taking it over moves it).
+    pub fn upsert_push_sub(
+        &self,
+        user_id: &str,
+        endpoint: &str,
+        p256dh: &str,
+        auth: &str,
+        prefs: &str,
+        now_ms: i64,
+    ) -> Result<()> {
+        let id = uuid::Uuid::new_v4().simple().to_string();
+        self.conn.execute(
+            "INSERT INTO push_subs (id, user_id, endpoint, p256dh, auth, prefs, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT (endpoint) DO UPDATE SET user_id = ?2, p256dh = ?4, auth = ?5, prefs = ?6",
+            params![id, user_id, endpoint, p256dh, auth, prefs, now_ms],
+        )?;
+        Ok(())
+    }
+
+    pub fn push_subs_of(&self, user_id: &str) -> Result<Vec<PushSub>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, user_id, endpoint, p256dh, auth, prefs FROM push_subs WHERE user_id = ?1 ORDER BY created_at")?;
+        let rows = stmt
+            .query_map(params![user_id], |r| {
+                Ok(PushSub {
+                    id: r.get(0)?,
+                    user_id: r.get(1)?,
+                    endpoint: r.get(2)?,
+                    p256dh: r.get(3)?,
+                    auth: r.get(4)?,
+                    prefs: r.get(5)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Everyone with at least one subscription.
+    pub fn push_users(&self) -> Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT user_id FROM push_subs")?;
+        let rows = stmt
+            .query_map([], |r| r.get(0))?
+            .collect::<std::result::Result<Vec<String>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Forget one of a user's subscriptions; false when it was not theirs or not there.
+    pub fn delete_push_sub(&self, user_id: &str, endpoint: &str) -> Result<bool> {
+        Ok(self.conn.execute(
+            "DELETE FROM push_subs WHERE user_id = ?1 AND endpoint = ?2",
+            params![user_id, endpoint],
+        )? > 0)
+    }
+
+    /// Forget a subscription the push service said is gone.
+    pub fn delete_push_endpoint(&self, endpoint: &str) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM push_subs WHERE endpoint = ?1",
+            params![endpoint],
         )?;
         Ok(())
     }
@@ -1161,7 +1252,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("version");
-        assert_eq!(version, 6);
+        assert_eq!(version, 7);
         let mode: String = db
             .conn
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -1184,7 +1275,7 @@ mod tests {
             Db::open(&path),
             Err(DbError::FutureSchema {
                 found: 99,
-                supported: 6
+                supported: 7
             })
         ));
     }

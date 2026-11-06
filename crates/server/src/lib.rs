@@ -22,6 +22,7 @@ pub mod export;
 pub mod healthcheck;
 pub mod hooks;
 pub mod hub;
+pub mod push;
 pub mod security;
 pub mod serverlog;
 pub mod settings;
