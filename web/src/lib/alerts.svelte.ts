@@ -16,6 +16,7 @@ import { leader } from "../platform/leader.svelte";
 import { playAlert, playTick } from "../platform/audio";
 import { notify } from "../platform/notify";
 import { speak } from "../platform/speech";
+import { syncPush } from "../platform/push";
 import { activeLanguage } from "./language.svelte";
 import { alertPrefs } from "../platform/prefs.svelte";
 
@@ -52,6 +53,13 @@ export function startAlerts(): () => void {
       void app.changes; // a change pushed from another device may be a new sound
       if (id) void loadCustomSounds(id);
       else clearCustomSounds();
+    });
+
+    // Quiet hours, the daily reminder and the language also matter to the server's closed-app alerts: keep it told.
+    $effect(() => {
+      const snapshot = $state.snapshot(alertPrefs);
+      void activeLanguage();
+      if (session.user) void syncPush(snapshot);
     });
 
     $effect(() => {

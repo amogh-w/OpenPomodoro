@@ -5,6 +5,9 @@
   import { ALERT_KINDS, type AlertKind } from "./sounds";
   import { audioUnlocked, playAlert } from "../platform/audio";
   import { speechSupported } from "../platform/speech";
+  import { disablePush, enablePush, type PushState, pushState } from "../platform/push";
+  import { api } from "./api";
+  import { onMount } from "svelte";
   import { notificationsSupported, permission, requestPermission } from "../platform/notify";
   import { customSounds, removeCustomSound, uploadCustomSound } from "../platform/customSounds.svelte";
   import { alertPrefs, updateAlertPrefs } from "../platform/prefs.svelte";
@@ -14,6 +17,32 @@
   const nudgeChoices = [0, 5, 10, 15, 30];
 
   let perm = $state(permission());
+  let push = $state<PushState>("off");
+  let pushProblem = $state<string | null>(null);
+  let pushNote = $state<string | null>(null);
+  const iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  onMount(() => void pushState().then((s) => (push = s)));
+
+  async function setPush(on: boolean): Promise<void> {
+    pushProblem = pushNote = null;
+    try {
+      if (on) await enablePush($state.snapshot(alertPrefs));
+      else await disablePush();
+    } catch (error) {
+      pushProblem = error instanceof Error && error.message === "denied" ? t("settings.push.denied") : t("settings.push.failed");
+    }
+    push = await pushState();
+  }
+
+  async function testPush(): Promise<void> {
+    pushProblem = pushNote = null;
+    try {
+      const { sent } = await api.pushTest();
+      pushNote = sent > 0 ? t("settings.push.sent", { n: sent }) : t("settings.push.noneSent");
+    } catch {
+      pushProblem = t("settings.push.failed");
+    }
+  }
   let locked = $state(!audioUnlocked());
 
   async function setNotify(on: boolean): Promise<void> {
@@ -130,6 +159,26 @@
         </button>
       {/each}
     </div>
+  </div>
+
+  <div class="grid gap-2">
+    <label class="flex min-h-11 items-center justify-between gap-3">
+      <span>
+        <span class="block">{t("settings.push")}</span>
+        <span class="t-foot text-subtext1">
+          {push === "unsupported" ? t("settings.push.unsupported") : push === "denied" ? t("settings.push.blocked") : t("settings.push.hint")}
+        </span>
+      </span>
+      <span class="switch">
+        <input type="checkbox" checked={push === "on"} disabled={push === "unsupported" || push === "denied"} onchange={(e) => void setPush(e.currentTarget.checked)} />
+      </span>
+    </label>
+    {#if iPhone && push !== "on"}<p class="t-foot text-subtext1">{t("settings.push.iphone")}</p>{/if}
+    {#if push === "on"}
+      <button class="btn btn-gray btn-sm justify-self-start" onclick={testPush}>{t("settings.push.test")}</button>
+    {/if}
+    {#if pushNote}<p class="t-foot" role="status">{pushNote}</p>{/if}
+    {#if pushProblem}<p class="alert tone-warn" role="alert">{pushProblem}</p>{/if}
   </div>
 
   <label class="flex min-h-11 items-center justify-between gap-3">

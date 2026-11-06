@@ -186,3 +186,21 @@ Each person can turn on two-step sign-in in Profile. It uses any authenticator a
 one-time recovery codes (stored only as hashes; shown once). A code works once, and wrong codes count toward the same
 sign-in lockout as wrong passwords. Turning it off needs the password. There is no QR code yet: the key is shown to
 type in (or open as an `otpauth://` link). If someone loses their app and their recovery codes, an admin can press "Reset two-step" next to their name on the Admin screen: it switches two-step off for that account and signs them out everywhere, and they can turn it on again after signing in with their password.
+
+## Alerts while the app is closed (Web Push)
+
+A browser that has the app installed (or open once) can ask the server to alert it when nothing is open: Settings,
+Alerts, "Alerts when the app is closed". The server then sends a short message through the browser maker's push
+service when a focus session or break ends, and for the daily reminder, but only when that person has no app open
+(an open app alerts for itself) and outside the device's quiet hours.
+
+- It needs HTTPS (or `localhost`), because browsers only allow push for secure pages, and the server must be able to
+  reach the push services over HTTPS (Google, Mozilla, Apple and Microsoft addresses only; any other endpoint is
+  refused). Only the built app registers the service worker, so it does not work on the Vite dev page.
+- The server makes its own signing key (VAPID) the first time it is needed and keeps it in the database. If you
+  restore an older database, browsers may need to turn the option off and on again.
+- The message is encrypted for the browser and carries only the title and a line of text in the language the
+  device chose; the push service sees the size and timing, not the words.
+- On iPhone and iPad it only works once the app has been added to the Home Screen.
+- Not covered: sounds. The notification uses the device's own notification sound.
+- Failures (a push service refusing, a subscription that no longer exists) show in the Admin screen's server log.

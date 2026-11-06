@@ -113,7 +113,20 @@ export interface WebhookInfo {
   enabled: boolean;
 }
 
+export interface PushPrefsBody {
+  phase: boolean;
+  daily: { minutes: number; days: boolean[] } | null;
+  quiet: [number, number] | null;
+  tz: number;
+  texts: Record<string, string>;
+}
+
 export const api = {
+  pushKey: () => request<{ key: string }>("GET", "/api/push/key"),
+  pushSubscribe: (endpoint: string, keys: { p256dh: string; auth: string }, prefs: PushPrefsBody) =>
+    request<void>("PUT", "/api/push/subscription", { endpoint, keys, prefs }),
+  pushUnsubscribe: (endpoint: string) => request<void>("DELETE", "/api/push/subscription", { endpoint }),
+  pushTest: () => request<{ sent: number }>("POST", "/api/push/test"),
   adminLog: () => request<{ lines: { at: number; area: string; message: string }[] }>("GET", "/api/admin/log"),
   adminTestWebhook: (index: number) =>
     request<{ event: string; result: "delivered" | "status" | "failed"; detail: unknown }>("POST", `/api/admin/webhooks/${index}/test`),
