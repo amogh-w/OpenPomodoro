@@ -18,6 +18,7 @@
   import TabBar from "./lib/TabBar.svelte";
   import Admin from "./screens/Admin.svelte";
   import Auth from "./screens/Auth.svelte";
+  import Profile from "./screens/Profile.svelte";
   import History from "./screens/History.svelte";
   import Settings from "./screens/Settings.svelte";
   import Timer from "./screens/Timer.svelte";
@@ -125,11 +126,13 @@
       </div>
     {/if}
     <main>
-      <div id="screen" role="tabpanel" aria-labelledby="tab-{router.route === 'admin' ? 'settings' : router.route}">
+      <div id="screen" role="tabpanel" aria-labelledby="tab-{router.route === 'admin' ? 'profile' : router.route}">
         {#if router.route === "timer"}
           <Timer />
         {:else if router.route === "history"}
           <History />
+        {:else if router.route === "profile"}
+          <Profile />
         {:else if router.route === "admin" && session.user?.role === "admin"}
           <Admin />
         {:else}

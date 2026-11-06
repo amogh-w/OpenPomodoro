@@ -1,4 +1,4 @@
-export const routes = ["timer", "history", "settings", "admin"] as const;
+export const routes = ["timer", "history", "profile", "settings", "admin"] as const;
 export type Route = (typeof routes)[number];
 
 const isRoute = (name: string): name is Route => (routes as readonly string[]).includes(name);

@@ -3,11 +3,8 @@
   import { t, type MessageKey } from "../lib/i18n";
   import { accents, flavors, radii, readTheme, setTheme, syncThemeButtons } from "../lib/theme";
   import CustomThemeEditor from "../lib/CustomThemeEditor.svelte";
-  import AccessSettings from "../lib/AccessSettings.svelte";
-  import AccountSection from "../lib/AccountSection.svelte";
   import AlertSettings from "../lib/AlertSettings.svelte";
   import CategorySettings from "../lib/CategorySettings.svelte";
-  import DataSection from "../lib/DataSection.svelte";
   import ShortcutSettings from "../lib/ShortcutSettings.svelte";
   import SpecialBreakSettings from "../lib/SpecialBreakSettings.svelte";
   import TimerSettings from "../lib/TimerSettings.svelte";
@@ -82,12 +79,6 @@
     <p class="text-subtext1">{t("install.unavailable")}</p>
   {/if}
 </section>
-
-<DataSection />
-
-<AccountSection />
-
-<AccessSettings />
 
 <ShortcutSettings />
 </div>

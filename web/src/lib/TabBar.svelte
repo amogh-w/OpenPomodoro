@@ -6,11 +6,12 @@
   const tabs: { route: Route; icon: string; label: MessageKey }[] = [
     { route: "timer", icon: "timer", label: "nav.timer" },
     { route: "history", icon: "calendar", label: "nav.history" },
+    { route: "profile", icon: "user", label: "nav.profile" },
     { route: "settings", icon: "settings", label: "nav.settings" },
   ];
 
-  // The users screen belongs to Settings, so Settings stays selected there.
-  const active = (route: Route): boolean => router.route === route || (route === "settings" && router.route === "admin");
+  // The users screen belongs to the profile, so Profile stays selected there.
+  const active = (route: Route): boolean => router.route === route || (route === "profile" && router.route === "admin");
 
   /** Arrow keys, Home and End move between tabs, as in any tab list. */
   function onKey(event: KeyboardEvent): void {
@@ -34,7 +35,7 @@
     {#each tabs as tab (tab.route)}
       <button
         id="tab-{tab.route}"
-        class="tab"
+        class="tab tab-{tab.route}"
         role="tab"
         aria-selected={active(tab.route)}
         aria-controls="screen"
