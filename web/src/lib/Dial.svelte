@@ -21,15 +21,31 @@
   let { value, min = 5, max = 180, step = 5, onchange, disabled = false, class: extra = "", tone = "accent", unit = "min", onflip }: Props = $props();
 
   const range = $derived({ min, max, step });
-  const R = 100;
-  const C = 2 * Math.PI * R;
+  // Geometry (viewBox 240): a ring of 60 tick marks, a pie that fills as the length grows, and a hand to turn.
+  const WEDGE = 68;
+  const HAND = 94;
+  const ticks = Array.from({ length: 60 }, (_, i) => {
+    const a = (i * 6 * Math.PI) / 180;
+    const major = i % 5 === 0;
+    const from = major ? 100 : 106;
+    return { i, major, x1: 120 + from * Math.sin(a), y1: 120 - from * Math.cos(a), x2: 120 + 114 * Math.sin(a), y2: 120 - 114 * Math.cos(a) };
+  });
 
-  // Fraction of the ring that is filled: a full lap at 60 minutes, then it starts a second lap.
+  // Fraction of the circle that is filled: a full lap at 60 minutes, then it starts a second lap.
   const lap = $derived(((value - 1) % 60 + 1) / 60);
   const secondLap = $derived(value > 60);
   const angle = $derived((handleAngle(value) * Math.PI) / 180);
-  const hx = $derived(120 + R * Math.sin(angle));
-  const hy = $derived(120 - R * Math.cos(angle));
+  const tipX = $derived(120 + HAND * Math.sin(angle));
+  const tipY = $derived(120 - HAND * Math.cos(angle));
+  const edgeX = $derived(120 + WEDGE * Math.sin(angle));
+  const edgeY = $derived(120 - WEDGE * Math.cos(angle));
+  const wedge = $derived(
+    lap >= 0.9999
+      ? ""
+      : `M 120 120 L 120 ${120 - WEDGE} A ${WEDGE} ${WEDGE} 0 ${lap > 0.5 ? 1 : 0} 1 ${edgeX} ${edgeY} Z`,
+  );
+  const fillClass = $derived(tone === "green" ? "fill-green" : "fill-accent");
+  const strokeClass = $derived(tone === "green" ? "stroke-green" : "stroke-accent");
 
   let svg: SVGSVGElement | undefined = $state();
   let drag: { prev: number; total: number; start: number } | null = null;
@@ -104,23 +120,24 @@
   onpointercancel={up}
   onkeydown={key}
 >
-  <circle cx="120" cy="120" r={R} fill="none" class="stroke-surface1" stroke-width="16" />
-  {#if secondLap}
-    <circle cx="120" cy="120" r={R} fill="none" class={tone === "green" ? "stroke-green" : "stroke-accent"} stroke-width="16" opacity="0.3" />
+  {#each ticks as tickMark (tickMark.i)}
+    <line
+      x1={tickMark.x1}
+      y1={tickMark.y1}
+      x2={tickMark.x2}
+      y2={tickMark.y2}
+      class={tickMark.major ? "stroke-subtext0" : "stroke-overlay0"}
+      stroke-width={tickMark.major ? 2.4 : 1.2}
+      stroke-linecap="round"
+    />
+  {/each}
+  <circle cx="120" cy="120" r={WEDGE} class="fill-surface0" />
+  {#if secondLap}<circle cx="120" cy="120" r={WEDGE} class={fillClass} opacity="0.35" />{/if}
+  {#if wedge === ""}
+    <circle cx="120" cy="120" r={WEDGE} class={fillClass} opacity="0.85" />
+  {:else}
+    <path d={wedge} class={fillClass} opacity="0.85" />
   {/if}
-  <circle
-    cx="120"
-    cy="120"
-    r={R}
-    fill="none"
-    class={tone === "green" ? "stroke-green" : "stroke-accent"}
-    stroke-width="16"
-    stroke-linecap="round"
-    stroke-dasharray={C}
-    stroke-dashoffset={C * (1 - lap)}
-    transform="rotate(-90 120 120)"
-  />
-  <circle cx={hx} cy={hy} r="14" class="{tone === 'green' ? 'fill-green' : 'fill-accent'} stroke-base" stroke-width="4" />
-  <text x="120" y="128" text-anchor="middle" class="fill-text" font-size="56" font-weight="700">{value}</text>
-  <text x="120" y="156" text-anchor="middle" class="fill-subtext0" font-size="16">{unit === "sec" ? t("timer.dial.unitSeconds") : t("timer.dial.unit")}</text>
+  <line x1="120" y1="120" x2={tipX} y2={tipY} class={strokeClass} stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="120" cy="120" r="10" class="fill-text" opacity="0.9" />
 </svg>

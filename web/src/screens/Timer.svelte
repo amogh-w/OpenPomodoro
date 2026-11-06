@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import CategoryPicker from "../lib/CategoryPicker.svelte";
   import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
   import Dial from "../lib/Dial.svelte";
@@ -198,6 +199,7 @@
   }
 
   let intentionField: HTMLInputElement | undefined = $state();
+  let picker: CategoryPicker | undefined = $state();
   let editDialog: EditSessionDialog | undefined = $state();
   let earlyDialog: ConfirmDialog | undefined = $state();
   let abandonDialog: ConfirmDialog | undefined = $state();
@@ -336,36 +338,54 @@
       </span>
     </div>
   {/if}
-  <form class="mx-auto grid max-w-xl gap-5" onsubmit={start}>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="t-large">{t("timer.title")}</h1>
-      <div class="flex gap-2" role="group" aria-label={t("timer.mode")}>
-        <button type="button" class="chip" aria-pressed={!isBreak} onclick={() => (mode = "focus")}>{t("timer.mode.focus")}</button>
-        <button type="button" class="chip" aria-pressed={isBreak} onclick={() => (mode = "break")}>{t("timer.mode.break")}</button>
-      </div>
+  <form class="mx-auto grid max-w-xl gap-4" onsubmit={start}>
+    <div class="relative flex min-h-11 items-center justify-center">
+      {#if app.settings && !prefs.compact}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
+      <button
+        type="button"
+        class="btn btn-gray absolute right-0 top-0 size-11 !px-0"
+        aria-label={isBreak ? t("timer.toFocus") : t("timer.toBreak")}
+        onclick={flip}
+      >
+        <svg class="size-5"><use href="/icons.svg#{isBreak ? 'timer' : 'coffee'}" /></svg>
+      </button>
     </div>
 
-    {#if app.settings && !prefs.compact}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
+    <h1 class="t-large text-center">{isBreak ? t("timer.prompt.break") : t("timer.prompt")}</h1>
 
     {#if !isBreak}
-      <label class="grid gap-1.5">
-        <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
-        <input
-          class="field"
-          bind:this={intentionField}
-          bind:value={intention}
-          placeholder={t("timer.intention.placeholder")}
-          maxlength="200"
-          autocomplete="off"
-          list="recent-intentions"
-        />
-        <datalist id="recent-intentions">
-          {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
-        </datalist>
-      </label>
+      <button
+        type="button"
+        class="chip mx-auto gap-2"
+        aria-haspopup="dialog"
+        disabled={parsed.categoryId !== null}
+        onclick={() => picker?.open()}
+      >
+        {#if categoryOf(chosenCategory)}
+          <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(chosenCategory)?.color})" aria-hidden="true"></span>
+          {categoryOf(chosenCategory)?.name}
+        {:else}
+          {t("timer.category.none")}
+        {/if}
+        <svg class="size-4"><use href="/icons.svg#chevron-down" /></svg>
+      </button>
+
+      <input
+        class="field"
+        bind:this={intentionField}
+        bind:value={intention}
+        placeholder={t("timer.intention.placeholder")}
+        aria-label={t("timer.intention.label")}
+        maxlength="200"
+        autocomplete="off"
+        list="recent-intentions"
+      />
+      <datalist id="recent-intentions">
+        {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
+      </datalist>
 
       {#if chosenTask}
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-center gap-2">
           <span class="chip" aria-pressed="true">{t("tasks.workingOn", { title: chosenTask.title })}</span>
           <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.clear")} onclick={() => (taskId = null)}>
             <svg class="size-5"><use href="/icons.svg#x" /></svg>
@@ -374,7 +394,7 @@
       {/if}
 
       {#if fromText || parsed.categoryId}
-        <div class="flex flex-wrap gap-2" aria-live="polite">
+        <div class="flex flex-wrap justify-center gap-2" aria-live="polite">
           {#if fromText}<span class="chip" aria-pressed="true">{t("timer.hint.length", { minutes: length })}</span>{/if}
           {#if parsed.categoryId}
             <span class="chip" aria-pressed="true">{t("timer.hint.category", { name: categoryName(parsed.categoryId) ?? "" })}</span>
@@ -385,7 +405,7 @@
 
     <div class="grid gap-3">
       <Dial
-        class="lg:size-[min(20rem,36vh)]"
+        class="lg:size-[min(21rem,38vh)]"
         value={dialValue}
         step={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
         min={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
@@ -404,42 +424,29 @@
           }
         }}
       />
+      <div class="t-title1 text-center tabular-nums" aria-hidden="true">{formatRemaining(plannedMs)}</div>
       <div class="t-foot mx-auto rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
       {#if !isBreak && fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
       <p class="t-foot text-center text-subtext1">{t("timer.dial.flipHint")}</p>
     </div>
 
-    {#if !isBreak && app.categories.length > 0}
-      <label class="grid gap-1.5">
-        <span class="t-foot flex items-center gap-2 text-subtext1">
-          {#if categoryOf(chosenCategory)}
-            <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(chosenCategory)?.color})" aria-hidden="true"></span>
-          {/if}
-          {t("timer.category")}
-        </span>
-        <select
-          class="field"
-          bind:value={categoryId}
-          disabled={parsed.categoryId !== null}
-          onchange={() => prefs.focusOnCategory && intentionField?.focus()}
-        >
-          <option value="">{t("timer.category.none")}</option>
-          {#each app.categories as category (category.id)}
-            <option value={category.id}>{category.name}</option>
-          {/each}
-        </select>
-      </label>
-    {/if}
-
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
 
-    <button class="btn btn-filled btn-lg w-full" type="submit" disabled={busy}>
+    <button class="btn btn-filled btn-lg mx-auto w-full max-w-xs" type="submit" disabled={busy}>
       {isBreak ? t("timer.startBreak") : t("timer.start")}
     </button>
     <p class="t-foot text-center text-subtext1">
       {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
   </form>
+  <CategoryPicker
+    bind:this={picker}
+    value={categoryId}
+    onpick={(id) => {
+      categoryId = id;
+      if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
+    }}
+  />
   {#if !prefs.compact}
     <div class="mx-auto mt-5 max-w-xl"><TaskList selected={taskId} onpick={pickTask} /></div>
   {/if}
