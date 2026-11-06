@@ -35,3 +35,5 @@ Unknown links, and values out of range, are ignored rather than guessed at.
 | Esc | Leave a field |
 
 Shortcuts are off while you are typing in a field, while a dialog is open, and when Ctrl, Cmd or Alt is held.
+
+The keys can be changed in Settings, under Keyboard shortcuts (per device): tap Change next to an action, then press a single letter, number, symbol or the space bar. A key that another action already uses is refused, and "Restore the default keys" undoes every change. Esc always leaves a field and cannot be changed. The table above lists the defaults.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type KeyPress, actionFor, isTyping } from "./shortcuts";
+import { type KeyPress, actionFor, bindKey, defaultKeymap, isTyping, normalizeKey, parseKeymap } from "./shortcuts";
 
 const press = (key: string, over: Partial<KeyPress> = {}): KeyPress => ({
   key,
@@ -65,5 +65,48 @@ describe("isTyping", () => {
     expect(isTyping({ tagName: "INPUT" })).toBe(true);
     expect(isTyping({ tagName: "BUTTON" })).toBe(false);
     expect(isTyping(null)).toBe(false);
+  });
+});
+
+describe("custom keys", () => {
+  it("normalizes to one lower-case character", () => {
+    expect([normalizeKey("P"), normalizeKey(" "), normalizeKey("/"), normalizeKey("Enter"), normalizeKey("F5"), normalizeKey("")]).toEqual([
+      "p", " ", "/", null, null, null,
+    ]);
+  });
+
+  it("uses a changed key and stops using the old one", () => {
+    const result = bindKey(defaultKeymap, "start", "g");
+    expect("map" in result).toBe(true);
+    if (!("map" in result)) return;
+    expect(actionFor(press("g"), free, result.map)).toBe("start");
+    expect(actionFor(press("G"), free, result.map)).toBe("start");
+    expect(actionFor(press("s"), free, result.map)).toBeNull();
+  });
+
+  it("refuses a key another action has, and keys that cannot be bound", () => {
+    expect(bindKey(defaultKeymap, "start", "b")).toEqual({ error: "taken", by: "break" });
+    expect(bindKey(defaultKeymap, "start", "Enter")).toEqual({ error: "invalid" });
+    expect("map" in bindKey(defaultKeymap, "start", "s")).toBe(true);
+  });
+
+  it("repairs a stored keymap action by action", () => {
+    expect(parseKeymap(null)).toEqual(defaultKeymap);
+    const map = parseKeymap({ start: ["g"], finish: ["g"], break: "x", extend: [], shrink: ["Tab"], focus_input: ["/"] });
+    expect(map.start).toEqual(["g"]);
+    expect(map.finish).toEqual(defaultKeymap.finish);
+    expect(map.break).toEqual(defaultKeymap.break);
+    expect(map.extend).toEqual(defaultKeymap.extend);
+    expect(map.shrink).toEqual(defaultKeymap.shrink);
+  });
+
+  it("starts over when a stored key collides with another action's default", () => {
+    expect(parseKeymap({ start: ["p"] })).toEqual(defaultKeymap);
+  });
+
+  it("keeps Escape and the Space-on-a-button rule whatever the keys", () => {
+    const map = bindKey(defaultKeymap, "start", " ");
+    expect("error" in map).toBe(true); // Space belongs to pause
+    expect(actionFor(press("Escape", { target: { tagName: "INPUT" } }), free, defaultKeymap)).toBe("cancel");
   });
 });
