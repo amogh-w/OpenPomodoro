@@ -1,6 +1,6 @@
 # OpenPomodoro: feature list and build plan
 
-Status legend: `[ ]` todo, `[~]` in progress, `[x]` done. Phase tags: **P1** = v1 (self-hosted multi-user server in Rust + PWA), **P2** = v1.x, **P3** = later / v2.
+Status legend: `[ ]` todo, `[~]` in progress, `[x]` done. Phase tags: **P1** = v1 (self-hosted multi-user server in Rust + PWA), **P2** = v1.x, **P3** = later / v2, **Dev** = needs a per-device app or extension, parked until the PWA is finished.
 
 ## 1. Goals
 - A calm, fast, free focus timer that records *what* you worked on, not just *when*.
@@ -178,13 +178,13 @@ The server is meant to be reachable by other people, so it is built as an intern
 ### G. Focus protection
 | Id | Feature | Phase |
 |---|---|---|
-| F-01 | Website blocker extension (needs the server reachable, uses a personal token): deny or allow list, separate lists for focus and break, active tab only, snooze 3 min, restore all, kind block page showing the intention | P2 |
-| F-02 | Escape hatch: blocking off when the intention matches a chosen keyword | P2 |
+| F-01 | Website blocker extension (needs the server reachable, uses a personal token): deny or allow list, separate lists for focus and break, active tab only, snooze 3 min, restore all, kind block page showing the intention | Dev |
+| F-02 | Escape hatch: blocking off when the intention matches a chosen keyword | Dev |
 | F-03 | (merged into T-13) | – |
-| F-04 | Desktop shell (tray with progress, global shortcuts, always on top, close to tray, auto-update, alerts while the window is closed) | P3 |
-| F-05 | App blocking in the desktop shell (hide, never kill) | P3 |
-| F-06 | Full-screen break overlay in the desktop shell | P3 |
-| F-07 | Window tracker that suggests a session | P3 |
+| F-04 | Desktop shell (tray with progress, global shortcuts, always on top, close to tray, auto-update, alerts while the window is closed) | Dev |
+| F-05 | App blocking in the desktop shell (hide, never kill) | Dev |
+| F-06 | Full-screen break overlay in the desktop shell | Dev |
+| F-07 | Window tracker that suggests a session | Dev |
 
 ### H. Data and platform
 | Id | Feature | Phase |
@@ -244,14 +244,59 @@ The server is meant to be reachable by other people, so it is built as an intern
 - [x] 2.4 **Themes, shortcuts** (U-04, U-07; more languages not done): custom shortcuts as described (per device, Settings). **Themes** went into the kit (cuppa repo, commit "Added Extra Flavors and Custom Themes to the Kit") and were copied here: new flavors `contrast-light`, `contrast-dark` (text at 21:1, every accent 6:1 or better), `nord`, `gruvbox`, `solarized` (accents nudged to 4.5:1 on the page) under the same `--ctp-*` names, so every component works unchanged; `theme.js` adds a `ui-light` class for every light flavor (the app's light-only contrast rules now use `html.ui-light` instead of `html.latte`) and a `custom` flavor: JSON in `ui-custom` (`base` flavor plus `#rrggbb` colours for any of 26 tokens; unknown keys and bad values ignored), applied at once and followed live by other open tabs through a `storage` listener. Settings has the new flavor chips and a "My theme" editor (paste JSON, Apply, example, reasons for refusal; `lib/customTheme.ts`, tested); the look in a backup includes `ui-custom` only if it parses. Not done: more languages (the string catalog is English only), the kit gallery was not updated, and the axe contrast audit was not re-run on the new flavors (only computed ratios for text and accents).
 - [x] 2.5 **Custom sounds and tick sounds** (A-04, A-05): Alerts settings has a faint tick every second while focusing and, separately, during breaks (per device; Web Audio click, no files; one tick per new second, never a burst after sleep; `lib/ticking.ts`, tested). Each alert (ending soon, focus ends, break ends, both overtime reminders, presence nudge) can be replaced by an uploaded file: `GET /api/sounds`, `GET/PUT/DELETE /api/sounds/{slot}`; stored in a new `sounds` table inside the SQLite file (migration 4), so the admin's database backup includes them and "delete my data" removes them; at most 512 KiB, six slots, per user; the file type is decided from its first bytes (MP3, WAV, OGG, FLAC, M4A, WebM), never from the client's claim; users cannot read each other's sounds (tests). The browser decodes them with Web Audio, caches the bytes in IndexedDB for offline use, and re-fetches when the server's copy changes; the same volume and quiet-hour rules apply. Not done: sounds are not in the JSON export (the file is too big for it) and other devices pick up changes on their next load. Not checked in a browser.
 - [x] 2.6 **Integration** (X-08, X-09, I-02..I-06): **Tokens:** personal API tokens (`opt_...`, shown once, only a SHA-256 hash stored, up to 20, revocable, dead with a disabled account) and a signed-in-browsers list with sign-out per browser (the sign-in's user agent is kept as its label); both in Settings, "Devices and scripts" (migration 5). **API v1** (`docs/api.md`): `GET /api/v1/state`, `POST /api/v1/commands` (same idempotent commands as the app), `GET /api/v1/sessions`, and a WebSocket `GET /api/v1/stream` that sends the whole state on connect and after every change; bearer token only, cookies are never accepted there, so those routes are exempt from the CSRF header (the rest of `/api` still needs it). **Hooks and webhooks:** the admin lists them in a JSON file named by `OP_HOOKS_FILE` (never from the web app); nine events (`focus_started`, `focus_ended`, `focus_stopped`, `focus_abandoned`, `paused`, `resumed`, `break_started`, `break_ended`, `break_stopped`) derived from the timer's before and after state (`hooks::events_between`, tested for every transition incl. auto-start chains); a hook is a program run directly (no shell) with the JSON on stdin and `OP_EVENT` in its environment, a timeout and at most 8 at once; a webhook is a POST with an optional HMAC-SHA256 signature (checked against the RFC 4231 vectors), one retry, no redirects, and private, loopback and link-local addresses refused at connect time unless `allow_private_webhooks` is set; events go through a bounded queue and are dropped (with a log line) if it overflows, so a slow hook never delays the timer; the Admin screen lists them and has a Test button each. **New dependency:** `ureq` 3 with rustls for webhooks (the release binary grew from about 5.8 MB to 8.5 MB). Docs: `docs/api.md`, hooks and webhooks in `docs/self-hosting.md`. Not checked in a browser; the webhook test route and the hooks panel are covered by compile and unit tests only.
-- [ ] 2.7 Website blocker extension and escape hatch (F-01, F-02).
-- [ ] 2.8 Diagnostics (D-05). Release **v0.2**.
+Original 2.7 (website blocker extension) moved to L1 and 2.8 (diagnostics, release v0.2) to N3; 2.4's languages moved to N4.
 
-### Phase 3 (P3)
-- [ ] 3.1 Account hardening: TOTP two-factor sign-in, optional OIDC (X-10).
-- [ ] 3.2 Profiles and category groups (C-08, C-09). Calendar overlay (H-08).
-- [ ] 3.3 Picture-in-picture, speech, Web Push alerts and daily reminder (T-16, A-06, A-07). Callback URLs (I-07).
-- [ ] 3.4 Desktop shell (F-04..F-07): tray, global shortcuts, app blocking, forced break, window tracker.
+### Next: finish the PWA (everything below works in a browser, installed or not)
+Order is a suggestion; each step is small enough to commit on its own. Items marked (check) are built but were
+only verified by tests, not by using them.
+
+**N1. Try it for real and fix what breaks (before anything new)**
+- [ ] N1.1 Click through every screen added in Phase 2 in a real browser, in Latte, Mocha and a high-contrast flavor: tasks, special breaks, compact view, strict mode, nudge and tick sounds, custom sound upload, shortcut rebinding, heatmap, devices and scripts, admin hooks panel, "My theme" editor (check).
+- [ ] N1.2 Re-run the axe accessibility audit on every screen and state, in all flavors including the new ones (the earlier audit predates Phase 2). Fix what it finds.
+- [ ] N1.3 Responsive pass: phone (375px), tablet, laptop, wide (1920px). Controls below the fold on short windows (about 700px tall); icon rail; two-pane timer; compact view.
+- [ ] N1.4 Build and run the Docker image once (never done: no daemon was available), and check the release binary starts from an empty folder with the hooks file and an uploaded sound.
+- [ ] N1.5 Lighthouse accessibility and performance run, plus the manual install / offline / update checklist from section 5.
+
+**N2. Small gaps left in finished steps**
+- [ ] N2.1 Tasks: edit a title, show time spent per task (sessions already carry the task id), include tasks in CSV and ICS exports.
+- [ ] N2.2 Custom sounds: other devices pick up a change at once (react to the push message), and include the sound files in the user's own backup (a separate download, since they are too big for the JSON).
+- [ ] N2.3 Share image for the stats (a picture of the month overview made in the browser).
+- [ ] N2.4 Webhook test route and the hooks panel: add end-to-end tests.
+- [ ] N2.5 More specific wake handling: a message when the app comes back after a long sleep mid-session.
+
+**N3. Diagnostics and release v0.2 (D-05)**
+- [ ] N3.1 Diagnostic log kept in the browser (state changes, rejected commands, sync and outbox events, clock jumps) with a copy button in Settings.
+- [ ] N3.2 Server log lines for hooks, webhooks and rejected events available to the admin on the Admin screen.
+- [ ] N3.3 Update `CHANGELOG.md`, docs and screenshots; tag **v0.2**.
+
+**N4. Make it speak more languages (U-06)**
+- [ ] N4.1 Language picker (per device, remembered; follows the browser by default) and a catalog format that allows more than English.
+- [ ] N4.2 One more language end to end to prove the plumbing (dates, numbers, plurals already use `Intl`).
+- [ ] N4.3 A short translators' guide in `CONTRIBUTING.md`; the string checker also verifies that every language has every key.
+
+**N5. Alerts and presence that work as well as a PWA can**
+- [ ] N5.1 Web Push (A-07): self-hosted VAPID keys, subscribe per device, send phase-end alerts while the app is closed and the daily reminder with weekday toggles. Needs HTTPS; on iPhone only for an installed app. Say plainly where it does not work.
+- [ ] N5.2 Picture-in-picture timer window (T-16) where the browser supports it (Chromium); hidden elsewhere.
+- [ ] N5.3 Spoken announcements (A-06) through speech synthesis, off by default.
+- [ ] N5.4 Callback URLs on routes (`x-success` / `x-error` style, I-07), with the same confirm step as other links.
+
+**N6. Accounts and data depth**
+- [ ] N6.1 TOTP two-factor sign-in with recovery codes (X-10); optional OIDC sign-in configured by the admin.
+- [ ] N6.2 Profiles per intention + category: own durations, sounds, strictness (C-08).
+- [ ] N6.3 Category groups for reports (C-09).
+- [ ] N6.4 Read-only calendar overlay from an ICS file or URL on the day timeline (H-08).
+
+**N7. Housekeeping outside this repo**
+- [ ] N7.1 Bring the cuppa kit up to date with what this app learned (responsive layout: icon rail from 1024px, two panes, container-query sizing for the clock, `.seg` thumb for dynamically rendered content, contrast fixes already made here), push the kit commit, and run the kit's lint with this project registered.
+
+### Later: per-device apps (parked until the PWA is finished)
+These need something outside the browser tab, so each brings its own build, signing and update headaches. Nothing
+in the PWA depends on them.
+- [ ] L1 Website blocker extension and escape hatch (F-01, F-02): MV3 extension using a personal token; deny or allow list, separate lists for focus and break, snooze, block page showing the intention.
+- [ ] L2 Desktop shell (F-04): tray with progress, global shortcuts, always on top, close to tray, auto-update, alerts while the window is closed.
+- [ ] L3 App blocking that hides and never kills (F-05), full-screen break overlay (F-06), window tracker that suggests a session (F-07).
+- [ ] L4 Native phone apps, only if the PWA hits real limits.
+
 
 ## 4b. Platform roadmap
 | Target | When | How | Notes |
