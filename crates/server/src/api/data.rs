@@ -47,14 +47,18 @@ pub fn router() -> Router<Shared> {
 /// Largest backup file accepted (32 MiB).
 const IMPORT_MAX_BYTES: usize = 32 * 1024 * 1024;
 
-fn row_json(key: &str, row: &Row) -> Value {
+pub(super) fn row_json(key: &str, row: &Row) -> Value {
     let mut map = row.data.clone();
     map.insert("id".into(), json!(key));
     Value::Object(map)
 }
 
 /// Everything a client needs to draw the app: the clock, the timer, the effective settings, the categories.
-fn state_json(state: &Shared, user: &str, timer: &TimerState) -> Result<Value, ApiError> {
+pub(super) fn state_json(
+    state: &Shared,
+    user: &str,
+    timer: &TimerState,
+) -> Result<Value, ApiError> {
     let db = state.db();
     let settings = Settings::load(&db, user)?;
     let categories: Vec<Value> = db
@@ -102,23 +106,25 @@ async fn post_command(
     auth: AuthUser,
     ApiJson(cmd): ApiJson<Command>,
 ) -> Result<Json<Value>, ApiError> {
-    let user = auth.user.id;
+    run_command(&state, &auth.user.id, &cmd).map(Json)
+}
+
+/// Apply a timer command for a user and answer with the new state (shared by the app's API and the token API).
+pub(super) fn run_command(state: &Shared, user: &str, cmd: &Command) -> Result<Value, ApiError> {
     let (status, timer) = {
         let mut db = state.db();
         let mut ids = state.ids();
-        match timer_service::apply_command(&mut db, &user, &cmd, state.now_ms(), &mut ids)
+        match timer_service::apply_command(&mut db, user, cmd, state.now_ms(), &mut ids)
             .map_err(command_error)?
         {
             CommandResult::Applied(timer) => {
-                state.hub.publish(&user, CHANGED);
+                state.hub.publish(user, CHANGED);
                 ("applied", timer)
             }
-            CommandResult::Duplicate => ("duplicate", timer_service::load_state(&db, &user)?),
+            CommandResult::Duplicate => ("duplicate", timer_service::load_state(&db, user)?),
         }
     };
-    Ok(Json(
-        json!({ "status": status, "state": state_json(&state, &user, &timer)? }),
-    ))
+    Ok(json!({ "status": status, "state": state_json(state, user, &timer)? }))
 }
 
 #[derive(Deserialize)]
@@ -187,7 +193,7 @@ async fn post_events(
 }
 
 #[derive(Deserialize)]
-struct HistoryQuery {
+pub(super) struct HistoryQuery {
     from: i64,
     to: i64,
 }
@@ -197,16 +203,19 @@ async fn get_history(
     auth: AuthUser,
     Query(q): Query<HistoryQuery>,
 ) -> Result<Json<Value>, ApiError> {
+    history(&state, &auth.user.id, &q).map(Json)
+}
+
+/// Sessions that started in `[from, to)` (Unix ms), at most a year at a time (shared with the token API).
+pub(super) fn history(state: &Shared, user: &str, q: &HistoryQuery) -> Result<Value, ApiError> {
     if q.from >= q.to || q.to - q.from > MAX_HISTORY_SPAN_MS {
         return Err(ApiError::bad_request("bad_range"));
     }
-    let mut rows = state.db().sessions_between(&auth.user.id, q.from, q.to)?;
+    let mut rows = state.db().sessions_between(user, q.from, q.to)?;
     let truncated = rows.len() > MAX_HISTORY_ROWS;
     rows.truncate(MAX_HISTORY_ROWS);
     let sessions: Vec<Value> = rows.iter().map(|(k, r)| row_json(k, r)).collect();
-    Ok(Json(
-        json!({ "sessions": sessions, "truncated": truncated }),
-    ))
+    Ok(json!({ "sessions": sessions, "truncated": truncated }))
 }
 
 /// Restore a JSON backup into the signed-in account. Idempotent: restoring the same file again changes nothing.

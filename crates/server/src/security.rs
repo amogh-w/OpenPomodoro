@@ -77,9 +77,15 @@ fn changes_state(method: &Method) -> bool {
     !matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS)
 }
 
-/// Require the CSRF header on state-changing requests to `/api`.
+/// Require the CSRF header on state-changing requests to `/api`. The token API (`/api/v1`, bearer token, never a
+/// cookie) is the exception: a request that carries its own secret cannot be forged by another site.
 pub async fn csrf(req: Request, next: Next) -> Response {
-    let protected = req.uri().path().starts_with("/api/") && changes_state(req.method());
+    let token_api = req.uri().path().starts_with("/api/v1/")
+        && req
+            .headers()
+            .contains_key(axum::http::header::AUTHORIZATION);
+    let protected =
+        req.uri().path().starts_with("/api/") && changes_state(req.method()) && !token_api;
     let ok = req
         .headers()
         .get(CSRF_HEADER)

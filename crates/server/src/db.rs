@@ -13,7 +13,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::{Map, Value};
 
 /// One entry per schema version; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: [&str; 4] = [
+const MIGRATIONS: [&str; 5] = [
     r#"
     CREATE TABLE users (
         id            TEXT PRIMARY KEY,
@@ -102,6 +102,21 @@ const MIGRATIONS: [&str; 4] = [
         updated_at INTEGER NOT NULL,
         PRIMARY KEY (user_id, slot)
     ) WITHOUT ROWID;
+"#,
+    r#"
+    -- A label for each sign-in (the browser it came from), for the session list.
+    ALTER TABLE auth_sessions ADD COLUMN agent TEXT NOT NULL DEFAULT '';
+
+    -- Personal API tokens for scripts. Only a hash is kept; the token itself is shown once, when it is made.
+    CREATE TABLE api_tokens (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name       TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        last_used  INTEGER
+    ) WITHOUT ROWID;
+    CREATE INDEX api_tokens_by_user ON api_tokens (user_id);
 "#,
 ];
 
@@ -202,6 +217,25 @@ pub struct AuthSession {
     pub user_id: String,
     pub last_seen: i64,
     pub expires_at: i64,
+}
+
+/// A signed-in browser, as listed to its owner. `id` is a short prefix of the stored hash, enough to name it
+/// without revealing anything that could be used to sign in.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct SessionInfo {
+    pub id: String,
+    pub created_at: i64,
+    pub last_seen: i64,
+    pub agent: String,
+}
+
+/// A personal API token, without its secret.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct TokenInfo {
+    pub id: String,
+    pub name: String,
+    pub created_at: i64,
+    pub last_used: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -393,6 +427,106 @@ impl Db {
         self.conn.execute(
             "DELETE FROM auth_sessions WHERE user_id = ?1 AND token_hash IS NOT ?2",
             params![user_id, keep_hash],
+        )?;
+        Ok(())
+    }
+
+    pub fn set_session_agent(&self, token_hash: &str, agent: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE auth_sessions SET agent = ?2 WHERE token_hash = ?1",
+            params![token_hash, agent],
+        )?;
+        Ok(())
+    }
+
+    /// The user's signed-in browsers, most recently used first.
+    pub fn auth_sessions_of(&self, user_id: &str, now_ms: i64) -> Result<Vec<SessionInfo>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT substr(token_hash, 1, 16), created_at, last_seen, agent FROM auth_sessions
+             WHERE user_id = ?1 AND expires_at > ?2 ORDER BY last_seen DESC",
+        )?;
+        let rows = stmt
+            .query_map(params![user_id, now_ms], |r| {
+                Ok(SessionInfo {
+                    id: r.get(0)?,
+                    created_at: r.get(1)?,
+                    last_seen: r.get(2)?,
+                    agent: r.get(3)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Sign one of the user's browsers out, by the id from the list. False when there is no such session.
+    pub fn delete_auth_session_by_id(&self, user_id: &str, id: &str) -> Result<bool> {
+        if id.len() != 16 || !id.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Ok(false);
+        }
+        Ok(self.conn.execute(
+            "DELETE FROM auth_sessions WHERE user_id = ?1 AND substr(token_hash, 1, 16) = ?2",
+            params![user_id, id],
+        )? > 0)
+    }
+
+    pub fn insert_api_token(
+        &self,
+        id: &str,
+        user_id: &str,
+        name: &str,
+        token_hash: &str,
+        now_ms: i64,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO api_tokens (id, user_id, name, token_hash, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![id, user_id, name, token_hash, now_ms],
+        )?;
+        Ok(())
+    }
+
+    pub fn api_tokens_of(&self, user_id: &str) -> Result<Vec<TokenInfo>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, created_at, last_used FROM api_tokens WHERE user_id = ?1 ORDER BY created_at, id",
+        )?;
+        let rows = stmt
+            .query_map(params![user_id], |r| {
+                Ok(TokenInfo {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    created_at: r.get(2)?,
+                    last_used: r.get(3)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    pub fn delete_api_token(&self, user_id: &str, id: &str) -> Result<bool> {
+        Ok(self.conn.execute(
+            "DELETE FROM api_tokens WHERE user_id = ?1 AND id = ?2",
+            params![user_id, id],
+        )? > 0)
+    }
+
+    /// Whose token this is: (token id, user id, when it was last used).
+    pub fn api_token_owner(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<(String, String, Option<i64>)>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT id, user_id, last_used FROM api_tokens WHERE token_hash = ?1",
+                params![token_hash],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .optional()?)
+    }
+
+    pub fn touch_api_token(&self, id: &str, now_ms: i64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE api_tokens SET last_used = ?2 WHERE id = ?1",
+            params![id, now_ms],
         )?;
         Ok(())
     }
@@ -967,7 +1101,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("version");
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
         let mode: String = db
             .conn
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -990,7 +1124,7 @@ mod tests {
             Db::open(&path),
             Err(DbError::FutureSchema {
                 found: 99,
-                supported: 4
+                supported: 5
             })
         ));
     }

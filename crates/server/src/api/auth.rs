@@ -25,6 +25,13 @@ pub fn router() -> Router<Shared> {
         .route("/api/me", get(me).delete(delete_me))
         .route("/api/me/password", post(change_password))
         .route("/api/me/wipe", post(wipe_me))
+        .route("/api/me/tokens", get(list_tokens).post(create_token))
+        .route("/api/me/tokens/{id}", axum::routing::delete(delete_token))
+        .route("/api/me/sessions", get(list_sessions))
+        .route(
+            "/api/me/sessions/{id}",
+            axum::routing::delete(delete_session),
+        )
         .route("/api/admin/backup", get(admin_backup))
         .route("/api/admin/users", get(list_users).post(create_user))
         .route("/api/admin/users/{id}/password", post(set_user_password))
@@ -154,6 +161,7 @@ async fn register(
 async fn sign_in(
     State(state): State<Shared>,
     ClientAddr(address): ClientAddr,
+    headers: axum::http::HeaderMap,
     ApiJson(body): ApiJson<Credentials>,
 ) -> Result<Response, ApiError> {
     let now = state.now_ms();
@@ -162,6 +170,13 @@ async fn sign_in(
             .sign_in(&s.db(), &body.username, &body.password, &address, now)
     })
     .await??;
+    let agent = headers
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    state
+        .accounts
+        .label_session(&state.db(), &session.token, agent)?;
     Ok(signed_in(&state.config, &session))
 }
 
@@ -174,6 +189,90 @@ async fn sign_out(
         state.accounts.sign_out(&state.db(), &token)?;
     }
     Ok(signed_out(&state.config, StatusCode::NO_CONTENT))
+}
+
+#[derive(Deserialize)]
+struct NewToken {
+    name: String,
+}
+
+async fn list_tokens(
+    State(state): State<Shared>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let tokens = state.db().api_tokens_of(&auth.user.id)?;
+    Ok(Json(serde_json::json!({ "tokens": tokens })))
+}
+
+/// Make a token. The secret is in this answer and nowhere else, ever.
+async fn create_token(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    ApiJson(body): ApiJson<NewToken>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let name = body.name.trim();
+    if name.is_empty() {
+        return Err(ApiError::bad_request("name_required"));
+    }
+    let now = state.now_ms();
+    let db = state.db();
+    if db.api_tokens_of(&auth.user.id)?.len() >= crate::accounts::MAX_API_TOKENS {
+        return Err(ApiError::bad_request("too_many_tokens"));
+    }
+    let (id, secret) = state
+        .accounts
+        .create_api_token(&db, &auth.user, name, now)?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "id": id, "name": name, "token": secret, "created_at": now })),
+    ))
+}
+
+async fn delete_token(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    if state.db().delete_api_token(&auth.user.id, &id)? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(ApiError::not_found())
+    }
+}
+
+async fn list_sessions(
+    State(state): State<Shared>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let current = crate::accounts::Accounts::session_id(&auth.token);
+    let sessions: Vec<serde_json::Value> = state
+        .db()
+        .auth_sessions_of(&auth.user.id, state.now_ms())?
+        .into_iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id, "created_at": s.created_at, "last_seen": s.last_seen,
+                "agent": s.agent, "current": s.id == current,
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!({ "sessions": sessions })))
+}
+
+/// Sign one browser out. Signing out the one you are using is what "sign out" already does, so it is refused here.
+async fn delete_session(
+    State(state): State<Shared>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    if id == crate::accounts::Accounts::session_id(&auth.token) {
+        return Err(ApiError::bad_request("current_session"));
+    }
+    if state.db().delete_auth_session_by_id(&auth.user.id, &id)? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(ApiError::not_found())
+    }
 }
 
 async fn me(auth: AuthUser) -> Json<UserJson> {

@@ -145,6 +145,13 @@ fn sha256_hex(input: &str) -> String {
         .collect()
 }
 
+/// The prefix every personal API token starts with, so a leaked one is easy to recognise and search for.
+pub const API_TOKEN_PREFIX: &str = "opt_";
+/// Tokens a person may have at once.
+pub const MAX_API_TOKENS: usize = 20;
+/// A token's last-used time is only rewritten this often.
+const TOKEN_TOUCH_EVERY_MS: i64 = 60_000;
+
 fn new_token() -> String {
     format!(
         "{}{}",
@@ -376,6 +383,60 @@ impl Accounts {
         };
         if now_ms - session.last_seen >= TOUCH_EVERY_MS {
             db.touch_auth_session(&hash, now_ms, now_ms + SESSION_TTL_MS)?;
+        }
+        Ok(Some(user))
+    }
+
+    /// The id a session has in the user's session list (a short prefix of its stored hash).
+    pub fn session_id(token: &str) -> String {
+        sha256_hex(token).chars().take(16).collect()
+    }
+
+    /// Remember which browser a sign-in came from, for the session list.
+    pub fn label_session(&self, db: &Db, token: &str, agent: &str) -> Result<()> {
+        let agent: String = agent
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(200)
+            .collect();
+        Ok(db.set_session_agent(&sha256_hex(token), &agent)?)
+    }
+
+    // ---- personal API tokens ----
+
+    /// Make a token for scripts. The secret is returned once and only its hash is stored.
+    pub fn create_api_token(
+        &self,
+        db: &Db,
+        user: &User,
+        name: &str,
+        now_ms: i64,
+    ) -> Result<(String, String)> {
+        let id = uuid::Uuid::new_v4().simple().to_string()[..12].to_string();
+        let secret = format!("{API_TOKEN_PREFIX}{}", new_token());
+        let name: String = name
+            .trim()
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(60)
+            .collect();
+        db.insert_api_token(&id, &user.id, &name, &sha256_hex(&secret), now_ms)?;
+        Ok((id, secret))
+    }
+
+    /// Who a personal API token belongs to, if it exists and the account is enabled.
+    pub fn user_for_api_token(&self, db: &Db, token: &str, now_ms: i64) -> Result<Option<User>> {
+        if !token.starts_with(API_TOKEN_PREFIX) {
+            return Ok(None);
+        }
+        let Some((id, user_id, last_used)) = db.api_token_owner(&sha256_hex(token))? else {
+            return Ok(None);
+        };
+        let Some(user) = db.user_by_id(&user_id)?.filter(|u| !u.disabled) else {
+            return Ok(None);
+        };
+        if last_used.is_none_or(|t| now_ms - t >= TOKEN_TOUCH_EVERY_MS) {
+            db.touch_api_token(&id, now_ms)?;
         }
         Ok(Some(user))
     }

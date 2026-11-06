@@ -13,12 +13,14 @@ use crate::state::Shared;
 pub mod auth;
 pub mod data;
 pub mod sounds;
+pub mod v1;
 pub mod ws;
 
 pub fn router() -> Router<Shared> {
     auth::router()
         .merge(data::router())
         .merge(sounds::router())
+        .merge(v1::router())
         .merge(ws::router())
 }
 
@@ -77,6 +79,32 @@ impl FromRequestParts<Shared> for AuthUser {
             .user_for_session(&state.db(), &token, state.now_ms())?
             .ok_or_else(ApiError::unauthorized)?;
         Ok(AuthUser { user, token })
+    }
+}
+
+/// The user behind a personal API token (`Authorization: Bearer opt_...`). Cookies are never accepted here, so the
+/// `/api/v1` routes cannot be reached by a page riding on someone's signed-in browser.
+pub struct TokenUser(pub User);
+
+impl FromRequestParts<Shared> for TokenUser {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Shared,
+    ) -> Result<Self, Self::Rejection> {
+        let token = parts
+            .headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .map(str::trim)
+            .ok_or_else(ApiError::unauthorized)?;
+        let user = state
+            .accounts
+            .user_for_api_token(&state.db(), token, state.now_ms())?
+            .ok_or_else(ApiError::unauthorized)?;
+        Ok(TokenUser(user))
     }
 }
 
