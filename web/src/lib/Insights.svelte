@@ -2,7 +2,7 @@
   import { completionRate } from "./completion";
   import { formatSpan } from "./format";
   import { t, tn } from "./i18n";
-  import type { Insights } from "./insights";
+  import { byIntention, type Insights } from "./insights";
   import type { SessionRecord, Category } from "./types";
 
   let { data, categories, sessions }: { data: Insights; categories: Category[]; sessions: SessionRecord[] } = $props();
@@ -10,6 +10,7 @@
 
   const hour = (h: number | null): string => (h === null ? "–" : new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" }));
   const percent = (f: number | null): string => (f === null ? "" : `${f >= 0 ? "+" : "−"}${Math.round(Math.abs(f) * 100)}%`);
+  const intentions = $derived(byIntention(sessions));
   const nameOf = (id: string | null): string => categories.find((c) => c.id === id)?.name ?? t("timer.category.none");
   const colorOf = (id: string | null): string => `var(--ctp-${categories.find((c) => c.id === id)?.color ?? "overlay1"})`;
   const peak = $derived(Math.max(1, ...data.days.map((d) => d.focusMs)));
@@ -83,6 +84,32 @@
       <span>1</span><span>{data.days.length}</span>
     </div>
   </div>
+
+  {#if intentions.length > 0}
+    <div class="card overflow-x-auto p-1">
+      <table class="tbl">
+        <caption class="sr-only">{t("insights.intentions")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("insights.intention")}</th>
+            <th scope="col" class="text-right">{t("insights.share")}</th>
+            <th scope="col" class="text-right">{t("insights.count")}</th>
+            <th scope="col" class="text-right">{t("insights.time")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each intentions as row (row.name)}
+            <tr>
+              <td class="max-w-[12rem] truncate">{row.name}</td>
+              <td class="text-right tabular-nums">{Math.round(row.share * 100)}%</td>
+              <td class="text-right tabular-nums text-subtext1">{row.sessions}</td>
+              <td class="text-right tabular-nums">{formatSpan(row.focusMs)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
 
   {#if data.categories.length > 0}
     <div class="card overflow-x-auto p-1">

@@ -125,3 +125,32 @@ export function daysOfMonth(year: number, month0: number): string[] {
   return Array.from({ length: count }, (_, i) => localDayKey(new Date(year, month0, i + 1).getTime()));
 }
 
+export interface IntentionRow {
+  /** The intention as first written (the grouping ignores case and spacing). */
+  name: string;
+  sessions: number;
+  focusMs: number;
+  share: number;
+}
+
+/** Focus time grouped by what each session was about, most time first. Sessions without an intention are left out. */
+export function byIntention(sessions: SessionRecord[], limit = 10): IntentionRow[] {
+  const groups = new Map<string, { name: string; sessions: number; focusMs: number }>();
+  let total = 0;
+  for (const s of sessions) {
+    if (s.kind !== "focus") continue;
+    const ms = s.duration_ms ?? Math.max(0, s.ended_at - s.started_at);
+    total += ms;
+    const name = (s.intention ?? "").trim();
+    if (name === "") continue;
+    const key = name.toLowerCase().replace(/\s+/g, " ");
+    const row = groups.get(key) ?? { name, sessions: 0, focusMs: 0 };
+    row.sessions += 1;
+    row.focusMs += ms;
+    groups.set(key, row);
+  }
+  return [...groups.values()]
+    .sort((a, b) => b.focusMs - a.focusMs)
+    .slice(0, limit)
+    .map((row) => ({ ...row, share: total > 0 ? row.focusMs / total : 0 }));
+}

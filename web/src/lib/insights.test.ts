@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInsights, daysOfMonth } from "./insights";
+import { byIntention, computeInsights, daysOfMonth } from "./insights";
 import type { SessionRecord } from "./types";
 
 const at = (day: number, h: number, m = 0): number => new Date(2026, 9, day, h, m).getTime();
@@ -77,5 +77,29 @@ describe("computeInsights", () => {
   it("has nothing to say about an empty month", () => {
     const x = computeInsights([], [], october);
     expect([x.focusMs, x.bestHour, x.distractedHour, x.ratio, x.change, x.avgPerDayMs]).toEqual([0, null, null, null, null, 0]);
+  });
+});
+
+describe("byIntention", () => {
+  const f = (intention: string | null, minutes: number, kind: "focus" | "short_break" = "focus") => ({
+    id: Math.random().toString(),
+    kind,
+    started_at: 0,
+    ended_at: minutes * 60_000,
+    duration_ms: minutes * 60_000,
+    intention,
+  });
+
+  it("groups by intention ignoring case and spacing, most time first", () => {
+    const rows = byIntention([f("Write report", 25), f("write  REPORT", 25), f("Email", 10), f(null, 15), f("Break stuff", 5, "short_break")] as never);
+    expect(rows.map((r) => [r.name, r.sessions, r.focusMs / 60_000])).toEqual([["Write report", 2, 50], ["Email", 1, 10]]);
+    expect(rows[0]?.share).toBeCloseTo(50 / 75);
+  });
+
+  it("limits the list and copes with nothing", () => {
+    expect(byIntention([])).toEqual([]);
+    const many = Array.from({ length: 15 }, (_, i) => f(`task ${i}`, i + 1));
+    expect(byIntention(many as never)).toHaveLength(10);
+    expect(byIntention(many as never, 3)).toHaveLength(3);
   });
 });
