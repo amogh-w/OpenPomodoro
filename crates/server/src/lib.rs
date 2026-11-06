@@ -30,6 +30,7 @@ pub mod state;
 #[cfg(test)]
 mod test_util;
 pub mod timer_service;
+pub mod totp;
 pub mod validate;
 pub mod webhooks;
 
