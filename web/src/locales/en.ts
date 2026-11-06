@@ -38,6 +38,8 @@ const en = {
   "access.sessions": "Signed-in browsers",
   "access.sessions.hint": "Everywhere you are signed in. Sign out any you do not recognise.",
   "access.unknownBrowser": "A browser",
+  "access.agent": "{browser} on {os}",
+  "access.signOutOthers": "Sign out the other {n} browsers",
   "access.thisBrowser": "This browser",
   "access.lastUsed": "Last used {when}",
   "access.neverUsed": "Never used",

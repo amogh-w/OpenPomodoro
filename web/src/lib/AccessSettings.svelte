@@ -5,6 +5,7 @@
   import { errorMessage } from "./errors";
   import { formatAgo } from "./format";
   import { t } from "./i18n";
+  import { describeAgent } from "./userAgent";
 
   let tokens = $state<TokenInfo[]>([]);
   let sessions = $state<SignedInBrowser[]>([]);
@@ -68,9 +69,24 @@
   }
 
   const ago = (ms: number): string => formatAgo(ms, tick.now);
+  const agentName = (ua: string): string => {
+    const a = describeAgent(ua);
+    return a ? t("access.agent", { browser: a.browser, os: a.os }) : t("access.unknownBrowser");
+  };
+  const others = $derived(sessions.filter((s) => !s.current));
+
+  async function signOutOthers(): Promise<void> {
+    problem = null;
+    try {
+      for (const s of others) await api.revokeSession(s.id);
+      await load();
+    } catch (error) {
+      problem = errorMessage(error);
+    }
+  }
 </script>
 
-<section class="card mt-4 grid gap-4 p-4" aria-labelledby="access-title">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4" aria-labelledby="access-title">
   <h2 id="access-title" class="t-title3">{t("access.title")}</h2>
 
   <div class="grid gap-2">
@@ -78,19 +94,22 @@
     <p class="t-foot text-subtext1">{t("access.sessions.hint")}</p>
     <ul class="grid gap-2">
       {#each sessions as s (s.id)}
-        <li class="flex flex-wrap items-center justify-between gap-2">
-          <span class="min-w-0">
-            <span class="block truncate">{s.agent || t("access.unknownBrowser")}</span>
+        <li class="flex items-center justify-between gap-2">
+          <span class="min-w-0 flex-1">
+            <span class="block truncate" title={s.agent}>{agentName(s.agent)}</span>
             <span class="t-foot block text-subtext1">
               {s.current ? t("access.thisBrowser") : t("access.lastUsed", { when: ago(s.last_seen) })}
             </span>
           </span>
           {#if !s.current}
-            <button class="btn btn-gray btn-sm" onclick={() => revokeSession(s.id)}>{t("access.signOut")}</button>
+            <button class="btn btn-gray btn-sm shrink-0" onclick={() => revokeSession(s.id)}>{t("access.signOut")}</button>
           {/if}
         </li>
       {/each}
     </ul>
+    {#if others.length > 1}
+      <button class="btn btn-plain btn-sm justify-self-start" onclick={signOutOthers}>{t("access.signOutOthers", { n: others.length })}</button>
+    {/if}
   </div>
 
   <div class="grid gap-2">
@@ -111,23 +130,23 @@
 
     <ul class="grid gap-2">
       {#each tokens as token (token.id)}
-        <li class="flex flex-wrap items-center justify-between gap-2">
-          <span class="min-w-0">
+        <li class="flex items-center justify-between gap-2">
+          <span class="min-w-0 flex-1">
             <span class="block truncate">{token.name}</span>
             <span class="t-foot block text-subtext1">
               {token.last_used === null ? t("access.neverUsed") : t("access.lastUsed", { when: ago(token.last_used) })}
             </span>
           </span>
-          <button class="btn btn-plain btn-danger btn-sm" aria-label={t("access.revoke", { name: token.name })} onclick={() => revokeToken(token.id)}>
+          <button class="btn btn-plain btn-danger btn-sm shrink-0" aria-label={t("access.revoke", { name: token.name })} onclick={() => revokeToken(token.id)}>
             {t("access.revokeShort")}
           </button>
         </li>
       {/each}
     </ul>
 
-    <form class="flex gap-2" onsubmit={create}>
+    <form class="flex min-w-0 gap-2" onsubmit={create}>
       <input class="field min-w-0 flex-1" bind:value={name} maxlength="60" placeholder={t("access.tokens.placeholder")} aria-label={t("access.tokens.name")} autocomplete="off" />
-      <button class="btn btn-gray" type="submit" disabled={name.trim() === ""}>{t("access.tokens.make")}</button>
+      <button class="btn btn-gray shrink-0" type="submit" disabled={name.trim() === ""}>{t("access.tokens.make")}</button>
     </form>
   </div>
 

@@ -16,7 +16,7 @@
   {/if}
 </section>
 
-<div class="lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid lg:[&>*]:mt-0 lg:[&>*]:mb-6">
+<div class="mt-4 lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid lg:[&>*]:mt-0 lg:[&>*]:mb-6">
   <AccountSection />
   <AccessSettings />
   <DataSection />

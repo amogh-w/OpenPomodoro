@@ -58,7 +58,7 @@
   }
 </script>
 
-<section class="card mt-4 grid gap-4 p-4" aria-labelledby="account">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4" aria-labelledby="account">
   <div>
     <h2 id="account" class="t-title3">{t("account.title")}</h2>
     <p class="mt-1 text-subtext1">{t("account.signedInAs", { name: session.user?.username ?? "" })}</p>

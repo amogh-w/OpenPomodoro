@@ -24,7 +24,7 @@
 </script>
 
 {#if app.settings}
-  <section class="card mt-4 grid gap-4 p-4" aria-labelledby="timer-settings">
+  <section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4" aria-labelledby="timer-settings">
     <h2 id="timer-settings" class="t-title3">{t("settings.timer")}</h2>
 
     {#each durations as d (d.name)}

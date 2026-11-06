@@ -63,7 +63,7 @@
   }
 </script>
 
-<section class="card mt-4 grid gap-3 p-4" aria-labelledby="data-title">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 p-4" aria-labelledby="data-title">
   <h2 id="data-title" class="t-title3">{t("data.title")}</h2>
   <p class="t-foot text-subtext1">{t("data.hint")}</p>
 

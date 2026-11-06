@@ -52,7 +52,7 @@
   }
 </script>
 
-<section class="card mt-4 grid gap-3 p-4" aria-labelledby="hooks-title">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 p-4" aria-labelledby="hooks-title">
   <h2 id="hooks-title" class="t-title3">{t("hooks.title")}</h2>
   <p class="t-foot text-subtext1">{t("hooks.hint")}</p>
   {#if loaded && hooks.length === 0 && webhooks.length === 0}

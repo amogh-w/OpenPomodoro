@@ -109,7 +109,7 @@
   </label>
 </section>
 
-<section class="card mt-4 grid gap-1 p-2" aria-label={t("admin.title")}>
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 p-2" aria-label={t("admin.title")}>
   {#each users as user (user.id)}
     <div class="grid gap-2 rounded-lg p-2">
       <div class="flex items-center justify-between gap-2">
@@ -157,12 +157,12 @@
   {/each}
 </section>
 
-<section class="card mt-4 grid gap-2 p-4">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 p-4">
   <a class="btn btn-gray" href="/api/admin/backup" download>{t("admin.backup")}</a>
   <p class="t-foot text-subtext1">{t("admin.backup.hint")}</p>
 </section>
 
-<form class="card mt-4 grid gap-3 p-4" onsubmit={createUser}>
+<form class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 p-4" onsubmit={createUser}>
   <h2 class="t-title3">{t("admin.add")}</h2>
   <label class="grid gap-1.5">
     <span class="t-foot text-subtext1">{t("auth.username")}</span>

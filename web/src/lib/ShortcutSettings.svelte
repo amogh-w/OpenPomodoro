@@ -33,7 +33,7 @@
 
 <svelte:window onkeydowncapture={onKey} />
 
-<section class="card mt-4 grid gap-3 p-4" aria-labelledby="shortcuts-title">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 p-4" aria-labelledby="shortcuts-title">
   <h2 id="shortcuts-title" class="t-title3">{t("shortcuts.title")}</h2>
   <p class="t-foot text-subtext1">{t("shortcuts.hint")}</p>
   <dl class="grid gap-2">

@@ -4,7 +4,7 @@
   import { addSpecialBreak, removeSpecialBreak, special, updateSpecialBreak } from "./specialBreaksStore.svelte";
 </script>
 
-<section class="card mt-4 grid gap-4 p-4" aria-labelledby="special-settings">
+<section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4" aria-labelledby="special-settings">
   <div>
     <h2 id="special-settings" class="t-title3">{t("special.title")}</h2>
     <p class="t-foot text-subtext1">{t("special.hint")}</p>
