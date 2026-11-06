@@ -20,6 +20,7 @@ describe("parseAlertPrefs", () => {
       nudgeMin: 15,
       tickFocus: true,
       tickBreak: false,
+      speak: false,
       quietEnabled: true,
       quietStart: "23:30",
       quietEnd: "06:15",

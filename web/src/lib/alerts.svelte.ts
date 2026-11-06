@@ -15,6 +15,8 @@ import { session } from "./session.svelte";
 import { leader } from "../platform/leader.svelte";
 import { playAlert, playTick } from "../platform/audio";
 import { notify } from "../platform/notify";
+import { speak } from "../platform/speech";
+import { activeLanguage } from "./language.svelte";
 import { alertPrefs } from "../platform/prefs.svelte";
 
 const MIN = 60_000;
@@ -122,6 +124,11 @@ export function startAlerts(): () => void {
           const { title, body } = describe(kind, timer.intention, view.overflowMs);
           void notify(title, body, `op-${kind}`);
         }
+        if (prefs.speak && kind !== "nudge") {
+          const { title, body } = describe(kind, timer.intention, view.overflowMs);
+          const words = kind === "warn" ? t("alerts.warn.speech", { minutes: Math.max(1, prefs.warnMin) }) : kind.endsWith("reminder") ? body : `${title}. ${body}`;
+          speak(words, activeLanguage(), prefs.volume);
+        }
       }
     });
   });
@@ -148,6 +155,7 @@ export function startAlerts(): () => void {
     }
     if (prefs.sound) playAlert("focus_reminder", prefs.volume);
     if (prefs.notify) void notify(t("alerts.daily.title"), t("alerts.daily.body"), "op-daily");
+    if (prefs.speak) speak(`${t("alerts.daily.title")} ${t("alerts.daily.body")}`, activeLanguage(), prefs.volume);
   }, 30_000);
 
   // A special break coming due: one sound and notification a day for each, if nothing is running.
@@ -163,6 +171,7 @@ export function startAlerts(): () => void {
     const name = due.label || t("special.default");
     if (prefs.sound) playAlert("break_end", prefs.volume);
     if (prefs.notify) void notify(t("alerts.special.title", { name }), t("alerts.special.body", { minutes: due.minutes }), `op-special-${due.id}`);
+    if (prefs.speak) speak(`${t("alerts.special.title", { name })}. ${t("alerts.special.body", { minutes: due.minutes })}`, activeLanguage(), prefs.volume);
   }, 30_000);
 
   // Coming back after a while: say if a phase ended while we were not looking (the sound was skipped on purpose).

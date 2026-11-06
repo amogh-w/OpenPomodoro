@@ -4,6 +4,7 @@
   import { session } from "./session.svelte";
   import { ALERT_KINDS, type AlertKind } from "./sounds";
   import { audioUnlocked, playAlert } from "../platform/audio";
+  import { speechSupported } from "../platform/speech";
   import { notificationsSupported, permission, requestPermission } from "../platform/notify";
   import { customSounds, removeCustomSound, uploadCustomSound } from "../platform/customSounds.svelte";
   import { alertPrefs, updateAlertPrefs } from "../platform/prefs.svelte";
@@ -130,6 +131,16 @@
       {/each}
     </div>
   </div>
+
+  <label class="flex min-h-11 items-center justify-between gap-3">
+    <span>
+      <span class="block">{t("settings.speak")}</span>
+      <span class="t-foot text-subtext1">{speechSupported() ? t("settings.speak.hint") : t("settings.speakUnsupported")}</span>
+    </span>
+    <span class="switch">
+      <input type="checkbox" checked={alertPrefs.speak} disabled={!speechSupported()} onchange={(e) => updateAlertPrefs({ speak: e.currentTarget.checked })} />
+    </span>
+  </label>
 
   <div class="grid gap-1">
     <span class="t-foot text-subtext1">{t("settings.tick")}</span>

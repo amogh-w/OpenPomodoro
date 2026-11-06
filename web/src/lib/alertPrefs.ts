@@ -17,6 +17,8 @@ export interface AlertPrefs {
   /** A faint tick every second while a focus session / a break counts down. */
   tickFocus: boolean;
   tickBreak: boolean;
+  /** Say the alerts out loud (speech synthesis). */
+  speak: boolean;
   quietEnabled: boolean;
   /** "HH:MM", local time. Quiet hours may cross midnight. */
   quietStart: string;
@@ -38,6 +40,7 @@ export const defaultAlertPrefs: AlertPrefs = {
   nudgeMin: 0,
   tickFocus: false,
   tickBreak: false,
+  speak: false,
   quietEnabled: false,
   quietStart: "22:00",
   quietEnd: "07:00",
@@ -69,6 +72,7 @@ export function parseAlertPrefs(raw: unknown): AlertPrefs {
     nudgeMin: num(o.nudgeMin, 0, 60, d.nudgeMin),
     tickFocus: flag(o.tickFocus, d.tickFocus),
     tickBreak: flag(o.tickBreak, d.tickBreak),
+    speak: flag(o.speak, d.speak),
     quietEnabled: flag(o.quietEnabled, d.quietEnabled),
     quietStart: time(o.quietStart, d.quietStart),
     quietEnd: time(o.quietEnd, d.quietEnd),
