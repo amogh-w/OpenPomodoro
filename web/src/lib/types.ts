@@ -58,6 +58,11 @@ export interface Category {
   name: string;
   color?: string;
   is_break?: boolean;
+  /** A name to group categories under in reports. */
+  group?: string | null;
+  /** This category's own usual lengths in minutes; the timer screen starts from them. */
+  focus_min?: number | null;
+  break_min?: number | null;
 }
 
 export interface ServerState {

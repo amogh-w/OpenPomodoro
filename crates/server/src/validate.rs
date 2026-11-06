@@ -87,6 +87,16 @@ fn category_field_ok(name: &str, v: &Value) -> Option<bool> {
             .is_some_and(|s| (1..=40).contains(&s.chars().count())),
         "color" => v.as_str().is_some_and(|c| ACCENTS.contains(&c)),
         "is_break" => v.is_boolean(),
+        // A name to group categories under in reports; null clears it.
+        "group" => {
+            v.is_null()
+                || v.as_str().is_some_and(|g| {
+                    (1..=40).contains(&g.chars().count()) && !g.chars().any(char::is_control)
+                })
+        }
+        // This category's own usual lengths in minutes (the timer screen starts from them); null clears them.
+        "focus_min" => v.is_null() || v.as_i64().is_some_and(|m| (1..=180).contains(&m)),
+        "break_min" => v.is_null() || v.as_i64().is_some_and(|m| (1..=60).contains(&m)),
         _ => return None,
     })
 }
@@ -343,6 +353,35 @@ mod tests {
             json!({"done": true, "done_at": 1000}),
         );
         assert_eq!(check_client_event(&done, NOW), Ok(()));
+    }
+
+    #[test]
+    fn category_groups_and_own_lengths_are_checked() {
+        let edit = |payload: Value| ev(Entity::Category, Op::Edit, "c1", payload);
+        for ok in [
+            json!({"group": "Work"}),
+            json!({"group": null}),
+            json!({"focus_min": 50, "break_min": 10}),
+            json!({"focus_min": null}),
+        ] {
+            assert_eq!(check_client_event(&edit(ok.clone()), NOW), Ok(()), "{ok}");
+        }
+        for bad in [
+            json!({"group": ""}),
+            json!({"group": "x".repeat(41)}),
+            json!({"group": 3}),
+            json!({"focus_min": 0}),
+            json!({"focus_min": 181}),
+            json!({"break_min": 61}),
+            json!({"break_min": "5"}),
+            json!({"focus_min": 1.5}),
+        ] {
+            assert_eq!(
+                check_client_event(&edit(bad.clone()), NOW),
+                Err("bad_field"),
+                "{bad}"
+            );
+        }
     }
 
     #[test]

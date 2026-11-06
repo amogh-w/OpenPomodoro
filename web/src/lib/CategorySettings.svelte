@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CategoryExtras from "./CategoryExtras.svelte";
   import { addCategory, app, removeCategory, updateCategory } from "./appState.svelte";
   import { t, type MessageKey } from "./i18n";
   import { accents } from "./theme";
@@ -75,6 +76,7 @@
             {/each}
           </div>
         </div>
+        <CategoryExtras {category} onproblem={(text) => (problem = text)} />
         <button class="btn btn-danger-tinted" onclick={() => remove(category.id)}>{t("categories.delete")}</button>
       {/if}
     </div>

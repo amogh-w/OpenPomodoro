@@ -26,7 +26,14 @@ const SESSION_FIELDS: [&str; 10] = [
     "notes",
     "mood",
 ];
-const CATEGORY_FIELDS: [&str; 3] = ["name", "color", "is_break"];
+const CATEGORY_FIELDS: [&str; 6] = [
+    "name",
+    "color",
+    "is_break",
+    "group",
+    "focus_min",
+    "break_min",
+];
 const TASK_FIELDS: [&str; 4] = ["title", "done", "done_at", "category"];
 pub const MAX_TASKS: usize = 20_000;
 

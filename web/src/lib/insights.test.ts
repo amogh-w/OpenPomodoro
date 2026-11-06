@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byIntention, computeInsights, daysOfMonth } from "./insights";
+import { byGroup, byIntention, computeInsights, daysOfMonth } from "./insights";
 import type { SessionRecord } from "./types";
 
 const at = (day: number, h: number, m = 0): number => new Date(2026, 9, day, h, m).getTime();
@@ -101,5 +101,35 @@ describe("byIntention", () => {
     const many = Array.from({ length: 15 }, (_, i) => f(`task ${i}`, i + 1));
     expect(byIntention(many as never)).toHaveLength(10);
     expect(byIntention(many as never, 3)).toHaveLength(3);
+  });
+});
+
+describe("byGroup", () => {
+  const cats = [
+    { id: "a", name: "Writing", group: "Work" },
+    { id: "b", name: "Email", group: "Work" },
+    { id: "c", name: "Piano", group: "Home" },
+    { id: "d", name: "Misc" },
+  ];
+  const f = (category: string | null, minutes: number, kind: "focus" | "short_break" = "focus") => ({
+    id: String(Math.random()),
+    kind,
+    started_at: 0,
+    ended_at: minutes * 60_000,
+    duration_ms: minutes * 60_000,
+    category,
+  });
+
+  it("adds categories under their group, most time first, and leaves ungrouped ones out", () => {
+    const rows = byGroup([f("a", 30), f("b", 20), f("c", 40), f("d", 10), f(null, 10), f("a", 5, "short_break")] as never, cats);
+    expect(rows.map((r) => [r.name, r.focusMs / 60_000, r.sessions, r.categories])).toEqual([
+      ["Work", 50, 2, ["Email", "Writing"]],
+      ["Home", 40, 1, ["Piano"]],
+    ]);
+    expect(rows[0]?.share).toBeCloseTo(50 / 110);
+  });
+
+  it("gives nothing when no category has a group", () => {
+    expect(byGroup([f("a", 30)] as never, [{ id: "a", name: "Writing" }])).toEqual([]);
   });
 });

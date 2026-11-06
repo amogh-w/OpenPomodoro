@@ -59,10 +59,12 @@
   const chosenCategory = $derived(parsed.categoryId ?? (categoryId || null));
   const categoryName = (id: string | null): string | undefined => app.categories.find((c) => c.id === id)?.name;
 
-  // Until the user turns the dial, it shows their usual focus length.
+  // Until the user turns the dial, it shows their usual length: the chosen category's own if it has one, else the
+  // general setting (and 5 seconds when the dial is set to count seconds, for trying the flow).
   $effect(() => {
-    if (app.settings && !touchedLength) focusSec = prefs.dialStep < 60 ? 5 : Math.round(app.settings.focus_ms / 1000);
-    if (app.settings && !touchedBreak) breakSec = prefs.dialStep < 60 ? 5 : Math.round(app.settings.short_break_ms / 1000);
+    const own = app.categories.find((c) => c.id === chosenCategory);
+    if (app.settings && !touchedLength) focusSec = prefs.dialStep < 60 ? 5 : (own?.focus_min ?? Math.round(app.settings.focus_ms / 60_000)) * 60;
+    if (app.settings && !touchedBreak) breakSec = prefs.dialStep < 60 ? 5 : (own?.break_min ?? Math.round(app.settings.short_break_ms / 60_000)) * 60;
   });
   const isBreak = $derived(mode === "break");
   const secondsDial = $derived(prefs.dialStep < 60);

@@ -3,7 +3,7 @@
   import { formatSpan } from "./format";
   import { renderShareImage } from "./shareImage";
   import { t, tn } from "./i18n";
-  import { byIntention, type Insights } from "./insights";
+  import { byGroup, byIntention, type Insights } from "./insights";
   import type { SessionRecord, Category } from "./types";
 
   let { data, categories, sessions }: { data: Insights; categories: Category[]; sessions: SessionRecord[] } = $props();
@@ -12,6 +12,7 @@
   const hour = (h: number | null): string => (h === null ? "–" : new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" }));
   const percent = (f: number | null): string => (f === null ? "" : `${f >= 0 ? "+" : "−"}${Math.round(Math.abs(f) * 100)}%`);
   const intentions = $derived(byIntention(sessions));
+  const groupRows = $derived(byGroup(sessions, categories));
   let sharing = $state(false);
   let shareProblem = $state<string | null>(null);
 
@@ -129,6 +130,32 @@
       <span>1</span><span>{data.days.length}</span>
     </div>
   </div>
+
+  {#if groupRows.length > 0}
+    <div class="card overflow-x-auto p-1">
+      <table class="tbl">
+        <caption class="sr-only">{t("insights.groups")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("categories.group")}</th>
+            <th scope="col" class="text-right">{t("insights.share")}</th>
+            <th scope="col" class="text-right">{t("insights.count")}</th>
+            <th scope="col" class="text-right">{t("insights.time")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each groupRows as row (row.name)}
+            <tr>
+              <td class="max-w-[12rem]"><span class="block truncate">{row.name}</span><span class="t-foot block truncate text-subtext1">{row.categories.join(", ")}</span></td>
+              <td class="text-right tabular-nums">{Math.round(row.share * 100)}%</td>
+              <td class="text-right tabular-nums text-subtext1">{row.sessions}</td>
+              <td class="text-right tabular-nums">{formatSpan(row.focusMs)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
 
   {#if intentions.length > 0}
     <div class="card overflow-x-auto p-1">

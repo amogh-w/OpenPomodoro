@@ -414,7 +414,10 @@ export async function addCategory(name: string, color: string): Promise<boolean>
   );
 }
 
-export async function updateCategory(id: string, change: { name?: string; color?: string }): Promise<boolean> {
+export async function updateCategory(
+  id: string,
+  change: { name?: string; color?: string; group?: string | null; focus_min?: number | null; break_min?: number | null },
+): Promise<boolean> {
   const before = app.categories;
   return commitEvents(
     [{ id: nextId(), entity: "category", op: "edit", key: id, payload: change }],

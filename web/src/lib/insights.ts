@@ -1,7 +1,7 @@
 // Numbers for the History overview of one month: totals, the average day, the best hour, the focus-to-break ratio,
 // how sessions felt, the days as bars and the time per category. Pure, in the person's local time.
 import { localDayKey } from "./days";
-import type { SessionRecord } from "./types";
+import type { Category, SessionRecord } from "./types";
 
 const spent = (s: SessionRecord): number => s.duration_ms ?? Math.max(0, s.ended_at - s.started_at);
 
@@ -153,4 +153,36 @@ export function byIntention(sessions: SessionRecord[], limit = 10): IntentionRow
     .sort((a, b) => b.focusMs - a.focusMs)
     .slice(0, limit)
     .map((row) => ({ ...row, share: total > 0 ? row.focusMs / total : 0 }));
+}
+
+export interface GroupRow {
+  name: string;
+  focusMs: number;
+  sessions: number;
+  share: number;
+  /** The categories in this group that had time. */
+  categories: string[];
+}
+
+/** Focus time by category group, most time first. Categories without a group are not listed; none at all gives nothing. */
+export function byGroup(sessions: SessionRecord[], categories: Category[]): GroupRow[] {
+  const groupOf = new Map(categories.filter((c) => c.group).map((c) => [c.id, c] as const));
+  if (groupOf.size === 0) return [];
+  const rows = new Map<string, { focusMs: number; sessions: number; categories: Set<string> }>();
+  let total = 0;
+  for (const s of sessions) {
+    if (s.kind !== "focus") continue;
+    const ms = s.duration_ms ?? Math.max(0, s.ended_at - s.started_at);
+    total += ms;
+    const category = s.category ? groupOf.get(s.category) : undefined;
+    if (!category?.group) continue;
+    const row = rows.get(category.group) ?? { focusMs: 0, sessions: 0, categories: new Set<string>() };
+    row.focusMs += ms;
+    row.sessions += 1;
+    row.categories.add(category.name);
+    rows.set(category.group, row);
+  }
+  return [...rows.entries()]
+    .map(([name, r]) => ({ name, focusMs: r.focusMs, sessions: r.sessions, share: total > 0 ? r.focusMs / total : 0, categories: [...r.categories].sort() }))
+    .sort((a, b) => b.focusMs - a.focusMs);
 }
