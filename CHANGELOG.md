@@ -15,6 +15,8 @@
 - **Motion:** the kit's entrance helpers are used: screens fade in, lists rise in one after another, the medallion pops
   when it seals, the mood faces pop when chosen, the time-up buttons rise in, and errors shake once. Reduced motion is
   honoured by the kit.
+- **Mood is required:** with "ask how it went" on, choose Focused (green), Neutral (yellow) or Distracted (red) before
+  taking a break or finishing; the buttons wait until you do.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

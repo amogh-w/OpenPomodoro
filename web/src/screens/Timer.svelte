@@ -31,6 +31,12 @@
   type Mood = "focused" | "neutral" | "distracted";
   const moods: Mood[] = ["focused", "neutral", "distracted"];
   const moodIcon: Record<Mood, string> = { focused: "smile", neutral: "meh", distracted: "frown" };
+  // Meaning colours from the kit: green went well, yellow so-so, red went badly. Full class names so Tailwind finds them.
+  const moodTone: Record<Mood, { idle: string; chosen: string }> = {
+    focused: { idle: "bg-green/10 text-green ring-green/40", chosen: "bg-green text-crust ring-green" },
+    neutral: { idle: "bg-yellow/10 text-yellow ring-yellow/40", chosen: "bg-yellow text-crust ring-yellow" },
+    distracted: { idle: "bg-red/10 text-red ring-red/40", chosen: "bg-red text-crust ring-red" },
+  };
 
   const STEP_MS = 5 * 60_000;
   const view = $derived(currentView());
@@ -264,7 +270,7 @@
         if (view.phase === "focus" && view.can.stop) act(() => void endEarly());
         break;
       case "break":
-        if (view.phase === "reflect" && view.can.take_rest) act(() => void endReflect("take_rest"));
+        if (view.phase === "reflect" && view.can.take_rest && (mood !== null || !prefs.askReflection)) act(() => void endReflect("take_rest"));
         break;
     }
   }
@@ -475,16 +481,16 @@
     {/if}
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
     <div class="grid gap-2">
-      <span class="t-foot text-subtext1">{t("timer.mood")}</span>
-      <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t("timer.mood")}>
+      <span class="t-foot text-subtext1">{t("timer.mood")} <span class="text-red" aria-hidden="true">*</span></span>
+      <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-required="true" aria-label={t("timer.mood")}>
         {#each moods as option (option)}
-          <!-- A face above its word: tap one, tap it again to clear. -->
+          <!-- A face above its word. One has to be chosen before leaving this screen. -->
           <button
             type="button"
             role="radio"
             aria-checked={mood === option}
-            class="grid min-h-16 justify-items-center gap-1 rounded-[var(--r-ctl)] px-2 py-2 transition-transform duration-150 ease-ios active:scale-[.97] {mood === option ? 'bg-accent text-crust' : 'bg-mantle text-subtext1 ring-1 ring-inset ring-surface2'}"
-            onclick={() => (mood = mood === option ? null : option)}
+            class="grid min-h-16 justify-items-center gap-1 rounded-[var(--r-ctl)] px-2 py-2 ring-1 ring-inset transition-transform duration-150 ease-ios active:scale-[.97] {mood === option ? moodTone[option].chosen : moodTone[option].idle}"
+            onclick={() => (mood = option)}
           >
             {#key mood === option}<svg class="size-7 {mood === option ? 'anim m-pop' : ''}"><use href="/icons.svg#{moodIcon[option]}" /></svg>{/key}
             <span class="t-foot font-medium">{t(`mood.${option}`)}</span>
@@ -501,10 +507,11 @@
     <NotesPane open={draft.notes !== ""} />
     {#if problem}<div class="alert tone-danger anim m-shake" role="alert">{problem}</div>{/if}
     <div class="grid gap-2">
-      <button class="btn btn-filled btn-lg" disabled={busy || !view.can.take_rest} onclick={() => endReflect("take_rest")}>
+      <p class="t-foot text-subtext1 {mood === null ? '' : 'invisible'}" role="status" aria-hidden={mood !== null}>{t("timer.mood.required")}</p>
+      <button class="btn btn-filled btn-lg" disabled={busy || mood === null || !view.can.take_rest} onclick={() => endReflect("take_rest")}>
         {t("timer.takeBreak")}
       </button>
-      <button class="btn btn-gray" disabled={busy || !view.can.done} onclick={() => endReflect("done")}>
+      <button class="btn btn-gray" disabled={busy || mood === null || !view.can.done} onclick={() => endReflect("done")}>
         {t("timer.done")}
       </button>
     </div>

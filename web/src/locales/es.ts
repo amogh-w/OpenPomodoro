@@ -336,6 +336,7 @@ const es: Record<keyof typeof en, string> = {
   "timer.notes.placeholder": "Cualquier cosa que valga la pena recordar",
   "timer.notes.recent": "De sesiones anteriores",
   "timer.mood": "¿Qué tal fue?",
+  "timer.mood.required": "Elige cómo fue para continuar.",
   "mood.focused": "Concentrado",
   "mood.neutral": "Neutral",
   "mood.distracted": "Distraído",

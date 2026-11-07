@@ -334,6 +334,7 @@ const en = {
   "timer.notes.placeholder": "Anything worth remembering",
   "timer.notes.recent": "From earlier sessions",
   "timer.mood": "How did it go?",
+  "timer.mood.required": "Choose how it went to continue.",
   "mood.focused": "Focused",
   "mood.neutral": "Neutral",
   "mood.distracted": "Distracted",
