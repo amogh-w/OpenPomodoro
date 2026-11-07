@@ -416,7 +416,7 @@
       {#if fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
     </div>
 
-    {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
+    {#if problem}<div class="alert tone-danger anim m-shake" role="alert">{problem}</div>{/if}
 
     <button class="btn btn-filled btn-lg mx-auto w-full max-w-xs" type="submit" disabled={busy}>
       {t("timer.start")}
@@ -452,7 +452,7 @@
     {/if}
   </div>
 {:else if view.phase === "reflect"}
-  <div class="mx-auto grid max-w-xl gap-5 pt-8 text-center">
+  <div class="anim m-fade mx-auto grid max-w-xl gap-5 pt-8 text-center">
     <h1 class="t-title1">{t("timer.phase.reflect")}</h1>
     <p class="text-subtext1">{t("timer.focused", { time: formatElapsed(app.timer?.focus_elapsed_ms ?? 0) })}</p>
     {#if prefs.runes}
@@ -483,10 +483,10 @@
             type="button"
             role="radio"
             aria-checked={mood === option}
-            class="grid min-h-16 justify-items-center gap-1 rounded-[var(--r-ctl)] px-2 py-2 transition-transform active:scale-95 {mood === option ? 'bg-accent text-crust' : 'bg-mantle text-subtext1 ring-1 ring-inset ring-surface2'}"
+            class="grid min-h-16 justify-items-center gap-1 rounded-[var(--r-ctl)] px-2 py-2 transition-transform duration-150 ease-ios active:scale-[.97] {mood === option ? 'bg-accent text-crust' : 'bg-mantle text-subtext1 ring-1 ring-inset ring-surface2'}"
             onclick={() => (mood = mood === option ? null : option)}
           >
-            <svg class="size-7"><use href="/icons.svg#{moodIcon[option]}" /></svg>
+            {#key mood === option}<svg class="size-7 {mood === option ? 'anim m-pop' : ''}"><use href="/icons.svg#{moodIcon[option]}" /></svg>{/key}
             <span class="t-foot font-medium">{t(`mood.${option}`)}</span>
           </button>
         {/each}
@@ -499,7 +499,7 @@
       </label>
     {/if}
     <NotesPane open={draft.notes !== ""} />
-    {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
+    {#if problem}<div class="alert tone-danger anim m-shake" role="alert">{problem}</div>{/if}
     <div class="grid gap-2">
       <button class="btn btn-filled btn-lg" disabled={busy || !view.can.take_rest} onclick={() => endReflect("take_rest")}>
         {t("timer.takeBreak")}
@@ -605,20 +605,20 @@
       </button>
     </div>
 
-    {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
+    {#if problem}<div class="alert tone-danger anim m-shake" role="alert">{problem}</div>{/if}
 
     {#if view.phase === "focus"}<div class="w-full lg:hidden"><NotesPane /></div>{/if}
 
     {#if view.phase === "focus" && view.overflow}
       <!-- Time is up: say plainly what each choice does. -->
-      <div class="mx-auto grid w-full max-w-xs gap-2">
-        <button class="btn btn-filled btn-lg gap-2" disabled={busy} onclick={() => finishFocus("break")}>
+      <div class="anim m-stagger mx-auto grid w-full max-w-xs gap-2">
+        <button class="btn btn-filled btn-lg gap-2" style="--i:0" disabled={busy} onclick={() => finishFocus("break")}>
           <svg class="size-5"><use href="/icons.svg#coffee" /></svg>{t("timer.takeBreak")}
         </button>
-        <button class="btn btn-gray gap-2" disabled={busy} onclick={() => finishFocus("again")}>
+        <button class="btn btn-gray gap-2" style="--i:1" disabled={busy} onclick={() => finishFocus("again")}>
           <svg class="size-5"><use href="/icons.svg#repeat" /></svg>{t("timer.again")}
         </button>
-        <button class="btn btn-plain gap-2" disabled={busy} onclick={() => void finishFocus()}>
+        <button class="btn btn-plain gap-2" style="--i:2" disabled={busy} onclick={() => void finishFocus()}>
           <svg class="size-5"><use href="/icons.svg#circle-check" /></svg>{t("timer.finishSession")}
         </button>
       </div>

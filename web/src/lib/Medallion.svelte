@@ -35,7 +35,8 @@
 </script>
 
 <!-- The picture is drawn a little smaller than its box, so shadows and edges are never cut off and it has room round it. -->
-<svg class="block {extra}" viewBox="-3 -3 70 70" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
+{#key sealed}
+<svg class="block {sealed ? 'anim m-pop' : ''} {extra}" viewBox="-3 -3 70 70" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
   <defs>
     <linearGradient id="{uid}-metal" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" style="stop-color: color-mix(in oklab, var(--ctp-yellow) 70%, white)" />
@@ -91,3 +92,4 @@
     {/if}
   {/each}
 </svg>
+{/key}

@@ -48,9 +48,9 @@
   <HallStrip />
 
   {#if sessions.length > 0}
-    <ul class="grid gap-1 border-t border-surface0 pt-3">
-      {#each sessions as s (s.id)}
-        <li class="flex items-center gap-3 py-1.5">
+    <ul class="anim m-stagger grid gap-1 border-t border-surface0 pt-3">
+      {#each sessions as s, i (s.id)}
+        <li class="flex items-center gap-3 py-1.5" style="--i:{Math.min(i, 5)}">
           {#if prefs.runes}
             {@const rune = runeOf(s)}
             <Rune glyph={rune.glyph} lit={rune.lit} glow={glowOf(s.category)} gold={inMedallion.has(s.id)} class="h-11 w-9 shrink-0" />

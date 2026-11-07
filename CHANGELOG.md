@@ -12,6 +12,9 @@
 - **Simpler tasks and confirmations:** tasks are one list with a checkbox; a ticked task stays in place, crossed out,
   instead of moving to a separate Done section (rename is gone; delete stays). Confirmation dialogs ask a plain question
   with Yes and No.
+- **Motion:** the kit's entrance helpers are used: screens fade in, lists rise in one after another, the medallion pops
+  when it seals, the mood faces pop when chosen, the time-up buttons rise in, and errors shake once. Reduced motion is
+  honoured by the kit.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

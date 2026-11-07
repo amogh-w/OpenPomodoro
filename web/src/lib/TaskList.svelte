@@ -32,9 +32,9 @@
   {#if tasks.length === 0}
     <p class="t-foot text-subtext1">{t("tasks.empty")}</p>
   {:else}
-    <ul class="grid gap-1">
-      {#each tasks as task (task.id)}
-        <li class="flex items-center gap-2">
+    <ul class="anim m-stagger grid gap-1">
+      {#each tasks as task, i (task.id)}
+        <li class="flex items-center gap-2" style="--i:{Math.min(i, 5)}">
           <label class="flex size-11 shrink-0 cursor-pointer items-center justify-center">
             <input
               class="check"

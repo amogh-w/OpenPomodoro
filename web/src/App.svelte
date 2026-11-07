@@ -134,17 +134,22 @@
     {/if}
     <main>
       <div id="screen" role="tabpanel" aria-labelledby="tab-{router.route === 'admin' ? 'profile' : router.route}">
-        {#if router.route === "timer"}
-          <Timer />
-        {:else if router.route === "history"}
-          <History />
-        {:else if router.route === "profile"}
-          <Profile />
-        {:else if router.route === "admin" && session.user?.role === "admin"}
-          <Admin />
-        {:else}
-          <Settings />
-        {/if}
+        <!-- Each screen fades in when you move to it (the kit's entrance helper). -->
+        {#key router.route}
+          <div class="anim m-fade">
+            {#if router.route === "timer"}
+              <Timer />
+            {:else if router.route === "history"}
+              <History />
+            {:else if router.route === "profile"}
+              <Profile />
+            {:else if router.route === "admin" && session.user?.role === "admin"}
+              <Admin />
+            {:else}
+              <Settings />
+            {/if}
+          </div>
+        {/key}
       </div>
     </main>
   {/if}
