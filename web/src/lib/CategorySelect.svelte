@@ -10,12 +10,14 @@
     /** The chosen category id; empty for none. */
     value: string;
     onpick: (id: string) => void;
-    /** Opens the quick form for a new category (the parent shows it). */
-    onnew: () => void;
     /** The category is fixed (for example typed as @name). */
     locked?: boolean;
+    /** Offer a new category, the usual set and the editor too; off for the small per-task selectors. */
+    extras?: boolean;
+    /** Opens the quick form for a new category (the parent shows it). Needed with `extras`. */
+    onnew?: () => void;
   }
-  let { value, onpick, onnew, locked = false }: Props = $props();
+  let { value, onpick, onnew, locked = false, extras = true }: Props = $props();
 
   const uid = `catmenu-${Math.random().toString(36).slice(2, 9)}`;
   const ordered = $derived(orderByRecent(app.categories, recent.sessions));
@@ -35,12 +37,12 @@
   }
 </script>
 
-<CategoryManager bind:this={manager} />
+{#if extras}<CategoryManager bind:this={manager} />{/if}
 
 <!-- One button that shows the category and opens the list; the list also makes a new one and opens the editor. -->
-<button type="button" class="rounded-[var(--r-ctl)] disabled:opacity-60" data-menu={uid} disabled={locked} aria-haspopup="menu" aria-label={t("timer.category")}>
+<button type="button" class="rounded-[var(--r-ctl)] disabled:opacity-60" data-menu={uid} disabled={locked} aria-haspopup="menu" aria-label={t("timer.category")} title={current?.name ?? t("timer.category.none")}>
   <span class="inline-flex items-center gap-1">
-    <CategoryChip category={current} small class="min-h-9 px-3" />
+    <CategoryChip category={current} small iconOnlyNarrow class="min-h-9 px-3" />
     <svg class="size-4 text-subtext1" aria-hidden="true"><use href="/icons.svg#chevron-down" /></svg>
   </span>
 </button>
@@ -56,16 +58,18 @@
       {#if value === category.id}<svg class="size-5 text-accent"><use href="/icons.svg#check" /></svg>{/if}
     </button>
   {/each}
-  <div class="menu-sep"></div>
-  {#if app.categories.length === 0}
+  {#if extras}<div class="menu-sep"></div>{/if}
+  {#if extras && app.categories.length === 0}
     <button type="button" class="menu-item" data-menu-close disabled={adder} onclick={addStarters}>
       <svg class="size-5 text-subtext0"><use href="/icons.svg#sparkles" /></svg>{t("categories.starter")}
     </button>
   {/if}
-  <button type="button" class="menu-item" data-menu-close onclick={onnew}>
+  {#if extras}
+  <button type="button" class="menu-item" data-menu-close onclick={() => onnew?.()}>
     <svg class="size-5 text-subtext0"><use href="/icons.svg#plus" /></svg>{t("categories.add")}
   </button>
-  {#if app.categories.length > 0}
+  {/if}
+  {#if extras && app.categories.length > 0}
     <button type="button" class="menu-item" data-menu-close onclick={() => manager?.open()}>
       <svg class="size-5 text-subtext0"><use href="/icons.svg#sliders-horizontal" /></svg>{t("categories.manage")}
     </button>

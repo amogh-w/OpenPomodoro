@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { addTask, app, removeTask, setTaskDone } from "./appState.svelte";
-  import CategoryChip from "./CategoryChip.svelte";
+  import { addTask, app, removeTask, setTaskDone, updateTask } from "./appState.svelte";
   import CategoryCreate from "./CategoryCreate.svelte";
   import CategorySelect from "./CategorySelect.svelte";
   import { formatSpan } from "./format";
@@ -40,11 +39,7 @@
   }
 </script>
 
-<section class={embedded ? "grid gap-2" : "card grid gap-3 p-4"} aria-labelledby="tasks-title">
-  <div class="flex items-center justify-between gap-2">
-    {#if embedded}<h2 id="tasks-title" class="t-foot font-semibold uppercase tracking-wide text-subtext1">{t("tasks.title")}</h2>{:else}<h2 id="tasks-title" class="t-title3">{t("tasks.title")}</h2>{/if}
-    <CategorySelect value={category ?? ""} onpick={onpickcategory} onnew={() => (makingCategory = true)} locked={categoryLocked} />
-  </div>
+<section class={embedded ? "grid gap-2" : "card grid gap-3 p-4"} aria-label={t("tasks.title")}>
   {#if makingCategory}
     <CategoryCreate
       onadded={(id) => {
@@ -56,7 +51,7 @@
   {/if}
 
   <!-- Not a <form>: this can sit inside the timer form, whose Enter key must not start a session. -->
-  <div class="flex gap-2">
+  <div class="flex items-center gap-2">
     <input
       class="field min-w-0 flex-1"
       bind:value={title}
@@ -70,6 +65,7 @@
         void add();
       }}
     />
+    <CategorySelect value={category ?? ""} onpick={onpickcategory} onnew={() => (makingCategory = true)} locked={categoryLocked} />
     <button class="btn btn-gray" type="button" disabled={title.trim() === ""} onclick={() => void add()}>{t("tasks.add")}</button>
   </div>
 
@@ -97,11 +93,10 @@
             onclick={() => onpick(task)}
           >
             <span class="block truncate {task.done ? 'line-through' : ''}">{task.title}</span>
-            {#if task.category && app.categories.some((c) => c.id === task.category)}
-              <CategoryChip category={app.categories.find((c) => c.id === task.category)} small class="mt-0.5" />
-            {/if}
             {#if (spent.get(task.id) ?? 0) > 0}<span class="t-foot block text-subtext1">{t("tasks.spent", { time: formatSpan(spent.get(task.id) ?? 0) })}</span>{/if}
           </button>
+          <!-- Change the category of a task that is already there. -->
+          <CategorySelect extras={false} value={task.category ?? ""} onpick={(id) => void updateTask(task.id, { category: id === "" ? null : id })} />
           <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.remove", { title: task.title })} onclick={() => removeTask(task.id)}>
             <svg class="size-5"><use href="/icons.svg#trash-2" /></svg>
           </button>

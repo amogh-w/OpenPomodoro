@@ -29,6 +29,8 @@
   category, and letting it go puts back what was chosen before, so the category no longer drifts between tasks.
   The category row above the field is gone: the category is chosen with one selector in the tasks header, which also
   makes a new category, offers the usual set and opens the editor.
+  The selector now sits on the add row, between the field and Add, and every task has its own selector to change its
+  category after it is made.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

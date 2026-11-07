@@ -120,7 +120,7 @@ const en = {
   "access.revokeShort": "Remove",
   "tasks.title": "Tasks",
   "tasks.add": "Add",
-  "tasks.add.placeholder": "Something to get done",
+  "tasks.add.placeholder": "Add a task",
   "tasks.empty": "Nothing waiting. Add a task, then start a session on it.",
   "tasks.pickHint": "Tap a task to work on it.",
   "tasks.markDone": "Mark done: {title}",

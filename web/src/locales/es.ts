@@ -122,7 +122,7 @@ const es: Record<keyof typeof en, string> = {
   "access.revokeShort": "Eliminar",
   "tasks.title": "Tareas",
   "tasks.add": "Añadir",
-  "tasks.add.placeholder": "Algo que quieras hacer",
+  "tasks.add.placeholder": "Añadir una tarea",
   "tasks.empty": "Nada pendiente. Añade una tarea y empieza una sesión con ella.",
   "tasks.pickHint": "Toca una tarea para trabajar en ella.",
   "tasks.markDone": "Marcar como hecha: {title}",
