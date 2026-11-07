@@ -29,7 +29,7 @@
 
 <nav aria-label={t("nav.label")} class="app-nav fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[480px] md:max-w-xl">
   <div class="app-brand" aria-hidden="true">
-    <svg class="size-7 text-accent"><use href="/icons.svg#timer" /></svg>
+    <img src="/icon.svg" alt="" class="size-9" width="36" height="36" />
   </div>
   <div class="tabbar" role="tablist" aria-orientation="horizontal" tabindex="-1" onkeydown={onKey}>
     {#each tabs as tab (tab.route)}
