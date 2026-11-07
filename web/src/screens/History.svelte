@@ -215,7 +215,7 @@
                 <span class="min-w-0 flex-1">
                   <span class="block truncate">{kindLabel(s)}</span>
                   <span class="t-foot block text-subtext1">
-                    {#if s.kind === "focus"}<span class="font-medium text-text">{categoryOf(s.category)?.name ?? t("timer.category.none")}</span> · {/if}{time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}{#if completion(s) === true}
+                    {#if s.kind === "focus"}<span class="font-medium text-text">{categoryOf(s.category)?.name ?? t("timer.category.none")}</span>{" · "}{/if}{time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}{#if completion(s) === true}
                     · <span class="text-green">{t("completion.complete")}</span>{:else if completion(s) === false} · <span class="text-yellow">{t("completion.early")}</span>{/if}
                   </span>
                   {#if s.notes}<span class="t-foot line-clamp-1 block text-subtext1">{s.notes}</span>{/if}

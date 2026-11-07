@@ -17,6 +17,11 @@
   honoured by the kit.
 - **Mood is required:** with "ask how it went" on, choose Focused (green), Neutral (yellow) or Distracted (red) before
   taking a break or finishing; the buttons wait until you do.
+- **Categories reworked:** each category has a colour and an icon. On the timer they are a row of chips (most recently
+  used first) with one-tap choosing, a quick "New" form and a Manage dialog; a new account is offered the usual set
+  (Study, Work, Reading, Exercise, Creative, Admin). History filters by category chips with the month's time on each,
+  rows show the category icon and name, and an opened day shows how it split across categories. The session editors
+  use the same picker. Categories gained an `icon` field (also in backups).
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.
