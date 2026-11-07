@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import CategoryPicker from "../lib/CategoryPicker.svelte";
+  import CategoryBar from "../lib/CategoryBar.svelte";
+  import CategoryChip from "../lib/CategoryChip.svelte";
   import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
   import { currentSlots, cycleDone, glowOf, hall } from "../lib/hallStore.svelte";
@@ -199,7 +200,6 @@
   }
 
   let intentionField: HTMLInputElement | undefined = $state();
-  let picker: CategoryPicker | undefined = $state();
   let editDialog: EditSessionDialog | undefined = $state();
   let earlyDialog: ConfirmDialog | undefined = $state();
   let abandonDialog: ConfirmDialog | undefined = $state();
@@ -355,21 +355,14 @@
       <p class="t-foot -mt-2 text-center text-subtext1 lg:hidden">{t(cycleMessage.key as MessageKey, cycleMessage.params)}</p>
     {/if}
 
-    <button
-      type="button"
-      class="chip mx-auto gap-2"
-      aria-haspopup="dialog"
-      disabled={parsed.categoryId !== null}
-      onclick={() => picker?.open()}
-    >
-      {#if categoryOf(chosenCategory)}
-        <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(chosenCategory)?.color})" aria-hidden="true"></span>
-        {categoryOf(chosenCategory)?.name}
-      {:else}
-        {t("timer.category.none")}
-      {/if}
-      <svg class="size-4"><use href="/icons.svg#chevron-down" /></svg>
-    </button>
+    <CategoryBar
+      value={chosenCategory ?? ""}
+      locked={parsed.categoryId !== null}
+      onpick={(id) => {
+        categoryId = id;
+        if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
+      }}
+    />
 
     <input
       class="field"
@@ -431,14 +424,6 @@
       {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
   </form>
-  <CategoryPicker
-    bind:this={picker}
-    value={categoryId}
-    onpick={(id) => {
-      categoryId = id;
-      if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
-    }}
-  />
   {#if !prefs.compact}
     <div class="mx-auto mt-5 max-w-xl"><TaskList selected={taskId} onpick={pickTask} /></div>
   {/if}
@@ -523,14 +508,7 @@
     {#if prefs.compact}
       <!-- the compact view keeps only the clock and the buttons -->
     {:else if view.phase === "focus"}
-      <span class="chip" aria-pressed="true">
-        {#if categoryOf(app.timer?.category)}
-          <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(app.timer?.category)?.color})" aria-hidden="true"></span>
-          {categoryOf(app.timer?.category)?.name}
-        {:else}
-          {t("timer.category.none")}
-        {/if}
-      </span>
+      <CategoryChip category={categoryOf(app.timer?.category)} />
     {:else}
       <div class="t-foot text-subtext1">{t("timer.next")}{#if app.timer?.intention}: {app.timer.intention}{/if}</div>
     {/if}

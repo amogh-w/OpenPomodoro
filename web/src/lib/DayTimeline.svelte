@@ -41,6 +41,7 @@
       <div
         class="absolute inset-y-1 rounded-sm {block.kind === 'focus' ? '' : 'opacity-60'}"
         style="left: {block.left}%; width: {block.width}%; background: {colorOf(block.kind, block.category)}"
+        title={categories.find((c) => c.id === block.category)?.name}
       ></div>
     {/each}
     {#if marker !== null && marker >= 0 && marker <= 100}

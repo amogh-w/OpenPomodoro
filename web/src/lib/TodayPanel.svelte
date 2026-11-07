@@ -2,6 +2,7 @@
   import { app, tick } from "./appState.svelte";
   import { completion } from "./completion";
   import AddSession from "./AddSession.svelte";
+  import { iconOf } from "./categories";
   import { cycleDone, glowOf, hall } from "./hallStore.svelte";
   import HallStrip from "./HallStrip.svelte";
   import { dayStartMs, groupByDay, localDayKey, moodTally } from "./days";
@@ -55,12 +56,18 @@
             {@const rune = runeOf(s)}
             <Rune glyph={rune.glyph} lit={rune.lit} glow={glowOf(s.category)} gold={inMedallion.has(s.id)} class="h-11 w-9 shrink-0" />
           {:else}
-            <span class="size-3 shrink-0 rounded-full" style="background: {color(s.category)}" aria-hidden="true"></span>
+            <span
+              class="grid size-9 shrink-0 place-items-center rounded-[var(--r-ctl)]"
+              style="background: color-mix(in oklab, {color(s.category)} 18%, transparent); color: {color(s.category)}"
+              aria-hidden="true"
+            >
+              <svg class="size-5"><use href="/icons.svg#{iconOf(app.categories.find((c) => c.id === s.category))}" /></svg>
+            </span>
           {/if}
           <span class="min-w-0 flex-1">
             <span class="block truncate">{title(s)}</span>
             <span class="t-foot block text-subtext1">
-              {time(s.started_at)}–{time(s.ended_at)}{#if completion(s) === true} · <span class="text-green">{t("completion.complete")}</span>{:else if completion(s) === false} · <span class="text-yellow">{t("completion.early")}</span>{/if}
+              <span class="font-medium text-text">{app.categories.find((c) => c.id === s.category)?.name ?? t("timer.category.none")}</span> · {time(s.started_at)}–{time(s.ended_at)}{#if completion(s) === true} · <span class="text-green">{t("completion.complete")}</span>{:else if completion(s) === false} · <span class="text-yellow">{t("completion.early")}</span>{/if}
             </span>
           </span>
           <span class="tabular-nums text-subtext1">{formatSpan(spentOf(s))}</span>

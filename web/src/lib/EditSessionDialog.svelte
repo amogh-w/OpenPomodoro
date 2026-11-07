@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CategoryBar from "./CategoryBar.svelte";
   import { app, sendCommand } from "./appState.svelte";
   import { t } from "./i18n";
 
@@ -41,17 +42,10 @@
       <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
       <input class="field" bind:value={intention} maxlength="200" autocomplete="off" />
     </label>
-    {#if app.categories.length > 0}
-      <label class="grid gap-1.5">
-        <span class="t-foot text-subtext1">{t("timer.category")}</span>
-        <select class="field" bind:value={categoryId}>
-          <option value="">{t("timer.category.none")}</option>
-          {#each app.categories as category (category.id)}
-            <option value={category.id}>{category.name}</option>
-          {/each}
-        </select>
-      </label>
-    {/if}
+    <div class="grid gap-1.5">
+      <span class="t-foot text-subtext1">{t("timer.category")}</span>
+      <CategoryBar value={categoryId} onpick={(id) => (categoryId = id)} />
+    </div>
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
     <div class="grid grid-cols-2 gap-2">
       <button class="btn btn-gray" type="button" onclick={() => dialog?.close()}>{t("common.cancel")}</button>

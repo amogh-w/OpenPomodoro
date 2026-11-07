@@ -400,23 +400,25 @@ export async function saveSetting(name: SettingName, value: number | boolean): P
 
 // ---- categories and sessions ----
 
-export async function addCategory(name: string, color: string): Promise<boolean> {
+export async function addCategory(name: string, color: string, icon: string | null = null): Promise<string | null> {
   const id = nextId();
   const before = app.categories;
-  return commitEvents(
-    [{ id, entity: "category", op: "add", key: id, payload: { name, color, is_break: false } }],
+  const payload = { name, color, is_break: false, ...(icon ? { icon } : {}) };
+  const ok = await commitEvents(
+    [{ id, entity: "category", op: "add", key: id, payload }],
     () => {
-      app.categories = [...before, { id, name, color, is_break: false }];
+      app.categories = [...before, { id, ...payload }];
     },
     () => {
       app.categories = before;
     },
   );
+  return ok ? id : null;
 }
 
 export async function updateCategory(
   id: string,
-  change: { name?: string; color?: string; group?: string | null; focus_min?: number | null; break_min?: number | null },
+  change: { name?: string; color?: string; icon?: string | null; group?: string | null; focus_min?: number | null; break_min?: number | null },
 ): Promise<boolean> {
   const before = app.categories;
   return commitEvents(

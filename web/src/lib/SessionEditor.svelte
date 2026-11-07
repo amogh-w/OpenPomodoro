@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CategoryBar from "./CategoryBar.svelte";
   import { app, deleteSession, editSession } from "./appState.svelte";
   import { t } from "./i18n";
   import type { SessionRecord } from "./types";
@@ -65,17 +66,10 @@
         <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
         <input class="field" bind:value={intention} maxlength="200" autocomplete="off" />
       </label>
-      {#if app.categories.length > 0}
-        <label class="grid gap-1.5">
-          <span class="t-foot text-subtext1">{t("timer.category")}</span>
-          <select class="field" bind:value={categoryId}>
-            <option value="">{t("timer.category.none")}</option>
-            {#each app.categories as category (category.id)}
-              <option value={category.id}>{category.name}</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
+      <div class="grid gap-1.5">
+        <span class="t-foot text-subtext1">{t("timer.category")}</span>
+        <CategoryBar value={categoryId} onpick={(id) => (categoryId = id)} />
+      </div>
     {/if}
     <label class="grid gap-1.5">
       <span class="t-foot text-subtext1">{t("timer.notes")}</span>

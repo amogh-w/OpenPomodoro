@@ -2,12 +2,15 @@
   import { onMount } from "svelte";
   import AddSession from "../lib/AddSession.svelte";
   import { calendar } from "../lib/calendarStore.svelte";
+  import CategoryBreakdown from "../lib/CategoryBreakdown.svelte";
+  import CategoryChip from "../lib/CategoryChip.svelte";
   import DayTimeline from "../lib/DayTimeline.svelte";
   import Heatmap from "../lib/Heatmap.svelte";
   import Insights from "../lib/Insights.svelte";
   import SessionEditor from "../lib/SessionEditor.svelte";
   import { ApiError, api } from "../lib/api";
   import { app, serverNow, tick } from "../lib/appState.svelte";
+  import { iconOf, timePerCategory } from "../lib/categories";
   import { downloadBackup } from "../lib/backupFile";
   import { dayStartMs, groupByDay, localDayKey, monthBounds } from "../lib/days";
   import { formatSpan } from "../lib/format";
@@ -26,6 +29,7 @@
   let sessions = $state<SessionRecord[]>([]);
   let earlier = $state<SessionRecord[]>([]);
   let notesOnly = $state(false);
+  const NONE = "__none";
   let categoryFilter = $state("");
   let totals = $state<DayTotal[]>([]);
   let expanded = $state<string | null>(null);
@@ -35,16 +39,22 @@
   const todayKey = $derived(localDayKey(tick.now));
   const stats = $derived(computeStats(totals, todayKey));
   const shown = $derived(
-    sessions.filter((s) => (!notesOnly || (s.notes ?? "").trim() !== "") && (categoryFilter === "" || s.category === categoryFilter)),
+    sessions.filter((s) => (!notesOnly || (s.notes ?? "").trim() !== "") && (categoryFilter === "" || (categoryFilter === NONE ? !s.category : s.category === categoryFilter))),
   );
   const days = $derived(groupByDay(shown));
   const insights = $derived(computeInsights(sessions, earlier, daysOfMonth(view.year, view.month0)));
   const isCurrentMonth = $derived(view.year === first.getFullYear() && view.month0 === first.getMonth());
   const monthLabel = $derived(new Date(view.year, view.month0, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" }));
-  const categoryColor = (id: string | null | undefined): string => {
-    const color = app.categories.find((c) => c.id === id)?.color;
-    return `var(--ctp-${color ?? "red"})`;
-  };
+  const categoryOf = (id: string | null | undefined) => app.categories.find((c) => c.id === id);
+  const categoryColor = (id: string | null | undefined): string => `var(--ctp-${categoryOf(id)?.color ?? "overlay1"})`;
+  // The filter chips: categories with the most time this month first, then the unused ones, then "none" if any.
+  const monthTimes = $derived(timePerCategory(sessions));
+  const filterRows = $derived(
+    [...app.categories]
+      .sort((a, b) => (monthTimes.find((r) => r.id === b.id)?.ms ?? 0) - (monthTimes.find((r) => r.id === a.id)?.ms ?? 0) || a.name.localeCompare(b.name))
+      .map((c) => ({ category: c, ms: monthTimes.find((r) => r.id === c.id)?.ms ?? 0 })),
+  );
+  const noneMs = $derived(monthTimes.find((r) => r.id === null)?.ms ?? 0);
 
   async function load(): Promise<void> {
     const { from, to } = monthBounds(view.year, view.month0);
@@ -141,15 +151,32 @@
   <div class="grid content-start gap-3">
     <div class="flex flex-wrap items-center gap-2">
       <button class="chip" aria-pressed={notesOnly} onclick={() => (notesOnly = !notesOnly)}>{t("history.notesOnly")}</button>
-      {#if app.categories.length > 0}
-        <select class="field !h-9 w-auto" aria-label={t("history.filter")} bind:value={categoryFilter}>
-          <option value="">{t("history.allCategories")}</option>
-          {#each app.categories as category (category.id)}
-            <option value={category.id}>{category.name}</option>
-          {/each}
-        </select>
-      {/if}
     </div>
+    {#if app.categories.length > 0}
+      <div class="flex flex-wrap gap-2" role="group" aria-label={t("history.filter")}>
+        <button type="button" class="chip" aria-pressed={categoryFilter === ""} onclick={() => (categoryFilter = "")}>{t("history.allCategories")}</button>
+        {#each filterRows as row (row.category.id)}
+          <button
+            type="button"
+            class="min-h-9 rounded-[var(--r-ctl)] transition-transform duration-150 ease-ios active:scale-[.97]"
+            aria-pressed={categoryFilter === row.category.id}
+            onclick={() => (categoryFilter = categoryFilter === row.category.id ? "" : row.category.id)}
+          >
+            <CategoryChip category={row.category} small selected={categoryFilter === row.category.id} detail={row.ms > 0 ? formatSpan(row.ms) : ""} class="min-h-9 px-3" />
+          </button>
+        {/each}
+        {#if noneMs > 0}
+          <button
+            type="button"
+            class="min-h-9 rounded-[var(--r-ctl)] transition-transform duration-150 ease-ios active:scale-[.97]"
+            aria-pressed={categoryFilter === NONE}
+            onclick={() => (categoryFilter = categoryFilter === NONE ? "" : NONE)}
+          >
+            <CategoryChip small selected={categoryFilter === NONE} detail={formatSpan(noneMs)} class="min-h-9 px-3" />
+          </button>
+        {/if}
+      </div>
+    {/if}
 <section class="grid content-start gap-2" aria-label={t("history.title")}>
   {#each days as day (day.day)}
     {@const open = expanded === day.day}
@@ -174,18 +201,21 @@
             now={day.day === todayKey ? tick.now : null}
             events={calendar.events}
           />
+          <CategoryBreakdown sessions={day.sessions} categories={app.categories} />
           <div class="grid gap-1">
             {#each day.sessions as s (s.id)}
               <button class="flex min-h-12 w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-surface0" onclick={() => editor?.show(s)}>
                 <span
-                  class="size-3 shrink-0 rounded-full {s.kind === 'focus' ? '' : 'opacity-60'}"
-                  style="background: {s.kind === 'focus' ? categoryColor(s.category) : 'var(--ctp-green)'}"
+                  class="grid size-9 shrink-0 place-items-center rounded-[var(--r-ctl)]"
+                  style="background: color-mix(in oklab, {s.kind === 'focus' ? categoryColor(s.category) : 'var(--ctp-green)'} 18%, transparent); color: {s.kind === 'focus' ? categoryColor(s.category) : 'var(--ctp-green)'}"
                   aria-hidden="true"
-                ></span>
+                >
+                  <svg class="size-5"><use href="/icons.svg#{s.kind === 'focus' ? iconOf(categoryOf(s.category)) : 'coffee'}" /></svg>
+                </span>
                 <span class="min-w-0 flex-1">
                   <span class="block truncate">{kindLabel(s)}</span>
                   <span class="t-foot block text-subtext1">
-                    {time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}{#if completion(s) === true}
+                    {#if s.kind === "focus"}<span class="font-medium text-text">{categoryOf(s.category)?.name ?? t("timer.category.none")}</span> · {/if}{time(s.started_at)}–{time(s.ended_at)}{#if s.mood} · {t(`mood.${s.mood}`)}{/if}{#if completion(s) === true}
                     · <span class="text-green">{t("completion.complete")}</span>{:else if completion(s) === false} · <span class="text-yellow">{t("completion.early")}</span>{/if}
                   </span>
                   {#if s.notes}<span class="t-foot line-clamp-1 block text-subtext1">{s.notes}</span>{/if}

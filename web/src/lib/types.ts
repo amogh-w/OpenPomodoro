@@ -59,6 +59,8 @@ export interface Category {
   id: string;
   name: string;
   color?: string;
+  /** One of the names in `categories.ts` `ICONS`. */
+  icon?: string | null;
   is_break?: boolean;
   /** A name to group categories under in reports. */
   group?: string | null;

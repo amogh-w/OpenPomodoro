@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CategoryChip from "./CategoryChip.svelte";
   import { completionRate } from "./completion";
   import { formatSpan } from "./format";
   import { renderShareImage } from "./shareImage";
@@ -50,8 +51,6 @@
       sharing = false;
     }
   }
-  const nameOf = (id: string | null): string => categories.find((c) => c.id === id)?.name ?? t("timer.category.none");
-  const colorOf = (id: string | null): string => `var(--ctp-${categories.find((c) => c.id === id)?.color ?? "overlay1"})`;
   const peak = $derived(Math.max(1, ...data.days.map((d) => d.focusMs)));
   const average = $derived(data.activeDays > 0 ? data.avgPerDayMs : 0);
   const moods = $derived(
@@ -198,9 +197,7 @@
         <tbody>
           {#each data.categories as row (row.id ?? "none")}
             <tr>
-              <td>
-                <span class="mr-2 inline-block size-2.5 rounded-full" style="background: {colorOf(row.id)}" aria-hidden="true"></span>{nameOf(row.id)}
-              </td>
+              <td><CategoryChip category={categories.find((c) => c.id === row.id)} small /></td>
               <td class="text-right tabular-nums">{Math.round(row.share * 100)}%</td>
               <td class="text-right tabular-nums text-subtext1">{percent(row.change)}</td>
               <td class="text-right tabular-nums">{formatSpan(row.focusMs)}</td>

@@ -32,8 +32,8 @@
     <div class="grid grid-cols-2 gap-2">
       <!-- Yes stands out; No has the focus, so a stray Enter never does the risky thing. -->
       <!-- svelte-ignore a11y_autofocus -->
-      <button class="btn btn-gray" autofocus onclick={() => close(false)}>{t("confirm.no")}</button>
-      <button class="btn btn-filled" onclick={() => close(true)}>{t("confirm.yes")}</button>
+      <button type="button" class="btn btn-gray" autofocus onclick={() => close(false)}>{t("confirm.no")}</button>
+      <button type="button" class="btn btn-filled" onclick={() => close(true)}>{t("confirm.yes")}</button>
     </div>
   </div>
 </dialog>

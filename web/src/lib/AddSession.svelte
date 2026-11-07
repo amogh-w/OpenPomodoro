@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CategoryBar from "./CategoryBar.svelte";
   import { addSession, app, serverNow } from "./appState.svelte";
   import { fromLocalInput, toLocalInput } from "./datetime";
   import { t } from "./i18n";
@@ -79,17 +80,10 @@
       <span class="t-foot text-subtext1">{t("timer.intention.label")}</span>
       <input class="field" bind:value={intention} maxlength="200" autocomplete="off" />
     </label>
-    {#if app.categories.length > 0}
-      <label class="grid gap-1.5">
-        <span class="t-foot text-subtext1">{t("timer.category")}</span>
-        <select class="field" bind:value={categoryId}>
-          <option value="">{t("timer.category.none")}</option>
-          {#each app.categories as category (category.id)}
-            <option value={category.id}>{category.name}</option>
-          {/each}
-        </select>
-      </label>
-    {/if}
+    <div class="grid gap-1.5">
+      <span class="t-foot text-subtext1">{t("timer.category")}</span>
+      <CategoryBar value={categoryId} onpick={(id) => (categoryId = id)} />
+    </div>
     <label class="grid gap-1.5">
       <span class="t-foot text-subtext1">{t("timer.notes")}</span>
       <textarea class="field min-h-20" bind:value={notes} maxlength="4000"></textarea>
