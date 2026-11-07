@@ -46,7 +46,5 @@
     bind:this={confirm}
     title={t("runes.break.title")}
     body={t("runes.break.body", { done, total })}
-    confirm={t("runes.break.confirm")}
-    cancel={t("runes.break.keep")}
   />
 {/if}

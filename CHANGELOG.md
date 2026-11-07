@@ -9,6 +9,9 @@
   session ends. When the time is up, the choices are labelled (Take a break, Another session, End session). "Paused"
   no longer pushes the clock up, task checkboxes use the kit's checkbox, and every rune glyph is centred on its tablet
   (the corner dots are gone).
+- **Simpler tasks and confirmations:** tasks are one list with a checkbox; a ticked task stays in place, crossed out,
+  instead of moving to a separate Done section (rename is gone; delete stays). Confirmation dialogs ask a plain question
+  with Yes and No.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

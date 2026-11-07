@@ -311,22 +311,16 @@
   bind:this={earlyDialog}
   title={t("timer.endEarly.title")}
   body={t("timer.endEarly.body", { left: formatSpan(view?.remainingMs ?? 0), n: roundNow, total: cycleLength })}
-  confirm={t("timer.endEarly.confirm")}
-  cancel={t("timer.endEarly.keep")}
 />
 <ConfirmDialog
   bind:this={breakDialog}
   title={t("timer.endBreakEarly.title")}
   body={t("timer.endBreakEarly.body", { left: formatSpan(view?.remainingMs ?? 0) })}
-  confirm={t("timer.endBreakEarly.confirm")}
-  cancel={t("timer.endBreakEarly.keep")}
 />
 <ConfirmDialog
   bind:this={abandonDialog}
   title={t("timer.abandon.title")}
   body={t("timer.abandon.body")}
-  confirm={t("timer.abandon.confirm")}
-  cancel={t("timer.endEarly.keep")}
 />
 
 <div class={prefs.compact ? "" : "lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12"}>

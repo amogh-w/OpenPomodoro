@@ -1,21 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { splitTasks, timePerTask } from "./tasks";
+import { orderTasks, timePerTask } from "./tasks";
 
-describe("splitTasks", () => {
-  it("keeps open tasks in the order added and puts the latest win first", () => {
-    const { open, done } = splitTasks([
+describe("orderTasks", () => {
+  it("keeps every task, done or not, in the order added", () => {
+    const tasks = [
       { id: "b", title: "second" },
+      { id: "c", title: "ticked", done: true, done_at: 100 },
       { id: "a", title: "first", done: false },
-      { id: "c", title: "old", done: true, done_at: 100 },
-      { id: "d", title: "new", done: true, done_at: 900 },
-      { id: "e", title: "undated", done: true },
-    ]);
-    expect(open.map((x) => x.title)).toEqual(["first", "second"]);
-    expect(done.map((x) => x.title)).toEqual(["new", "old", "undated"]);
+    ];
+    expect(orderTasks(tasks).map((x) => x.title)).toEqual(["first", "second", "ticked"]);
   });
 
   it("copes with nothing", () => {
-    expect(splitTasks([])).toEqual({ open: [], done: [] });
+    expect(orderTasks([])).toEqual([]);
   });
 });
 
