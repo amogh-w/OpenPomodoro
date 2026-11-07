@@ -14,7 +14,7 @@
 
 {#if prefs.runes}
   <!-- The cycle as a medal being made: one socket for every session, filled as each one finishes. -->
-  <Medallion slots={currentSlots(current, done)} {total} class="size-14" label={t("timer.round", { n: done + 1, total })} />
+  <Medallion slots={currentSlots(current, done)} {total} class="size-16" label={t("timer.round", { n: done + 1, total })} />
 {:else}
   <div class="flex justify-center gap-1.5" role="img" aria-label={t("timer.round", { n: done + 1, total })}>
     {#each Array.from({ length: total }, (_, i) => i) as i (i)}

@@ -20,7 +20,7 @@
 
 {#if prefs.runes}
   <div class="flex items-center gap-3 rounded-lg bg-surface0/40 p-2">
-    <Medallion slots={currentSlots(current, done)} {total} class="size-14 shrink-0" />
+    <Medallion slots={currentSlots(current, done)} {total} class="size-16 shrink-0" />
     <div class="min-w-0 flex-1">
       <p class="t-foot text-subtext1">{t(message.key as MessageKey, message.params)}</p>
       {#if carved.length > 0}
