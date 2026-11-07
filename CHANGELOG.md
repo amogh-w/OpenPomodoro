@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Slimmer side panel and runic dial:** the panel beside the timer now shows just today (total, medallion, sessions);
+  the week strip and the day timeline are in History, which also draws calendar-file events. The dial and the running
+  ring share the medallion's stone-and-brass look. Mood after a session is picked from three faces.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

@@ -54,13 +54,14 @@
   onDestroy(() => cancelAnimationFrame(frame));
   // Geometry (viewBox 240): a ring of 60 tick marks, a pie that fills as the length grows, and a hand to turn.
   const WEDGE = 68;
-  const HAND = 94;
+  const HAND = 80;
   const ticks = Array.from({ length: 60 }, (_, i) => {
     const a = (i * 6 * Math.PI) / 180;
-    const major = i % 5 === 0;
-    const from = major ? 100 : 106;
-    return { i, major, x1: 120 + from * Math.sin(a), y1: 120 - from * Math.cos(a), x2: 120 + 114 * Math.sin(a), y2: 120 - 114 * Math.cos(a) };
+    return { i, major: i % 5 === 0, sin: Math.sin(a), cos: Math.cos(a) };
   });
+  const at = (tick: { sin: number; cos: number }, r: number) => ({ x: 120 + r * tick.sin, y: 120 - r * tick.cos });
+  // Gradients need an id that is unique on the page.
+  const uid = `dial-${Math.random().toString(36).slice(2, 9)}`;
 
   // Fraction of the circle that is filled: a full lap at 60 minutes, then it starts a second lap.
   const lap = $derived(((display - 1) % 60 + 1) / 60);
@@ -153,18 +154,36 @@
   onpointercancel={up}
   onkeydown={key}
 >
-  {#each ticks as tickMark (tickMark.i)}
-    <line
-      x1={tickMark.x1}
-      y1={tickMark.y1}
-      x2={tickMark.x2}
-      y2={tickMark.y2}
-      class={tickMark.major ? "stroke-subtext0" : "stroke-overlay0"}
-      stroke-width={tickMark.major ? 2.4 : 1.2}
-      stroke-linecap="round"
-    />
+  <defs>
+    <linearGradient id="{uid}-metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" style="stop-color: color-mix(in oklab, var(--ctp-yellow) 70%, white)" />
+      <stop offset="0.5" style="stop-color: var(--ctp-yellow)" />
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--ctp-peach) 70%, var(--ctp-crust))" />
+    </linearGradient>
+    <radialGradient id="{uid}-face" cx="0.38" cy="0.32" r="0.9">
+      <stop offset="0" style="stop-color: color-mix(in oklab, var(--ctp-surface1) 85%, transparent)" />
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--ctp-surface0) 80%, var(--ctp-crust))" />
+    </radialGradient>
+  </defs>
+  <!-- the stone bezel: a shadow under it, a rim, and a pale edge inside -->
+  <circle cx="120" cy="123" r="117" fill="black" opacity="0.28" />
+  <circle cx="120" cy="120" r="117" class="fill-surface1" />
+  <circle cx="120" cy="120" r="116" fill="none" class="stroke-overlay0" stroke-width="2" />
+  <circle cx="120" cy="120" r="111" fill="none" stroke="white" stroke-opacity="0.12" stroke-width="1" />
+  <!-- carved minute marks, and a brass stud at every fifth -->
+  {#each ticks as tick (tick.i)}
+    {#if tick.major}
+      <circle cx={at(tick, 103).x} cy={at(tick, 103).y + 0.8} r={tick.i === 0 ? 4.4 : 3.2} fill="black" opacity="0.35" />
+      <circle cx={at(tick, 103).x} cy={at(tick, 103).y} r={tick.i === 0 ? 4.4 : 3.2} fill="url(#{uid}-metal)" />
+    {:else}
+      <line x1={at(tick, 101).x} y1={at(tick, 101).y + 0.8} x2={at(tick, 106).x} y2={at(tick, 106).y + 0.8} stroke="black" stroke-opacity="0.4" stroke-width="1.6" stroke-linecap="round" />
+      <line x1={at(tick, 101).x} y1={at(tick, 101).y} x2={at(tick, 106).x} y2={at(tick, 106).y} class="stroke-overlay1" stroke-width="1.4" stroke-linecap="round" />
+    {/if}
   {/each}
-  <circle cx="120" cy="120" r={WEDGE} class="fill-surface0" />
+  <circle cx="120" cy="120" r="90" fill="url(#{uid}-face)" />
+  <circle cx="120" cy="120" r="90" fill="none" class="stroke-surface2" stroke-width="1.4" />
+  <circle cx="120" cy="120" r={WEDGE + 4} fill="none" class="stroke-surface2" stroke-width="1" />
+  <circle cx="120" cy="120" r={WEDGE} class="fill-base" opacity="0.55" />
   {#if secondLap}<circle cx="120" cy="120" r={WEDGE} class={fillClass} opacity="0.35" />{/if}
   {#if wedge === ""}
     <circle cx="120" cy="120" r={WEDGE} class={fillClass} opacity="0.85" />
@@ -172,5 +191,8 @@
     <path d={wedge} class={fillClass} opacity="0.85" />
   {/if}
   <line x1="120" y1="120" x2={tipX} y2={tipY} class={strokeClass} stroke-width="3.5" stroke-linecap="round" />
-  <circle cx="120" cy="120" r="10" class="fill-text" opacity="0.9" />
+  <circle cx={tipX} cy={tipY + 0.8} r="6" fill="black" opacity="0.35" />
+  <circle cx={tipX} cy={tipY} r="6" fill="url(#{uid}-metal)" />
+  <circle cx="120" cy="120" r="10" fill="url(#{uid}-metal)" />
+  <circle cx="120" cy="120" r="3" class="fill-crust" opacity="0.6" />
 </svg>

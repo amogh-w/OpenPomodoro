@@ -56,3 +56,6 @@ repeat
 square
 minimize-2
 maximize-2
+smile
+meh
+frown

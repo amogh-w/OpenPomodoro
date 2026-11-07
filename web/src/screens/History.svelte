@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import AddSession from "../lib/AddSession.svelte";
+  import { calendar } from "../lib/calendarStore.svelte";
   import DayTimeline from "../lib/DayTimeline.svelte";
   import Heatmap from "../lib/Heatmap.svelte";
   import Insights from "../lib/Insights.svelte";
@@ -171,6 +172,7 @@
             dayStart={dayStartMs(day.day)}
             categories={app.categories}
             now={day.day === todayKey ? tick.now : null}
+            events={calendar.events}
           />
           <div class="grid gap-1">
             {#each day.sessions as s (s.id)}

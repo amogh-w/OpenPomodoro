@@ -18,7 +18,6 @@
   import { formatElapsed, formatRemaining, formatSpan } from "../lib/format";
   import { t, type MessageKey } from "../lib/i18n";
   import { parseIntention } from "../lib/intention";
-  import { planPreview } from "../lib/planPreview.svelte";
   import { recentIntentions } from "../lib/recent";
   import { actionFor } from "../lib/shortcuts";
   import { recent, refreshRecent } from "../lib/recentStore.svelte";
@@ -31,6 +30,7 @@
 
   type Mood = "focused" | "neutral" | "distracted";
   const moods: Mood[] = ["focused", "neutral", "distracted"];
+  const moodIcon: Record<Mood, string> = { focused: "smile", neutral: "meh", distracted: "frown" };
 
   const STEP_MS = 5 * 60_000;
   const view = $derived(currentView());
@@ -92,14 +92,6 @@
     return `${hhmm(timer.start)} → ${hhmm(end)}`;
   });
   const categoryOf = (id: string | null | undefined) => app.categories.find((c) => c.id === id);
-
-  // Tell the day view beside the timer what is about to start, so it can show where it would land.
-  $effect(() => {
-    planPreview.plannedMs = view?.phase === "idle" && !isBreak ? plannedMs : null;
-    return () => {
-      planPreview.plannedMs = null;
-    };
-  });
 
   let busy = $state(false);
   let problem = $state<string | null>(null);
@@ -521,10 +513,18 @@
     {#if app.timer?.intention}<p class="t-headline">{app.timer.intention}</p>{/if}
     <div class="grid gap-2">
       <span class="t-foot text-subtext1">{t("timer.mood")}</span>
-      <div class="flex flex-wrap justify-center gap-2" role="group" aria-label={t("timer.mood")}>
+      <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t("timer.mood")}>
         {#each moods as option (option)}
-          <button class="chip" aria-pressed={mood === option} onclick={() => (mood = mood === option ? null : option)}>
-            {t(`mood.${option}`)}
+          <!-- A face above its word: tap one, tap it again to clear. -->
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mood === option}
+            class="grid min-h-16 justify-items-center gap-1 rounded-[var(--r-ctl)] px-2 py-2 transition-transform active:scale-95 {mood === option ? 'bg-accent text-crust' : 'bg-mantle text-subtext1 ring-1 ring-inset ring-surface2'}"
+            onclick={() => (mood = mood === option ? null : option)}
+          >
+            <svg class="size-7"><use href="/icons.svg#{moodIcon[option]}" /></svg>
+            <span class="t-foot font-medium">{t(`mood.${option}`)}</span>
           </button>
         {/each}
       </div>
@@ -571,7 +571,28 @@
 
     <div class="relative size-64 [container-type:inline-size] lg:size-[min(24rem,40vh)]" role="timer" aria-label={t("timer.remaining")}>
       <svg class="size-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
-        <circle cx="100" cy="100" r={R} fill="none" class="stroke-surface1" stroke-width="12" />
+        <defs>
+          <linearGradient id="ring-metal" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color: color-mix(in oklab, var(--ctp-yellow) 70%, white)" />
+            <stop offset="0.5" style="stop-color: var(--ctp-yellow)" />
+            <stop offset="1" style="stop-color: color-mix(in oklab, var(--ctp-peach) 70%, var(--ctp-crust))" />
+          </linearGradient>
+          <radialGradient id="ring-face" cx="0.38" cy="0.32" r="0.9">
+            <stop offset="0" style="stop-color: color-mix(in oklab, var(--ctp-surface1) 85%, transparent)" />
+            <stop offset="1" style="stop-color: color-mix(in oklab, var(--ctp-surface0) 80%, var(--ctp-crust))" />
+          </radialGradient>
+        </defs>
+        <!-- stone bezel, a face inside, and a brass stud at each hour; the track is a groove cut into the stone -->
+        <circle cx="100" cy="102" r="99" fill="black" opacity="0.28" />
+        <circle cx="100" cy="100" r="99" class="fill-surface1" />
+        <circle cx="100" cy="100" r="98" fill="none" class="stroke-overlay0" stroke-width="1.6" />
+        <circle cx="100" cy="100" r="80.5" fill="url(#ring-face)" />
+        <circle cx="100" cy="100" r="80.5" fill="none" class="stroke-surface2" stroke-width="1" />
+        {#each Array.from({ length: 12 }, (_, i) => i) as hour (hour)}
+          <circle cx={100 + 75 * Math.cos((hour * Math.PI) / 6)} cy={100 + 75 * Math.sin((hour * Math.PI) / 6)} r={hour % 3 === 0 ? 2.4 : 1.6} fill="url(#ring-metal)" />
+        {/each}
+        <circle cx="100" cy="100" r={R} fill="none" class="stroke-crust" stroke-opacity="0.45" stroke-width="12" />
+        <circle cx="100" cy="100" r={R + 5.2} fill="none" stroke="white" stroke-opacity="0.1" stroke-width="0.8" />
         <circle
           cx="100"
           cy="100"
