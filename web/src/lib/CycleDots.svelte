@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { app } from "./appState.svelte";
   import { t } from "./i18n";
-  import { cycleDone, hall, slotsOf } from "./hallStore.svelte";
+  import { currentSlots, cycleDone, hall } from "./hallStore.svelte";
   import Medallion from "./Medallion.svelte";
   import { prefs } from "../platform/prefs.svelte";
 
@@ -8,12 +9,12 @@
   let { rounds, total, running = false }: { rounds: number; total: number; running?: boolean } = $props();
 
   const current = $derived(hall());
-  const done = $derived(cycleDone(current) || rounds % total);
+  const done = $derived(app.timer ? cycleDone(current) : rounds % total);
 </script>
 
 {#if prefs.runes}
   <!-- The cycle as a medal being made: one socket for every session, filled as each one finishes. -->
-  <Medallion slots={slotsOf(current.cycle.runes, done)} {total} class="size-14" label={t("timer.round", { n: done + 1, total })} />
+  <Medallion slots={currentSlots(current, done)} {total} class="size-14" label={t("timer.round", { n: done + 1, total })} />
 {:else}
   <div class="flex justify-center gap-1.5" role="img" aria-label={t("timer.round", { n: done + 1, total })}>
     {#each Array.from({ length: total }, (_, i) => i) as i (i)}

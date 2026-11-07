@@ -120,3 +120,12 @@ export function encouragement(done: number, total: number): Encouragement {
   const key = done <= 0 ? "runes.cycle.start" : left <= 1 ? "runes.cycle.last" : "runes.cycle.going";
   return { key, params: { done, total, left } };
 }
+
+/**
+ * The runes of the medallion being made, when the timer's own round count says `done` sessions are in it: the most
+ * recent `done` runes, oldest first. If fewer are known (history not loaded yet, or older than what is kept), the
+ * ones there are returned and the caller shows the rest as plain full runes.
+ */
+export function lastRunes(runes: readonly Rune[], done: number): Rune[] {
+  return done <= 0 ? [] : runes.slice(-done);
+}

@@ -3,7 +3,7 @@
   import CategoryPicker from "../lib/CategoryPicker.svelte";
   import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
-  import { cycleDone, glowOf, hall, slotsOf } from "../lib/hallStore.svelte";
+  import { currentSlots, cycleDone, glowOf, hall } from "../lib/hallStore.svelte";
   import Medallion from "../lib/Medallion.svelte";
   import Rune from "../lib/Rune.svelte";
   import { encouragement, glyphFor, litWord } from "../lib/runes";
@@ -505,7 +505,7 @@
       <div class="grid justify-items-center gap-2" role="status">
         {#if sealsMedallion}
           <Medallion
-            slots={[...slotsOf(hallNow.cycle.runes, cycleDoneNow), { glyph: sessionGlyph, lit: carvedLit, glow: sessionGlow }]}
+            slots={[...currentSlots(hallNow, cycleDoneNow), { glyph: sessionGlyph, lit: carvedLit, glow: sessionGlow }]}
             total={cycleLength}
             class="size-28"
             label={t("runes.sealed", { total: cycleLength })}

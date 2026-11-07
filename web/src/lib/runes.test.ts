@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GLYPH_COUNT } from "./glyphs";
-import { buildHall, encouragement, glyphFor, litWord, runeOf, sizeOf } from "./runes";
+import { buildHall, encouragement, glyphFor, lastRunes, litWord, runeOf, sizeOf } from "./runes";
 import type { SessionRecord } from "./types";
 
 let n = 0;
@@ -105,5 +105,20 @@ describe("encouragement", () => {
     expect(encouragement(2, 4).params).toEqual({ done: 2, total: 4, left: 2 });
     expect(encouragement(3, 4).key).toBe("runes.cycle.last");
     expect(encouragement(0, 1).key).toBe("runes.cycle.start");
+  });
+});
+
+describe("lastRunes", () => {
+  const runes = [focus(9), focus(10), focus(11), focus(12), focus(13)].map(runeOf);
+
+  it("takes the most recent ones, oldest first", () => {
+    expect(lastRunes(runes, 2).map((r) => r.id)).toEqual(runes.slice(3).map((r) => r.id));
+    expect(lastRunes(runes, 5)).toHaveLength(5);
+  });
+
+  it("gives what there is when fewer are known, and nothing for zero", () => {
+    expect(lastRunes(runes, 9)).toHaveLength(5);
+    expect(lastRunes(runes, 0)).toEqual([]);
+    expect(lastRunes([], 3)).toEqual([]);
   });
 });

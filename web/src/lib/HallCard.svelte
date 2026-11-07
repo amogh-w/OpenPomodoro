@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { cycleDone, cycleTotal, glowOf, hall, slotsOf } from "./hallStore.svelte";
+  import { currentSlots, cycleDone, cycleTotal, glowOf, hall, slotsOf } from "./hallStore.svelte";
   import { encouragement, litWord } from "./runes";
   import { formatSpan } from "./format";
   import { t, type MessageKey } from "./i18n";
@@ -25,7 +25,7 @@
 {#if prefs.runes}
   <section class="card mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4" aria-labelledby="hall-title">
     <div class="flex items-center gap-4">
-      <Medallion slots={slotsOf(current.cycle.runes, done)} {total} class="size-20 shrink-0" />
+      <Medallion slots={currentSlots(current, done)} {total} class="size-20 shrink-0" />
       <div class="min-w-0">
         <h2 id="hall-title" class="t-title3">{t("runes.title")}</h2>
         <p class="text-subtext1">{t(message.key as MessageKey, message.params)}</p>
