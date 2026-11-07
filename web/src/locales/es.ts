@@ -129,8 +129,6 @@ const es: Record<keyof typeof en, string> = {
   "tasks.markOpen": "Volver a poner: {title}",
   "tasks.remove": "Eliminar: {title}",
   "tasks.spent": "{time} hasta ahora",
-  "tasks.workingOn": "Trabajando en: {title}",
-  "tasks.clear": "Dejar de trabajar en esta tarea",
   "tasks.finishIt": "Marcar \"{title}\" como hecha",
   "pip.open": "Sacar el temporizador",
   "pip.label": "Temporizador flotante",

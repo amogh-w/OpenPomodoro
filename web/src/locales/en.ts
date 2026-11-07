@@ -127,8 +127,6 @@ const en = {
   "tasks.markOpen": "Put back: {title}",
   "tasks.remove": "Delete: {title}",
   "tasks.spent": "{time} so far",
-  "tasks.workingOn": "Working on: {title}",
-  "tasks.clear": "Stop working on this task",
   "tasks.finishIt": "Mark \"{title}\" as done",
   "pip.open": "Float the timer",
   "pip.label": "Floating timer",

@@ -51,11 +51,21 @@
   // The task the next session works on (picked from the list); its title fills the intention.
   let taskId = $state<string | null>(null);
   const chosenTask = $derived(app.tasks.find((x) => x.id === taskId) ?? null);
+  // A task stays linked only while the field still shows its title, so what you see is what the session will be for.
+  $effect(() => {
+    if (chosenTask && intention !== chosenTask.title) taskId = null;
+  });
   // On the reflect screen: tick the task off along with saving the session.
   let finishTask = $state(false);
   const sessionTask = $derived(app.tasks.find((x) => x.id === app.timer?.task && !x.done) ?? null);
 
   function pickTask(task: Task): void {
+    if (taskId === task.id) {
+      // Tapping the chosen task again lets it go.
+      taskId = null;
+      intention = "";
+      return;
+    }
     taskId = task.id;
     intention = task.title;
     if (task.category) categoryId = task.category;
@@ -355,37 +365,33 @@
       <p class="t-foot -mt-2 text-center text-subtext1 lg:hidden">{t(cycleMessage.key as MessageKey, cycleMessage.params)}</p>
     {/if}
 
-    <CategoryBar
-      value={chosenCategory ?? ""}
-      locked={parsed.categoryId !== null}
-      onpick={(id) => {
-        categoryId = id;
-        if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
-      }}
-    />
-
-    <input
-      class="field"
-      bind:this={intentionField}
-      bind:value={intention}
-      placeholder={t("timer.intention.placeholder")}
-      aria-label={t("timer.intention.label")}
-      maxlength="200"
-      autocomplete="off"
-      list="recent-intentions"
-    />
-    <datalist id="recent-intentions">
-      {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
-    </datalist>
-
-    {#if chosenTask}
-      <div class="flex items-center justify-center gap-2">
-        <span class="chip" aria-pressed="true">{t("tasks.workingOn", { title: chosenTask.title })}</span>
-        <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.clear")} onclick={() => (taskId = null)}>
-          <svg class="size-5"><use href="/icons.svg#x" /></svg>
-        </button>
-      </div>
-    {/if}
+    <!-- One card for what the session is about: the words, the category, and the task it belongs to. -->
+    <div class="card grid grid-cols-[minmax(0,1fr)] gap-3 p-3">
+      <input
+        class="field"
+        bind:this={intentionField}
+        bind:value={intention}
+        placeholder={t("timer.intention.placeholder")}
+        aria-label={t("timer.intention.label")}
+        maxlength="200"
+        autocomplete="off"
+        list="recent-intentions"
+      />
+      <datalist id="recent-intentions">
+        {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
+      </datalist>
+      <CategoryBar
+        value={chosenCategory ?? ""}
+        locked={parsed.categoryId !== null}
+        onpick={(id) => {
+          categoryId = id;
+          if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
+        }}
+      />
+      {#if !prefs.compact}
+        <div class="border-t border-surface0 pt-3"><TaskList embedded selected={chosenTask?.id ?? null} onpick={pickTask} /></div>
+      {/if}
+    </div>
 
     {#if fromText || parsed.categoryId}
       <div class="flex flex-wrap justify-center gap-2" aria-live="polite">
@@ -424,9 +430,6 @@
       {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
   </form>
-  {#if !prefs.compact}
-    <div class="mx-auto mt-5 max-w-xl"><TaskList selected={taskId} onpick={pickTask} /></div>
-  {/if}
 {:else if view.phase === "breathe"}
   <div class="grid justify-items-center gap-6 pt-8 text-center">
     <h1 class="t-title1">{t("timer.phase.breathe")}</h1>

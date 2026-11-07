@@ -22,6 +22,9 @@
   (Study, Work, Reading, Exercise, Creative, Admin). History filters by category chips with the month's time on each,
   rows show the category icon and name, and an opened day shows how it split across categories. The session editors
   use the same picker. Categories gained an `icon` field (also in backups).
+- **One card for the session:** the idle timer screen now has a single card with the intention field, the category
+  chips and the task list, instead of three separate pieces. Choosing a task fills the field and highlights it (tap
+  it again to let go); the "Working on" pill is gone. A task stays linked only while the field still shows its title.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.
