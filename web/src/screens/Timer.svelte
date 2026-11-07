@@ -29,7 +29,7 @@
   import type { CommandInput, Task } from "../lib/types";
 
   type Mood = "focused" | "neutral" | "distracted";
-  const moods: Mood[] = ["focused", "neutral", "distracted"];
+  const moods: Mood[] = ["distracted", "neutral", "focused"];
   const moodIcon: Record<Mood, string> = { focused: "smile", neutral: "meh", distracted: "frown" };
   // Meaning colours from the kit: green went well, yellow so-so, red went badly. Full class names so Tailwind finds them.
   const moodTone: Record<Mood, { idle: string; chosen: string }> = {
