@@ -15,6 +15,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -40,6 +41,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -65,6 +67,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1620000,
               "focus_ended_at": 1620000,
               "focus_started_at": 0,
@@ -103,6 +106,7 @@
             ],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -128,6 +132,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -162,6 +167,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 1980000,
@@ -193,6 +199,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -218,6 +225,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -243,6 +251,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -269,6 +278,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -295,6 +305,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -338,6 +349,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -363,6 +375,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 30000,
@@ -396,6 +409,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -421,6 +435,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 5000,
@@ -446,6 +461,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -480,6 +496,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -518,6 +535,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -543,6 +561,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -579,6 +598,7 @@
             "records": [],
             "timer": {
               "category": "c2",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -617,6 +637,7 @@
             ],
             "timer": {
               "category": "c2",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -650,6 +671,7 @@
             ],
             "timer": {
               "category": "c2",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 1800000,
@@ -683,6 +705,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -708,6 +731,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -733,6 +757,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 1500000,
               "focus_started_at": 0,
@@ -771,6 +796,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -796,6 +822,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -829,6 +856,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 1860000,
@@ -854,6 +882,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 1860000,
@@ -879,6 +908,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 3360000,
               "focus_started_at": 1860000,
@@ -917,6 +947,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -942,6 +973,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -975,6 +1007,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 4320000,
@@ -1005,6 +1038,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1030,6 +1064,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1055,6 +1090,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 660000,
@@ -1080,6 +1116,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 660000,
@@ -1105,6 +1142,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 2160000,
               "focus_started_at": 660000,
@@ -1143,6 +1181,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1168,6 +1207,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1201,6 +1241,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1226,6 +1267,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1259,6 +1301,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1292,6 +1335,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1325,6 +1369,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 60000,
@@ -1358,6 +1403,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1401,6 +1447,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 120000,
               "focus_ended_at": 120000,
               "focus_started_at": 0,
@@ -1439,6 +1486,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1526,6 +1574,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1599,6 +1648,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1624,6 +1674,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1663,6 +1714,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1688,6 +1740,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1713,6 +1766,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 1500000,
               "focus_started_at": 0,
@@ -1762,6 +1816,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -1793,6 +1848,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1819,6 +1875,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1844,6 +1901,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1875,6 +1933,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1900,6 +1959,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1926,6 +1986,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1951,6 +2012,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -1977,6 +2039,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2008,6 +2071,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2033,6 +2097,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2058,6 +2123,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2083,6 +2149,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2108,6 +2175,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 480000,
               "focus_ended_at": 600000,
               "focus_started_at": 0,
@@ -2146,6 +2214,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2171,6 +2240,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2196,6 +2266,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2221,6 +2292,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2254,6 +2326,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 1380000,
@@ -2290,6 +2363,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2315,6 +2389,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2340,6 +2415,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 600000,
               "focus_ended_at": 600000,
               "focus_started_at": 0,
@@ -2378,6 +2454,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2410,6 +2487,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2435,6 +2513,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2460,6 +2539,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1560000,
               "focus_ended_at": 1560000,
               "focus_started_at": 0,
@@ -2500,6 +2580,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2531,6 +2612,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2556,6 +2638,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2581,6 +2664,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 1500000,
               "focus_started_at": 0,
@@ -2621,6 +2705,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2655,6 +2740,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2694,6 +2780,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2728,6 +2815,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2766,6 +2854,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2791,6 +2880,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2822,6 +2912,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2847,6 +2938,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -2872,6 +2964,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 1500000,
               "focus_started_at": 0,
@@ -2942,6 +3035,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -2975,6 +3069,7 @@
             "records": [],
             "timer": {
               "category": "c1",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3002,6 +3097,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3027,6 +3123,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3054,6 +3151,7 @@
             "records": [],
             "timer": {
               "category": "c2",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3089,6 +3187,7 @@
             "records": [],
             "timer": {
               "category": "c2",
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3114,6 +3213,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3155,6 +3255,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3188,6 +3289,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3225,6 +3327,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3260,6 +3363,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3285,6 +3389,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 600000,
               "focus_ended_at": 600000,
               "focus_started_at": 0,
@@ -3323,6 +3428,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3356,6 +3462,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3383,6 +3490,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 720000,
@@ -3408,6 +3516,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 720000,
@@ -3433,6 +3542,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1560000,
               "focus_ended_at": 2280000,
               "focus_started_at": 720000,
@@ -3471,6 +3581,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3504,6 +3615,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3531,6 +3643,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 2400000,
@@ -3556,6 +3669,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 2400000,
@@ -3581,6 +3695,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 3900000,
               "focus_started_at": 2400000,
@@ -3619,6 +3734,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3660,6 +3776,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3685,6 +3802,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3710,6 +3828,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 5000,
               "focus_ended_at": 5000,
               "focus_started_at": 0,
@@ -3749,6 +3868,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3774,6 +3894,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3806,6 +3927,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3831,6 +3953,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": 0,
@@ -3856,6 +3979,7 @@
             "records": [],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": 1500000,
               "focus_ended_at": 1500000,
               "focus_started_at": 0,
@@ -3894,6 +4018,7 @@
             ],
             "timer": {
               "category": null,
+              "cycle_started_at": null,
               "focus_elapsed_ms": null,
               "focus_ended_at": null,
               "focus_started_at": null,
@@ -3907,6 +4032,273 @@
               "state": "idle",
               "task": null,
               "total": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "breaking_the_medallion_restarts_the_count",
+      "steps": [
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "name": "init_focus"
+          },
+          "at": 0,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session",
+              "task": null,
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 0,
+              "state": "session_end",
+              "task": null,
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": null,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 1500000,
+              "focus_started_at": 0,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "task": null,
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "done"
+          },
+          "at": 1500000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 1500000,
+                "intention": null,
+                "kind": "focus",
+                "mood": null,
+                "notes": null,
+                "planned_ms": 1500000,
+                "started_at": 0,
+                "task": null
+              }
+            ],
+            "timer": {
+              "category": null,
+              "cycle_started_at": null,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": null,
+              "state": "idle",
+              "task": null,
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "reset_cycle"
+          },
+          "at": 1600000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": 1600000,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 0,
+              "start": null,
+              "state": "idle",
+              "task": null,
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "duration_ms": 1500000,
+            "name": "init_focus"
+          },
+          "at": 1700000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": 1600000,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1700000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 1700000,
+              "state": "session",
+              "task": null,
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "timer_ends"
+          },
+          "at": 3200000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": 1600000,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": 1700000,
+              "intention": null,
+              "kind": "focus",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": 1700000,
+              "state": "session_end",
+              "task": null,
+              "total": 1500000
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "stop"
+          },
+          "at": 3200000,
+          "expect": {
+            "records": [],
+            "timer": {
+              "category": null,
+              "cycle_started_at": 1600000,
+              "focus_elapsed_ms": 1500000,
+              "focus_ended_at": 3200000,
+              "focus_started_at": 1700000,
+              "intention": null,
+              "kind": null,
+              "pause_buffer": null,
+              "pause_ts": null,
+              "planned_ms": 1500000,
+              "rounds": 0,
+              "start": null,
+              "state": "reflect",
+              "task": null,
+              "total": null
+            }
+          }
+        },
+        {
+          "action": {
+            "name": "take_rest"
+          },
+          "at": 3200000,
+          "expect": {
+            "records": [
+              {
+                "category": null,
+                "duration_ms": 1500000,
+                "ended_at": 3200000,
+                "intention": null,
+                "kind": "focus",
+                "mood": null,
+                "notes": null,
+                "planned_ms": 1500000,
+                "started_at": 1700000,
+                "task": null
+              }
+            ],
+            "timer": {
+              "category": null,
+              "cycle_started_at": 1600000,
+              "focus_elapsed_ms": null,
+              "focus_ended_at": null,
+              "focus_started_at": null,
+              "intention": null,
+              "kind": "short_break",
+              "pause_buffer": 0,
+              "pause_ts": null,
+              "planned_ms": null,
+              "rounds": 1,
+              "start": 3200000,
+              "state": "rest",
+              "task": null,
+              "total": 300000
             }
           }
         }

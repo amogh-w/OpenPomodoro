@@ -29,6 +29,8 @@ export interface TimerData {
   focus_ended_at: number | null;
   focus_elapsed_ms: number | null;
   rounds: number;
+  /** When the medallion was last broken and the count started again; sessions before it are not in the cycle. */
+  cycle_started_at?: number | null;
 }
 
 export interface Settings {

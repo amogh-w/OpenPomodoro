@@ -324,6 +324,38 @@ mod tests {
     }
 
     #[test]
+    fn breaking_the_medallion_restarts_the_count_and_remembers_when() {
+        let mut h = Harness::new();
+        for _ in 0..3 {
+            h.run("init_focus");
+            h.advance(25 * MIN);
+            h.run("timer_ends");
+            h.run("stop");
+            h.run("done");
+        }
+        assert_eq!(h.state().rounds, 3);
+        h.advance(MIN);
+        let s = h.run("reset_cycle");
+        assert_eq!((s.rounds, s.cycle_started_at), (0, Some(h.now)));
+        assert_eq!(s.state, State::Idle, "nothing else changes");
+        h.run("init_focus");
+        h.advance(25 * MIN);
+        h.run("timer_ends");
+        h.run("stop");
+        let after = h.run("done");
+        assert_eq!(after.rounds, 1, "the count started again");
+        assert_eq!(
+            after.cycle_started_at, s.cycle_started_at,
+            "the time is kept"
+        );
+        assert_eq!(
+            h.db.rows(ALICE, Entity::Session).expect("rows").len(),
+            4,
+            "nothing was deleted"
+        );
+    }
+
+    #[test]
     fn a_break_can_be_started_with_its_own_length() {
         let mut h = Harness::new();
         let mut rest = h.cmd("take_rest");

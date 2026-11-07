@@ -88,14 +88,21 @@ export function runeOf(session: SessionRecord): Rune {
 /**
  * The hall for `sessions` (any order). Focus sessions are counted oldest first; the one that makes `cycleLength` in a
  * row seals a medallion and the count starts again, and so does a long break (the same rule the timer's round count
- * follows). Short breaks change nothing.
+ * follows). Short breaks change nothing. `cycleStartedAt` is when the person last broke the medallion: sessions before it
+ * stay in the hall as runes but start no count towards the next medallion.
  */
-export function buildHall(sessions: readonly SessionRecord[], cycleLength: number): Hall {
+export function buildHall(sessions: readonly SessionRecord[], cycleLength: number, cycleStartedAt: number | null = null): Hall {
   const total = Math.max(1, Math.floor(cycleLength));
   const runes: Rune[] = [];
   const medallions: Medallion[] = [];
   let current: Rune[] = [];
+  let broken = cycleStartedAt === null;
   for (const s of [...sessions].sort((a, b) => a.started_at - b.started_at || a.id.localeCompare(b.id))) {
+    // The first session after the medallion was broken starts a fresh count.
+    if (!broken && cycleStartedAt !== null && s.started_at >= cycleStartedAt) {
+      current = [];
+      broken = true;
+    }
     if (s.kind === "long_break") {
       current = [];
       continue;
@@ -109,6 +116,8 @@ export function buildHall(sessions: readonly SessionRecord[], cycleLength: numbe
       current = [];
     }
   }
+  // Broken after every stored session: the next medallion starts empty.
+  if (!broken) current = [];
   return { runes, medallions, cycle: { runes: current, done: current.length, total } };
 }
 

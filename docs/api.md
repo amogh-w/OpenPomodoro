@@ -51,10 +51,11 @@ Run a timer command. The body is JSON:
 | Field | Meaning |
 |---|---|
 | `id` | A unique id you make up (required). Sending the same id again does nothing the second time, so retries are safe. Ids look like `<UTC yyyyMMddHHmmss>.<5 digits>@<your name>`. |
-| `name` | `init_focus`, `start_focus`, `skip_breathe`, `timer_ends`, `toggle_pause`, `extend`, `stop`, `abandon`, `take_rest`, `done`, `skip_rest`, `edit_session` |
+| `name` | `init_focus`, `start_focus`, `skip_breathe`, `timer_ends`, `toggle_pause`, `extend`, `stop`, `abandon`, `take_rest`, `done`, `skip_rest`, `edit_session`, `reset_cycle` |
 | `intention`, `category`, `task` | For `init_focus` and `edit_session`. |
 | `duration_ms` | Focus length for `init_focus`, or break length for `take_rest` (5 seconds to 12 hours). |
 | `delta_ms` | For `extend`: plus or minus whole 5-minute steps. |
+| (none) | `reset_cycle` breaks the medallion in progress: the round count goes back to 0 and `timer.cycle_started_at` records when; nothing else changes and no session is deleted. |
 | `notes`, `mood` | Saved with the session by `take_rest` or `done`. `mood` is `focused`, `neutral` or `distracted`. |
 
 The answer is `{ "status": "applied" | "duplicate", "state": { ... } }`. A command that is not allowed right now

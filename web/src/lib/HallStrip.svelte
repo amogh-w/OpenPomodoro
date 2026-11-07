@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { sendCommand } from "./appState.svelte";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
   import { currentSlots, cycleDone, cycleTotal, hall } from "./hallStore.svelte";
   import { encouragement } from "./runes";
   import { t, type MessageKey } from "./i18n";
@@ -11,6 +13,20 @@
   const current = $derived(hall());
   const done = $derived(cycleDone(current));
   const message = $derived(encouragement(done, total));
+
+  let confirm: ConfirmDialog | undefined = $state();
+  let busy = $state(false);
+
+  /** Break the medallion: ask first, then start the count again. The runes stay in the hall. */
+  async function breakIt(): Promise<void> {
+    if (busy || !(await confirm?.ask())) return;
+    busy = true;
+    try {
+      await sendCommand({ name: "reset_cycle" });
+    } finally {
+      busy = false;
+    }
+  }
 </script>
 
 {#if prefs.runes}
@@ -21,6 +37,16 @@
       <p class="t-title1 tabular-nums">{done} / {total}</p>
       <p class="t-foot text-subtext1">{t(message.key as MessageKey, message.params)}</p>
       <p class="t-foot mt-1 text-subtext1">{t("runes.goldHint")}</p>
+      {#if done > 0}
+        <button class="btn btn-plain btn-sm -ml-3 mt-1" disabled={busy} onclick={breakIt}>{t("runes.break")}</button>
+      {/if}
     </div>
   </div>
+  <ConfirmDialog
+    bind:this={confirm}
+    title={t("runes.break.title")}
+    body={t("runes.break.body", { done, total })}
+    confirm={t("runes.break.confirm")}
+    cancel={t("runes.break.keep")}
+  />
 {/if}

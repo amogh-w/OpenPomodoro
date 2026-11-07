@@ -98,6 +98,32 @@ describe("buildHall", () => {
   });
 });
 
+describe("breaking the medallion", () => {
+  it("keeps the runes but starts the count again from the moment it was broken", () => {
+    const before = [focus(9), focus(10), focus(11)];
+    const after = [focus(13), focus(14)];
+    const h = buildHall([...before, ...after], 4, at(12));
+    expect(h.runes).toHaveLength(5);
+    expect(h.medallions).toHaveLength(0);
+    expect(h.cycle.done).toBe(2);
+    expect(h.cycle.runes.map((r) => r.id)).toEqual(after.map((s) => s.id));
+  });
+
+  it("changes nothing when it was never broken, or broken before everything, or after everything", () => {
+    const sessions = [focus(9), focus(10), focus(11), focus(12), focus(13)];
+    expect(buildHall(sessions, 4, null)).toEqual(buildHall(sessions, 4));
+    expect(buildHall(sessions, 4, at(1)).medallions).toHaveLength(1);
+    expect(buildHall(sessions, 4, at(23)).cycle.done).toBe(0);
+  });
+
+  it("a medallion sealed after the break counts only the new sessions", () => {
+    const sessions = [focus(9), focus(10), focus(13), focus(14), focus(15), focus(16)];
+    const h = buildHall(sessions, 4, at(12));
+    expect(h.medallions).toHaveLength(1);
+    expect(h.medallions[0]?.runes.map((r) => r.id)).toEqual(sessions.slice(2).map((s) => s.id));
+  });
+});
+
 describe("encouragement", () => {
   it("says how far along the next medallion is", () => {
     expect(encouragement(0, 4).key).toBe("runes.cycle.start");

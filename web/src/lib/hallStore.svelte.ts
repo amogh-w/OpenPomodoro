@@ -7,7 +7,7 @@ import { type Hall, type Slot, buildHall, lastRunes } from "./runes";
 
 export const cycleTotal = (): number => app.settings?.rounds_before_long ?? 4;
 
-export const hall = (): Hall => buildHall(recent.sessions, cycleTotal());
+export const hall = (): Hall => buildHall(recent.sessions, cycleTotal(), app.timer?.cycle_started_at ?? null);
 
 /**
  * Sessions finished in the medallion being made. This is the timer's own round count (the same number that says when a

@@ -84,6 +84,7 @@ export function idleState(): TimerData {
     focus_ended_at: null,
     focus_elapsed_ms: null,
     rounds: 0,
+    cycle_started_at: null,
   };
 }
 
@@ -99,9 +100,9 @@ function setTimer(data: TimerData, timer: Timer | null): void {
   data.pause_ts = timer?.pauseTs ?? null;
 }
 
-/** Back to idle, keeping only the round count. */
+/** Back to idle, keeping only the round count (and when the cycle was last restarted). */
 function cleared(prev: TimerData): TimerData {
-  return { ...idleState(), rounds: prev.rounds };
+  return { ...idleState(), rounds: prev.rounds, cycle_started_at: prev.cycle_started_at };
 }
 
 /** Trim; refuse over-long text or control characters (a newline is fine); empty means none. */
@@ -368,6 +369,7 @@ function editSession(prev: TimerData, action: Action): PlanResult {
 export function plan(prev: TimerData, action: Action, at: number, settings: Settings): PlanResult {
   try {
     if (action.name === "edit_session") return editSession(prev, action);
+    if (action.name === "reset_cycle") return { ok: true, next: { ...prev, rounds: 0, cycle_started_at: at }, records: [] };
     const name = EVENT_NAMES.find((n) => n === action.name);
     if (name === undefined) throw invalid("unknown_command");
 

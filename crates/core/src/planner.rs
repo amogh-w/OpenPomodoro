@@ -103,6 +103,9 @@ pub struct TimerState {
     pub focus_elapsed_ms: Option<i64>,
     /// Focus rounds kept since the last long break.
     pub rounds: u32,
+    /// When the person last broke the medallion (`reset_cycle`) and started the count again; sessions before this
+    /// do not belong to the cycle in progress. Kept through every command, like `rounds`.
+    pub cycle_started_at: Option<i64>,
 }
 
 impl TimerState {
@@ -119,6 +122,7 @@ impl TimerState {
             focus_ended_at: None,
             focus_elapsed_ms: None,
             rounds: 0,
+            cycle_started_at: None,
         }
     }
 
@@ -140,6 +144,7 @@ impl TimerState {
         m.insert("focus_ended_at".into(), json!(self.focus_ended_at));
         m.insert("focus_elapsed_ms".into(), json!(self.focus_elapsed_ms));
         m.insert("rounds".into(), json!(self.rounds));
+        m.insert("cycle_started_at".into(), json!(self.cycle_started_at));
         m
     }
 
@@ -170,16 +175,18 @@ impl TimerState {
             focus_started_at: int("focus_started_at"),
             focus_ended_at: int("focus_ended_at"),
             focus_elapsed_ms: int("focus_elapsed_ms"),
+            cycle_started_at: int("cycle_started_at"),
             rounds: int("rounds")
                 .and_then(|n| u32::try_from(n).ok())
                 .unwrap_or(0),
         }
     }
 
-    /// Back to idle, keeping only the round count.
+    /// Back to idle, keeping only the round count (and when the cycle was last restarted).
     fn cleared(&self) -> Self {
         Self {
             rounds: self.rounds,
+            cycle_started_at: self.cycle_started_at,
             ..Self::idle()
         }
     }
@@ -575,6 +582,18 @@ fn edit_session(prev: &TimerState, action: &Action) -> Result<Plan, PlanError> {
     })
 }
 
+/// Break the medallion in progress: the round count goes back to zero and the time is kept, so the stored sessions
+/// before it are known not to belong to the new cycle. The phase on screen is untouched and nothing is saved.
+fn reset_cycle(prev: &TimerState, at: i64) -> Plan {
+    let mut next = prev.clone();
+    next.rounds = 0;
+    next.cycle_started_at = Some(at);
+    Plan {
+        next,
+        records: Vec::new(),
+    }
+}
+
 /// Decide what `action`, taken at time `at`, does to the timer.
 pub fn plan(
     prev: &TimerState,
@@ -584,6 +603,9 @@ pub fn plan(
 ) -> Result<Plan, PlanError> {
     if action.name == "edit_session" {
         return edit_session(prev, action);
+    }
+    if action.name == "reset_cycle" {
+        return Ok(reset_cycle(prev, at));
     }
     let event = if action.name == "extend" {
         let delta = action.delta_ms.unwrap_or(0);
