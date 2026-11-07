@@ -12,12 +12,14 @@
     onpick: (id: string) => void;
     /** The category is fixed (for example typed as @name). */
     locked?: boolean;
+    /** A task row: small, with a dash when it has no category. */
+    row?: boolean;
     /** Offer a new category, the usual set and the editor too; off for the small per-task selectors. */
     extras?: boolean;
     /** Opens the quick form for a new category (the parent shows it). Needed with `extras`. */
     onnew?: () => void;
   }
-  let { value, onpick, onnew, locked = false, extras = true }: Props = $props();
+  let { value, onpick, onnew, locked = false, extras = true, row = false }: Props = $props();
 
   const uid = `catmenu-${Math.random().toString(36).slice(2, 9)}`;
   const ordered = $derived(orderByRecent(app.categories, recent.sessions));
@@ -41,10 +43,16 @@
 
 <!-- One button that shows the category and opens the list; the list also makes a new one and opens the editor. -->
 <button type="button" class="rounded-[var(--r-ctl)] disabled:opacity-60" data-menu={uid} disabled={locked} aria-haspopup="menu" aria-label={t("timer.category")} title={current?.name ?? t("timer.category.none")}>
-  <span class="inline-flex items-center gap-1">
-    <CategoryChip category={current} small iconOnlyNarrow class="min-h-9 px-3" />
-    <svg class="size-4 text-subtext1" aria-hidden="true"><use href="/icons.svg#chevron-down" /></svg>
-  </span>
+  {#if row}
+    <span class="grid min-h-11 min-w-11 items-center justify-items-end">
+      {#if current}<CategoryChip category={current} small class="max-w-[7rem]" />{:else}<span class="px-2 text-subtext1">—</span>{/if}
+    </span>
+  {:else}
+    <span class="inline-flex items-center gap-1">
+      <CategoryChip category={current} class="min-h-9 !py-1" />
+      <svg class="size-4 text-subtext1" aria-hidden="true"><use href="/icons.svg#chevron-down" /></svg>
+    </span>
+  {/if}
 </button>
 <div id={uid} popover class="menu">
   <button type="button" class="menu-item" data-menu-close onclick={() => onpick("")}>

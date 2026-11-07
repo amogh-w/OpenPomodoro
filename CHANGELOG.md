@@ -31,6 +31,8 @@
   makes a new category, offers the usual set and opens the editor.
   The selector now sits on the add row, between the field and Add, and every task has its own selector to change its
   category after it is made.
+  Layout settled: the field, then its category selector, then a plain checklist where each row shows its tag on the
+  right (tap it to change), then the add-a-task line at the bottom.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

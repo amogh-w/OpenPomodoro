@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import CategoryChip from "../lib/CategoryChip.svelte";
+  import CategoryCreate from "../lib/CategoryCreate.svelte";
+  import CategorySelect from "../lib/CategorySelect.svelte";
   import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
   import { currentSlots, cycleDone, glowOf, hall } from "../lib/hallStore.svelte";
@@ -47,6 +49,7 @@
   let focusSec = $state(25 * 60);
   let touchedLength = $state(false);
   let categoryId = $state("");
+  let makingCategory = $state(false);
   // The task the next session works on (picked from the list); its title fills the intention.
   let taskId = $state<string | null>(null);
   const chosenTask = $derived(app.tasks.find((x) => x.id === taskId) ?? null);
@@ -385,18 +388,28 @@
       <datalist id="recent-intentions">
         {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
       </datalist>
-      <div class="border-t border-surface0 pt-3">
-        <TaskList
-          embedded
-          selected={chosenTask?.id ?? null}
-          category={chosenCategory}
-          categoryLocked={parsed.categoryId !== null}
-          onpickcategory={(id) => {
+      <div class="flex flex-wrap items-center gap-2">
+        <CategorySelect
+          value={chosenCategory ?? ""}
+          locked={parsed.categoryId !== null}
+          onnew={() => (makingCategory = true)}
+          onpick={(id) => {
             categoryId = id;
             if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
           }}
-          onpick={pickTask}
         />
+      </div>
+      {#if makingCategory}
+        <CategoryCreate
+          onadded={(id) => {
+            makingCategory = false;
+            categoryId = id;
+          }}
+          oncancel={() => (makingCategory = false)}
+        />
+      {/if}
+      <div class="border-t border-surface0 pt-3">
+        <TaskList embedded selected={chosenTask?.id ?? null} category={chosenCategory} onpick={pickTask} />
       </div>
     </div>
 
