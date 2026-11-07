@@ -28,6 +28,34 @@ const ACCENTS: [&str; 12] = [
     "lavender",
 ];
 
+/// Icons a category may carry (Lucide names; the web app's `ICONS` list in `categories.ts` must match).
+const CATEGORY_ICONS: [&str; 24] = [
+    "book-open",
+    "graduation-cap",
+    "briefcase",
+    "code",
+    "pencil",
+    "dumbbell",
+    "palette",
+    "music",
+    "mail",
+    "wrench",
+    "languages",
+    "heart",
+    "house",
+    "shopping-cart",
+    "brain",
+    "flask-conical",
+    "laptop",
+    "notebook-pen",
+    "bike",
+    "utensils",
+    "leaf",
+    "camera",
+    "gamepad-2",
+    "tag",
+];
+
 /// An id must parse and must not be from the future.
 pub fn check_id(id: &str, now_ms: i64) -> Result<(), &'static str> {
     let parsed = ids::parse(id).ok_or("bad_id")?;
@@ -87,6 +115,8 @@ fn category_field_ok(name: &str, v: &Value) -> Option<bool> {
             .is_some_and(|s| (1..=40).contains(&s.chars().count())),
         "color" => v.as_str().is_some_and(|c| ACCENTS.contains(&c)),
         "is_break" => v.is_boolean(),
+        // A picture for the category; null clears it.
+        "icon" => v.is_null() || v.as_str().is_some_and(|i| CATEGORY_ICONS.contains(&i)),
         // A name to group categories under in reports; null clears it.
         "group" => {
             v.is_null()
@@ -375,6 +405,26 @@ mod tests {
             json!({"break_min": 61}),
             json!({"break_min": "5"}),
             json!({"focus_min": 1.5}),
+        ] {
+            assert_eq!(
+                check_client_event(&edit(bad.clone()), NOW),
+                Err("bad_field"),
+                "{bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_category_icon_must_be_one_of_the_known_names() {
+        let edit = |payload: Value| ev(Entity::Category, Op::Edit, "c1", payload);
+        for ok in [json!({"icon": "book-open"}), json!({"icon": null})] {
+            assert_eq!(check_client_event(&edit(ok.clone()), NOW), Ok(()), "{ok}");
+        }
+        for bad in [
+            json!({"icon": "skull"}),
+            json!({"icon": ""}),
+            json!({"icon": 3}),
+            json!({"icon": "../x"}),
         ] {
             assert_eq!(
                 check_client_event(&edit(bad.clone()), NOW),

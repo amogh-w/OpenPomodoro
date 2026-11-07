@@ -26,9 +26,10 @@ const SESSION_FIELDS: [&str; 10] = [
     "notes",
     "mood",
 ];
-const CATEGORY_FIELDS: [&str; 6] = [
+const CATEGORY_FIELDS: [&str; 7] = [
     "name",
     "color",
+    "icon",
     "is_break",
     "group",
     "focus_min",
@@ -248,6 +249,12 @@ mod tests {
             ]
         );
         assert!(p.events.iter().all(|e| e.op == Op::Add));
+    }
+
+    #[test]
+    fn a_category_icon_comes_through_a_restore() {
+        let p = run(file(json!({"categories": [{"id": "c1", "name": "Study", "color": "mauve", "icon": "graduation-cap"}]}))).expect("plan");
+        assert_eq!(p.events[0].payload["icon"], "graduation-cap");
     }
 
     #[test]
