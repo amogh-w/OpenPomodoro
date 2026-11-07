@@ -67,13 +67,11 @@
 
   {#each sockets as s (s.i)}
     {#if s.filled}
-      <!-- a stone tablet turned to face outward, with four studs, centred on its place -->
+      <!-- a stone tablet turned to face outward, centred on its place -->
       <g transform="translate({s.x} {s.y}) rotate({(s.angle * 180) / Math.PI + 90}) translate({-16 * size} {-20 * size}) scale({size})">
         <rect x="1.4" y="2.6" width="32" height="40" rx="6" fill="black" opacity="0.32" />
         <rect x="0" y="0" width="32" height="40" rx="6" class="fill-surface1" style={sealed ? "stroke: var(--ctp-yellow); stroke-opacity: 0.75" : "stroke: var(--ctp-overlay0)"} stroke-width="1.8" />
         <rect x="2" y="2" width="28" height="36" rx="4.4" fill="none" stroke="white" stroke-opacity="0.12" stroke-width="1" />
-        <circle cx="5" cy="5" r="1.5" class="fill-overlay1" /><circle cx="27" cy="5" r="1.5" class="fill-overlay1" />
-        <circle cx="5" cy="35" r="1.5" class="fill-overlay1" /><circle cx="27" cy="35" r="1.5" class="fill-overlay1" />
         <path d={glyphPath(s.filled.glyph)} transform="translate(0.9 1.1)" fill="none" stroke="black" stroke-opacity="0.4" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" />
         <path d={glyphPath(s.filled.glyph)} fill="none" class="stroke-overlay0" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
         <path

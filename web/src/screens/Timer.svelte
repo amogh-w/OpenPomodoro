@@ -53,10 +53,6 @@
     intention = task.title;
     if (task.category) categoryId = task.category;
   }
-  // What the dial sets: a focus session, or (turned counter-clockwise) a break.
-  let mode = $state<"focus" | "break">("focus");
-  let breakSec = $state(5 * 60);
-  let touchedBreak = $state(false);
   const parsed = $derived(parseIntention(intention, app.categories));
   const fromText = $derived(parsed.durationMs !== null);
   const length = $derived(Math.round((parsed.durationMs ?? focusSec * 1000) / 60_000));
@@ -68,12 +64,10 @@
   $effect(() => {
     const own = app.categories.find((c) => c.id === chosenCategory);
     if (app.settings && !touchedLength) focusSec = prefs.dialStep < 60 ? 5 : (own?.focus_min ?? Math.round(app.settings.focus_ms / 60_000)) * 60;
-    if (app.settings && !touchedBreak) breakSec = prefs.dialStep < 60 ? 5 : (own?.break_min ?? Math.round(app.settings.short_break_ms / 60_000)) * 60;
   });
-  const isBreak = $derived(mode === "break");
   const secondsDial = $derived(prefs.dialStep < 60);
   const unitSec = $derived(secondsDial ? 1 : 60);
-  const plannedMs = $derived(parsed.durationMs !== null && !isBreak ? parsed.durationMs : (isBreak ? breakSec : focusSec) * 1000);
+  const plannedMs = $derived(parsed.durationMs !== null ? parsed.durationMs : focusSec * 1000);
   /** The dial's number: minutes, or seconds when it snaps to 5 s. */
   const dialValue = $derived(Math.max(1, Math.round(plannedMs / 1000 / unitSec)));
   const pad = (n: number): string => String(n).padStart(2, "0");
@@ -176,14 +170,6 @@
     await run({ name: "take_rest", duration_ms: minutes * 60_000 });
   }
 
-  async function startBreak(): Promise<void> {
-    await run({ name: "take_rest", duration_ms: plannedMs });
-  }
-
-  const flip = (): void => {
-    mode = isBreak ? "focus" : "break";
-  };
-
   const soundOn = $derived(alertPrefs.sound);
 
   async function startSession(): Promise<void> {
@@ -203,7 +189,7 @@
 
   function start(event: SubmitEvent): void {
     event.preventDefault();
-    void (isBreak ? startBreak() : startSession());
+    void startSession();
   }
 
   let intentionField: HTMLInputElement | undefined = $state();
@@ -268,7 +254,7 @@
         if (view.can.toggle_pause) act(() => void run({ name: "toggle_pause" }));
         break;
       case "start":
-        if (view.can.init_focus) act(() => void (isBreak ? startBreak() : startSession()));
+        if (view.can.init_focus) act(() => void startSession());
         break;
       case "extend":
       case "shrink":
@@ -279,7 +265,6 @@
         break;
       case "break":
         if (view.phase === "reflect" && view.can.take_rest) act(() => void endReflect("take_rest"));
-        else if (view.phase === "idle" && view.can.take_rest) act(() => void run({ name: "take_rest" }));
         break;
     }
   }
@@ -363,69 +348,59 @@
   <form class="mx-auto grid max-w-xl gap-4" onsubmit={start}>
     <div class="relative flex min-h-11 items-center justify-center">
       {#if app.settings && !prefs.compact && !prefs.runes}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
-      <button
-        type="button"
-        class="btn btn-gray absolute right-0 top-0 size-11 !px-0"
-        aria-label={isBreak ? t("timer.toFocus") : t("timer.toBreak")}
-        onclick={flip}
-      >
-        <svg class="size-5"><use href="/icons.svg#{isBreak ? 'timer' : 'coffee'}" /></svg>
-      </button>
     </div>
 
-    <h1 class="t-large text-center">{isBreak ? t("timer.prompt.break") : t("timer.prompt")}</h1>
-    {#if prefs.runes && !isBreak && !prefs.compact}
+    <h1 class="t-large text-center">{t("timer.prompt")}</h1>
+    {#if prefs.runes && !prefs.compact}
       <p class="t-foot -mt-2 text-center text-subtext1 lg:hidden">{t(cycleMessage.key as MessageKey, cycleMessage.params)}</p>
     {/if}
 
-    {#if !isBreak}
-      <button
-        type="button"
-        class="chip mx-auto gap-2"
-        aria-haspopup="dialog"
-        disabled={parsed.categoryId !== null}
-        onclick={() => picker?.open()}
-      >
-        {#if categoryOf(chosenCategory)}
-          <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(chosenCategory)?.color})" aria-hidden="true"></span>
-          {categoryOf(chosenCategory)?.name}
-        {:else}
-          {t("timer.category.none")}
+    <button
+      type="button"
+      class="chip mx-auto gap-2"
+      aria-haspopup="dialog"
+      disabled={parsed.categoryId !== null}
+      onclick={() => picker?.open()}
+    >
+      {#if categoryOf(chosenCategory)}
+        <span class="size-2.5 rounded-full" style="background: var(--ctp-{categoryOf(chosenCategory)?.color})" aria-hidden="true"></span>
+        {categoryOf(chosenCategory)?.name}
+      {:else}
+        {t("timer.category.none")}
+      {/if}
+      <svg class="size-4"><use href="/icons.svg#chevron-down" /></svg>
+    </button>
+
+    <input
+      class="field"
+      bind:this={intentionField}
+      bind:value={intention}
+      placeholder={t("timer.intention.placeholder")}
+      aria-label={t("timer.intention.label")}
+      maxlength="200"
+      autocomplete="off"
+      list="recent-intentions"
+    />
+    <datalist id="recent-intentions">
+      {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
+    </datalist>
+
+    {#if chosenTask}
+      <div class="flex items-center justify-center gap-2">
+        <span class="chip" aria-pressed="true">{t("tasks.workingOn", { title: chosenTask.title })}</span>
+        <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.clear")} onclick={() => (taskId = null)}>
+          <svg class="size-5"><use href="/icons.svg#x" /></svg>
+        </button>
+      </div>
+    {/if}
+
+    {#if fromText || parsed.categoryId}
+      <div class="flex flex-wrap justify-center gap-2" aria-live="polite">
+        {#if fromText}<span class="chip" aria-pressed="true">{t("timer.hint.length", { minutes: length })}</span>{/if}
+        {#if parsed.categoryId}
+          <span class="chip" aria-pressed="true">{t("timer.hint.category", { name: categoryName(parsed.categoryId) ?? "" })}</span>
         {/if}
-        <svg class="size-4"><use href="/icons.svg#chevron-down" /></svg>
-      </button>
-
-      <input
-        class="field"
-        bind:this={intentionField}
-        bind:value={intention}
-        placeholder={t("timer.intention.placeholder")}
-        aria-label={t("timer.intention.label")}
-        maxlength="200"
-        autocomplete="off"
-        list="recent-intentions"
-      />
-      <datalist id="recent-intentions">
-        {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
-      </datalist>
-
-      {#if chosenTask}
-        <div class="flex items-center justify-center gap-2">
-          <span class="chip" aria-pressed="true">{t("tasks.workingOn", { title: chosenTask.title })}</span>
-          <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.clear")} onclick={() => (taskId = null)}>
-            <svg class="size-5"><use href="/icons.svg#x" /></svg>
-          </button>
-        </div>
-      {/if}
-
-      {#if fromText || parsed.categoryId}
-        <div class="flex flex-wrap justify-center gap-2" aria-live="polite">
-          {#if fromText}<span class="chip" aria-pressed="true">{t("timer.hint.length", { minutes: length })}</span>{/if}
-          {#if parsed.categoryId}
-            <span class="chip" aria-pressed="true">{t("timer.hint.category", { name: categoryName(parsed.categoryId) ?? "" })}</span>
-          {/if}
-        </div>
-      {/if}
+      </div>
     {/if}
 
     <div class="grid gap-3">
@@ -436,27 +411,21 @@
         min={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
         max={secondsDial ? 600 : 180}
         unit={secondsDial ? "sec" : "min"}
-        tone={isBreak ? "green" : "accent"}
-        disabled={!isBreak && fromText}
+        disabled={fromText}
         onchange={(next) => {
-          if (isBreak) {
-            breakSec = next * unitSec;
-            touchedBreak = true;
-          } else {
-            focusSec = next * unitSec;
-            touchedLength = true;
-          }
+          focusSec = next * unitSec;
+          touchedLength = true;
         }}
       />
       <div class="t-title1 text-center tabular-nums" aria-hidden="true">{formatRemaining(plannedMs)}</div>
       <div class="t-foot mx-auto rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
-      {#if !isBreak && fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
+      {#if fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
     </div>
 
     {#if problem}<div class="alert tone-danger" role="alert">{problem}</div>{/if}
 
     <button class="btn btn-filled btn-lg mx-auto w-full max-w-xs" type="submit" disabled={busy}>
-      {isBreak ? t("timer.startBreak") : t("timer.start")}
+      {t("timer.start")}
     </button>
     <p class="t-foot text-center text-subtext1">
       {t("timer.round", { n: roundNow, total: cycleLength })}
@@ -610,8 +579,11 @@
           <!-- The rune for this session lights from the bottom as the time goes. -->
           <Rune glyph={sessionGlyph} lit={view.overflow ? 1 : view.progress} glow={sessionGlow} class="h-[21cqw] w-[16.8cqw]" />
         {/if}
-        <div class="font-bold leading-none tabular-nums" style="font-size: {clockText.length > 5 ? 15 : 21}cqw">{clockText}</div>
-        {#if view.paused}<div class="text-subtext1">{t("timer.phase.paused")}</div>{/if}
+        <div class="relative">
+          <div class="font-bold leading-none tabular-nums" style="font-size: {clockText.length > 5 ? 15 : 21}cqw">{clockText}</div>
+          <!-- Out of the flow, so showing it does not move the clock. -->
+          {#if view.paused}<div class="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap text-subtext1">{t("timer.phase.paused")}</div>{/if}
+        </div>
       </div>
     </div>
 
@@ -643,7 +615,21 @@
 
     {#if view.phase === "focus"}<div class="w-full lg:hidden"><NotesPane /></div>{/if}
 
-    <!-- Three round buttons for every running state: sound, the main action, and a stop menu. -->
+    {#if view.phase === "focus" && view.overflow}
+      <!-- Time is up: say plainly what each choice does. -->
+      <div class="mx-auto grid w-full max-w-xs gap-2">
+        <button class="btn btn-filled btn-lg gap-2" disabled={busy} onclick={() => finishFocus("break")}>
+          <svg class="size-5"><use href="/icons.svg#coffee" /></svg>{t("timer.takeBreak")}
+        </button>
+        <button class="btn btn-gray gap-2" disabled={busy} onclick={() => finishFocus("again")}>
+          <svg class="size-5"><use href="/icons.svg#repeat" /></svg>{t("timer.again")}
+        </button>
+        <button class="btn btn-plain gap-2" disabled={busy} onclick={() => void finishFocus()}>
+          <svg class="size-5"><use href="/icons.svg#circle-check" /></svg>{t("timer.finishSession")}
+        </button>
+      </div>
+    {:else}
+    <!-- Three round buttons while it runs: sound, the main action, and a stop menu. -->
     <div class="flex items-center justify-center gap-4">
       <button
         class="btn btn-gray size-14 !px-0"
@@ -654,23 +640,14 @@
         <svg class="size-6"><use href="/icons.svg#{soundOn ? 'volume-2' : 'volume-x'}" /></svg>
       </button>
 
-      {#if view.phase === "focus" && view.overflow}
-        <button class="btn btn-gray size-14 !px-0" aria-label={t("timer.again")} title={t("timer.again")} disabled={busy} onclick={() => finishFocus("again")}>
-          <svg class="size-6"><use href="/icons.svg#repeat" /></svg>
-        </button>
-        <button class="btn btn-filled size-16 !px-0" aria-label={t("timer.takeBreak")} title={t("timer.takeBreak")} disabled={busy} onclick={() => finishFocus("break")}>
-          <svg class="size-7"><use href="/icons.svg#coffee" /></svg>
-        </button>
-      {:else}
-        <button
-          class="btn btn-filled size-16 !px-0"
-          aria-label={view.paused ? t("timer.resume") : t("timer.pause")}
-          disabled={busy || !view.can.toggle_pause}
-          onclick={() => run({ name: "toggle_pause" })}
-        >
-          <svg class="size-7 fill-current"><use href="/icons.svg#{view.paused ? 'play' : 'pause'}" /></svg>
-        </button>
-      {/if}
+      <button
+        class="btn btn-filled size-16 !px-0"
+        aria-label={view.paused ? t("timer.resume") : t("timer.pause")}
+        disabled={busy || !view.can.toggle_pause}
+        onclick={() => run({ name: "toggle_pause" })}
+      >
+        <svg class="size-7 fill-current"><use href="/icons.svg#{view.paused ? 'play' : 'pause'}" /></svg>
+      </button>
 
       {#if view.phase === "focus"}
         <button class="btn btn-gray size-14 !px-0" aria-label={t("timer.stop")} title={t("timer.stop")} data-menu="stop-menu" disabled={busy}>
@@ -699,6 +676,7 @@
         </button>
       {/if}
     </div>
+    {/if}
 
     {#if view.phase === "break" && view.can.init_focus}
       <button class="btn btn-filled" disabled={busy} onclick={() => leaveBreak("init_focus")}>{t("timer.startFocus")}</button>

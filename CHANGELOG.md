@@ -5,6 +5,10 @@
 - **Slimmer side panel and runic dial:** the panel beside the timer now shows just today (total, medallion, sessions);
   the week strip and the day timeline are in History, which also draws calendar-file events. The dial and the running
   ring share the medallion's stone-and-brass look. Mood after a session is picked from three faces.
+- **Breaks follow focus:** the manual "set up a break" button is gone from the idle screen; a break is offered when a
+  session ends. When the time is up, the choices are labelled (Take a break, Another session, End session). "Paused"
+  no longer pushes the clock up, task checkboxes use the kit's checkbox, and every rune glyph is centred on its tablet
+  (the corner dots are gone).
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.

@@ -31,12 +31,10 @@
       <stop offset="1" style="stop-color: var(--ctp-surface0)" />
     </linearGradient>
   </defs>
-  <!-- the tablet: a soft shadow, a bevelled stone face, a stud in each corner -->
+  <!-- the tablet: a soft shadow, and a bevelled stone face -->
   <rect x="1.4" y="2.8" width="29.6" height="37.6" rx="5.5" fill="black" opacity="0.3" />
   <rect x="1.2" y="1.2" width="29.6" height="37.6" rx="5.5" fill="url(#{uid}-stone)" style={gold ? "stroke: var(--ctp-yellow)" : "stroke: var(--ctp-overlay0)"} stroke-width={gold ? 1.9 : 1.4} />
   <rect x="3.2" y="3.2" width="25.6" height="33.6" rx="3.8" fill="none" stroke="white" stroke-opacity="0.12" stroke-width="0.9" />
-  <circle cx="5.6" cy="5.6" r="1.35" class="fill-overlay1" /><circle cx="26.4" cy="5.6" r="1.35" class="fill-overlay1" />
-  <circle cx="5.6" cy="34.4" r="1.35" class="fill-overlay1" /><circle cx="26.4" cy="34.4" r="1.35" class="fill-overlay1" />
   <!-- the carving, cut dark into the stone -->
   <path d={path} transform="translate(0.8 1)" fill="none" stroke="black" stroke-opacity="0.4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
   <path d={path} fill="none" class="stroke-overlay0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />

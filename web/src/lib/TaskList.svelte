@@ -43,8 +43,8 @@
     <ul class="grid gap-1">
       {#each groups.open as task (task.id)}
         <li class="flex items-center gap-2">
-          <label class="check flex size-11 shrink-0 items-center justify-center">
-            <input type="checkbox" checked={false} aria-label={t("tasks.markDone", { title: task.title })} onchange={() => setTaskDone(task.id, true)} />
+          <label class="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+            <input class="check" type="checkbox" checked={false} aria-label={t("tasks.markDone", { title: task.title })} onchange={() => setTaskDone(task.id, true)} />
           </label>
           {#if editing === task.id}
             <!-- svelte-ignore a11y_autofocus -->
@@ -86,8 +86,8 @@
       <ul class="grid gap-1">
         {#each groups.done as task (task.id)}
           <li class="flex items-center gap-2 text-subtext1">
-            <label class="check flex size-11 shrink-0 items-center justify-center">
-              <input type="checkbox" checked={true} aria-label={t("tasks.markOpen", { title: task.title })} onchange={() => setTaskDone(task.id, false)} />
+            <label class="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+              <input class="check" type="checkbox" checked={true} aria-label={t("tasks.markOpen", { title: task.title })} onchange={() => setTaskDone(task.id, false)} />
             </label>
             <span class="min-w-0 flex-1 truncate line-through">{task.title}</span>
             <button class="btn btn-plain size-11 !px-0" aria-label={t("tasks.remove", { title: task.title })} onclick={() => removeTask(task.id)}>
