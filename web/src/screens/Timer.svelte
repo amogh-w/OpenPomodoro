@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import CategoryBar from "../lib/CategoryBar.svelte";
   import CategoryChip from "../lib/CategoryChip.svelte";
   import ConfirmDialog from "../lib/ConfirmDialog.svelte";
   import CycleDots from "../lib/CycleDots.svelte";
@@ -371,7 +370,7 @@
       <p class="t-foot -mt-2 text-center text-subtext1 lg:hidden">{t(cycleMessage.key as MessageKey, cycleMessage.params)}</p>
     {/if}
 
-    <!-- One card for what the session is about: the words, the category, and the task it belongs to. -->
+    <!-- One card for what the session is about: the words, and below them the tasks with the category selector. -->
     <div class="card grid grid-cols-[minmax(0,1fr)] gap-3 p-3">
       <input
         class="field"
@@ -386,17 +385,19 @@
       <datalist id="recent-intentions">
         {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
       </datalist>
-      <CategoryBar
-        value={chosenCategory ?? ""}
-        locked={parsed.categoryId !== null}
-        onpick={(id) => {
-          categoryId = id;
-          if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
-        }}
-      />
-      {#if !prefs.compact}
-        <div class="border-t border-surface0 pt-3"><TaskList embedded selected={chosenTask?.id ?? null} category={chosenCategory} onpick={pickTask} /></div>
-      {/if}
+      <div class="border-t border-surface0 pt-3">
+        <TaskList
+          embedded
+          selected={chosenTask?.id ?? null}
+          category={chosenCategory}
+          categoryLocked={parsed.categoryId !== null}
+          onpickcategory={(id) => {
+            categoryId = id;
+            if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
+          }}
+          onpick={pickTask}
+        />
+      </div>
     </div>
 
     {#if fromText || parsed.categoryId}

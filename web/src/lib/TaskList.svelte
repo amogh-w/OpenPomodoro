@@ -1,6 +1,8 @@
 <script lang="ts">
   import { addTask, app, removeTask, setTaskDone } from "./appState.svelte";
   import CategoryChip from "./CategoryChip.svelte";
+  import CategoryCreate from "./CategoryCreate.svelte";
+  import CategorySelect from "./CategorySelect.svelte";
   import { formatSpan } from "./format";
   import { t } from "./i18n";
   import { recent } from "./recentStore.svelte";
@@ -11,15 +13,20 @@
   let {
     selected = null,
     category = null,
+    onpickcategory,
+    categoryLocked = false,
     onpick,
     embedded = false,
   }: {
     selected?: string | null;
-    /** The category chosen above: a task added now is filed under it. */
+    /** The category for the next session and for a task added now. */
     category?: string | null;
+    onpickcategory: (id: string) => void;
+    categoryLocked?: boolean;
     onpick: (task: Task) => void;
     embedded?: boolean;
   } = $props();
+  let makingCategory = $state(false);
 
   let title = $state("");
   const tasks = $derived(orderTasks(app.tasks));
@@ -34,7 +41,19 @@
 </script>
 
 <section class={embedded ? "grid gap-2" : "card grid gap-3 p-4"} aria-labelledby="tasks-title">
-  {#if embedded}<h2 id="tasks-title" class="t-foot font-semibold uppercase tracking-wide text-subtext1">{t("tasks.title")}</h2>{:else}<h2 id="tasks-title" class="t-title3">{t("tasks.title")}</h2>{/if}
+  <div class="flex items-center justify-between gap-2">
+    {#if embedded}<h2 id="tasks-title" class="t-foot font-semibold uppercase tracking-wide text-subtext1">{t("tasks.title")}</h2>{:else}<h2 id="tasks-title" class="t-title3">{t("tasks.title")}</h2>{/if}
+    <CategorySelect value={category ?? ""} onpick={onpickcategory} onnew={() => (makingCategory = true)} locked={categoryLocked} />
+  </div>
+  {#if makingCategory}
+    <CategoryCreate
+      onadded={(id) => {
+        makingCategory = false;
+        onpickcategory(id);
+      }}
+      oncancel={() => (makingCategory = false)}
+    />
+  {/if}
 
   <!-- Not a <form>: this can sit inside the timer form, whose Enter key must not start a session. -->
   <div class="flex gap-2">
