@@ -14,12 +14,14 @@
     locked?: boolean;
     /** A task row: small, with a dash when it has no category. */
     row?: boolean;
+    /** Sits beside a text field: field height, and only the icon on a narrow screen. */
+    beside?: boolean;
     /** Offer a new category, the usual set and the editor too; off for the small per-task selectors. */
     extras?: boolean;
     /** Opens the quick form for a new category (the parent shows it). Needed with `extras`. */
     onnew?: () => void;
   }
-  let { value, onpick, onnew, locked = false, extras = true, row = false }: Props = $props();
+  let { value, onpick, onnew, locked = false, extras = true, row = false, beside = false }: Props = $props();
 
   const uid = `catmenu-${Math.random().toString(36).slice(2, 9)}`;
   const ordered = $derived(orderByRecent(app.categories, recent.sessions));
@@ -49,8 +51,8 @@
     </span>
   {:else}
     <span class="inline-flex items-center gap-1">
-      <CategoryChip category={current} class="min-h-9 !py-1" />
-      <svg class="size-4 text-subtext1" aria-hidden="true"><use href="/icons.svg#chevron-down" /></svg>
+      <CategoryChip category={current} iconOnlyNarrow={beside} class={beside ? "min-h-11 !px-3" : "min-h-9 !py-1"} />
+      <svg class="size-4 text-subtext1 max-sm:hidden" aria-hidden="true"><use href="/icons.svg#chevron-down" /></svg>
     </span>
   {/if}
 </button>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseIntention } from "./intention";
+import { atFragment, categoryMatches, completeAt, parseIntention, stripCategory, stripDuration } from "./intention";
 import type { Category } from "./types";
 
 const cats: Category[] = [
@@ -57,5 +57,36 @@ describe("parseIntention", () => {
 
   it("copes with empty input", () => {
     expect(parseIntention("", cats)).toEqual({ text: "", durationMs: null, categoryId: null });
+  });
+});
+
+describe("editing the shortcuts away", () => {
+  it("strips a length but keeps the words", () => {
+    expect(stripDuration("write 30m report")).toBe("write report");
+    expect(stripDuration("plan 1h30m @reading")).toBe("plan @reading");
+    expect(stripDuration("calm 5x")).toBe("calm 5x");
+  });
+
+  it("strips a known @category but keeps an unknown one", () => {
+    expect(stripCategory("essay @deepwork 30m", cats)).toBe("essay 30m");
+    expect(stripCategory("email @bob", cats)).toBe("email @bob");
+  });
+});
+
+describe("completing an @word", () => {
+  it("finds the word being typed at the end", () => {
+    expect(atFragment("essay @de")).toBe("de");
+    expect(atFragment("essay @")).toBe("");
+    expect(atFragment("@x done")).toBeNull();
+    expect(atFragment("essay")).toBeNull();
+    expect(atFragment("mail me@home")).toBeNull();
+  });
+
+  it("lists categories by prefix and finishes the word", () => {
+    expect(categoryMatches("re", cats).map((c) => c.id)).toEqual(["c2", "c3"]);
+    expect(categoryMatches("", cats)).toHaveLength(3);
+    expect(categoryMatches("zzz", cats)).toEqual([]);
+    expect(completeAt("essay @de", "Deep work")).toBe("essay @Deepwork ");
+    expect(parseIntention(completeAt("essay @de", "Deep work"), cats).categoryId).toBe("c1");
   });
 });

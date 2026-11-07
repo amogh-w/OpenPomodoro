@@ -50,3 +50,36 @@ export function parseIntention(input: string, categories: Category[]): ParsedInt
   }
   return { text: kept.join(" "), durationMs, categoryId };
 }
+
+/** The text without any length shortcut (`30m`, `1h30m`), so the dial can take over. */
+export function stripDuration(input: string): string {
+  return input
+    .split(/\s+/)
+    .filter((w) => w !== "" && durationOf(w) === null)
+    .join(" ");
+}
+
+/** The text without any `@name` that picked a category, so the selector can take over. Unknown @words stay. */
+export function stripCategory(input: string, categories: Category[]): string {
+  return input
+    .split(/\s+/)
+    .filter((w) => w !== "" && !(w.startsWith("@") && w.length > 1 && matchCategory(w.slice(1), categories)))
+    .join(" ");
+}
+
+/** What follows the `@` in the word being typed at the end of the text, or null if that word is not an `@word`. */
+export function atFragment(input: string): string | null {
+  const last = /(?:^|\s)@(\S*)$/.exec(input);
+  return last ? (last[1] ?? "") : null;
+}
+
+/** Categories whose name starts with what has been typed after the `@` (all of them when nothing is typed yet). */
+export function categoryMatches(fragment: string, categories: Category[]): Category[] {
+  const wanted = normal(fragment);
+  return categories.filter((c) => normal(c.name).startsWith(wanted));
+}
+
+/** Finish the `@word` being typed with a category's name (spaces left out, as the matcher expects). */
+export function completeAt(input: string, name: string): string {
+  return input.replace(/@\S*$/, `@${name.replace(/\s+/g, "")} `);
+}

@@ -19,7 +19,7 @@
   import { attachDraft, clearDraft, draft } from "../lib/draft.svelte";
   import { formatElapsed, formatRemaining, formatSpan } from "../lib/format";
   import { t, type MessageKey } from "../lib/i18n";
-  import { parseIntention } from "../lib/intention";
+  import { atFragment, categoryMatches, completeAt, parseIntention, stripCategory, stripDuration } from "../lib/intention";
   import { recentIntentions } from "../lib/recent";
   import { actionFor } from "../lib/shortcuts";
   import { recent, refreshRecent } from "../lib/recentStore.svelte";
@@ -79,9 +79,17 @@
   }
   const parsed = $derived(parseIntention(intention, app.categories));
   const fromText = $derived(parsed.durationMs !== null);
+  // Typing `@` offers the categories that fit what is typed so far.
+  const atWord = $derived(atFragment(intention));
+  const atMatches = $derived(atWord === null ? [] : categoryMatches(atWord, app.categories));
+  // The placeholder shows a real example with one of the person's own categories.
+  const placeholder = $derived(
+    app.categories[0]
+      ? t("timer.intention.placeholder", { name: app.categories[0].name.replace(/\s+/g, "").toLowerCase() })
+      : t("timer.intention.placeholder.plain"),
+  );
   const length = $derived(Math.round((parsed.durationMs ?? focusSec * 1000) / 60_000));
   const chosenCategory = $derived(parsed.categoryId ?? (categoryId || null));
-  const categoryName = (id: string | null): string | undefined => app.categories.find((c) => c.id === id)?.name;
 
   // Until the user turns the dial, it shows their usual length: the chosen category's own if it has one, else the
   // general setting (and 5 seconds when the dial is set to count seconds, for trying the flow).
@@ -375,30 +383,42 @@
 
     <!-- One card for what the session is about: the words, and below them the tasks with the category selector. -->
     <div class="card grid grid-cols-[minmax(0,1fr)] gap-3 p-3">
-      <input
-        class="field"
-        bind:this={intentionField}
-        bind:value={intention}
-        placeholder={t("timer.intention.placeholder")}
-        aria-label={t("timer.intention.label")}
-        maxlength="200"
-        autocomplete="off"
-        list="recent-intentions"
-      />
-      <datalist id="recent-intentions">
-        {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
-      </datalist>
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- The words on the left, the category on the right. A typed @name or length and the controls agree: the last one touched wins. -->
+      <div class="flex items-center gap-2">
+        <input
+          class="field min-w-0 flex-1"
+          bind:this={intentionField}
+          bind:value={intention}
+          placeholder={placeholder}
+          aria-label={t("timer.intention.label")}
+          maxlength="200"
+          autocomplete="off"
+          list="recent-intentions"
+        />
+        <datalist id="recent-intentions">
+          {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
+        </datalist>
         <CategorySelect
+          beside
           value={chosenCategory ?? ""}
-          locked={parsed.categoryId !== null}
           onnew={() => (makingCategory = true)}
           onpick={(id) => {
+            intention = stripCategory(intention, app.categories);
             categoryId = id;
             if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
           }}
         />
       </div>
+      {#if atWord !== null && atMatches.length > 0}
+        <!-- Typing @ offers the categories; tap one to finish the word. -->
+        <div class="flex flex-wrap gap-2" role="group" aria-label={t("timer.category")}>
+          {#each atMatches as category (category.id)}
+            <button type="button" class="min-h-9 rounded-[var(--r-ctl)]" onclick={() => { intention = completeAt(intention, category.name); intentionField?.focus(); }}>
+              <CategoryChip {category} small class="min-h-9 px-3" />
+            </button>
+          {/each}
+        </div>
+      {/if}
       {#if makingCategory}
         <CategoryCreate
           onadded={(id) => {
@@ -413,15 +433,6 @@
       </div>
     </div>
 
-    {#if fromText || parsed.categoryId}
-      <div class="flex flex-wrap justify-center gap-2" aria-live="polite">
-        {#if fromText}<span class="chip" aria-pressed="true">{t("timer.hint.length", { minutes: length })}</span>{/if}
-        {#if parsed.categoryId}
-          <span class="chip" aria-pressed="true">{t("timer.hint.category", { name: categoryName(parsed.categoryId) ?? "" })}</span>
-        {/if}
-      </div>
-    {/if}
-
     <div class="grid gap-3">
       <Dial
         class="lg:size-[min(21rem,38vh)]"
@@ -430,15 +441,15 @@
         min={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
         max={secondsDial ? 600 : 180}
         unit={secondsDial ? "sec" : "min"}
-        disabled={fromText}
         onchange={(next) => {
+          // Turning the dial takes over from a length typed in the field.
+          if (fromText) intention = stripDuration(intention);
           focusSec = next * unitSec;
           touchedLength = true;
         }}
       />
       <div class="t-title1 text-center tabular-nums" aria-hidden="true">{formatRemaining(plannedMs)}</div>
       <div class="t-foot mx-auto rounded-full bg-surface0 px-3 py-1 tabular-nums text-subtext1" aria-label={t("timer.range")}>{range}</div>
-      {#if fromText}<p class="t-foot text-center text-subtext1">{t("timer.dial.fromText")}</p>{/if}
     </div>
 
     {#if problem}<div class="alert tone-danger anim m-shake" role="alert">{problem}</div>{/if}

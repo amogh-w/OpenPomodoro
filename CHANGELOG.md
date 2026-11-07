@@ -33,6 +33,10 @@
   category after it is made.
   Layout settled: the field, then its category selector, then a plain checklist where each row shows its tag on the
   right (tap it to change), then the add-a-task line at the bottom.
+- **Field shortcuts that work:** the category selector now sits to the right of the field (icon only on a narrow
+  screen). Typing `@` offers your categories to tap, the placeholder shows an example with one of your own, and typed
+  shortcuts and the controls agree: turning the dial removes a typed length, and choosing a category removes a typed
+  `@name`. The dial is no longer locked while a length is typed.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.
