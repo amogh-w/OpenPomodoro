@@ -59,16 +59,21 @@
   let finishTask = $state(false);
   const sessionTask = $derived(app.tasks.find((x) => x.id === app.timer?.task && !x.done) ?? null);
 
+  // Picking a task takes on its category (or none), and letting it go puts back what was chosen before, so the
+  // category never drifts from one task to the next.
+  let categoryBeforeTask: string | null = null;
   function pickTask(task: Task): void {
     if (taskId === task.id) {
-      // Tapping the chosen task again lets it go.
       taskId = null;
       intention = "";
+      categoryId = categoryBeforeTask ?? "";
+      categoryBeforeTask = null;
       return;
     }
+    if (taskId === null) categoryBeforeTask = categoryId;
     taskId = task.id;
     intention = task.title;
-    if (task.category) categoryId = task.category;
+    categoryId = task.category ?? "";
   }
   const parsed = $derived(parseIntention(intention, app.categories));
   const fromText = $derived(parsed.durationMs !== null);
@@ -201,6 +206,7 @@
     if (started) {
       intention = "";
       taskId = null;
+      categoryBeforeTask = null;
     }
   }
 
@@ -389,7 +395,7 @@
         }}
       />
       {#if !prefs.compact}
-        <div class="border-t border-surface0 pt-3"><TaskList embedded selected={chosenTask?.id ?? null} onpick={pickTask} /></div>
+        <div class="border-t border-surface0 pt-3"><TaskList embedded selected={chosenTask?.id ?? null} category={chosenCategory} onpick={pickTask} /></div>
       {/if}
     </div>
 

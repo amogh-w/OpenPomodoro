@@ -1,5 +1,6 @@
 <script lang="ts">
   import { addTask, app, removeTask, setTaskDone } from "./appState.svelte";
+  import CategoryChip from "./CategoryChip.svelte";
   import { formatSpan } from "./format";
   import { t } from "./i18n";
   import { recent } from "./recentStore.svelte";
@@ -7,7 +8,18 @@
   import type { Task } from "./types";
 
   /** `embedded`: no card of its own (it sits inside another card, which is also inside the timer form). */
-  let { selected = null, onpick, embedded = false }: { selected?: string | null; onpick: (task: Task) => void; embedded?: boolean } = $props();
+  let {
+    selected = null,
+    category = null,
+    onpick,
+    embedded = false,
+  }: {
+    selected?: string | null;
+    /** The category chosen above: a task added now is filed under it. */
+    category?: string | null;
+    onpick: (task: Task) => void;
+    embedded?: boolean;
+  } = $props();
 
   let title = $state("");
   const tasks = $derived(orderTasks(app.tasks));
@@ -17,7 +29,7 @@
     const text = title.trim();
     if (text === "") return;
     title = "";
-    await addTask(text);
+    await addTask(text, category);
   }
 </script>
 
@@ -66,6 +78,9 @@
             onclick={() => onpick(task)}
           >
             <span class="block truncate {task.done ? 'line-through' : ''}">{task.title}</span>
+            {#if task.category && app.categories.some((c) => c.id === task.category)}
+              <CategoryChip category={app.categories.find((c) => c.id === task.category)} small class="mt-0.5" />
+            {/if}
             {#if (spent.get(task.id) ?? 0) > 0}<span class="t-foot block text-subtext1">{t("tasks.spent", { time: formatSpan(spent.get(task.id) ?? 0) })}</span>{/if}
           </button>
           <button type="button" class="btn btn-plain size-11 !px-0" aria-label={t("tasks.remove", { title: task.title })} onclick={() => removeTask(task.id)}>
