@@ -1,5 +1,5 @@
 <script lang="ts">
-  import GardenCard from "../lib/GardenCard.svelte";
+  import HallCard from "../lib/HallCard.svelte";
   import AccessSettings from "../lib/AccessSettings.svelte";
   import AccountSection from "../lib/AccountSection.svelte";
   import TwoStepSection from "../lib/TwoStepSection.svelte";
@@ -18,7 +18,7 @@
   {/if}
 </section>
 
-<GardenCard />
+<HallCard />
 
 <div class="mt-4 lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid lg:[&>*]:mt-0 lg:[&>*]:mb-6">
   <AccountSection />

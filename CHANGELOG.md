@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- **Garden:** a seedling grows during each focus session and a tree for each finished cycle; the Profile screen shows
-  every plant and tree. An early end grows a smaller plant, abandoning costs nothing, and it can be switched off in
-  Settings.
+- **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
+  one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
+  got, abandoning costs nothing, and it can be switched off in Settings.
 
 ## 0.2.0
 

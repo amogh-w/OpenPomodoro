@@ -2,7 +2,7 @@
   import { app, saveSetting, type SettingName } from "./appState.svelte";
   import { t } from "./i18n";
   import { stepMinutes } from "./stepper";
-  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setGarden, setKeepAwake, setReduceMotion } from "../platform/prefs.svelte";
+  import { DIAL_STEPS, prefs, setAllowLinks, setAskReflection, setDialStep, setFocusOnCategory, setKeepAwake, setRunes, setReduceMotion } from "../platform/prefs.svelte";
   import { wakeLockSupported } from "../platform/wakeLock";
 
   const MIN = 60_000;
@@ -103,11 +103,11 @@
     </label>
 
     <label class="flex min-h-11 items-center justify-between gap-3">
-      <span class="block">{t("settings.garden")}
-        <span class="t-foot block text-subtext1">{t("settings.garden.hint")}</span>
+      <span class="block">{t("settings.runes")}
+        <span class="t-foot block text-subtext1">{t("settings.runes.hint")}</span>
       </span>
       <span class="switch">
-        <input type="checkbox" checked={prefs.garden} onchange={(e) => setGarden(e.currentTarget.checked)} />
+        <input type="checkbox" checked={prefs.runes} onchange={(e) => setRunes(e.currentTarget.checked)} />
       </span>
     </label>
 
