@@ -15,6 +15,8 @@ const es: Record<keyof typeof en, string> = {
   "profile.title": "Perfil",
   "profile.member": "Miembro",
   "profile.since": "Se unió el {date}",
+  "runes.stripTitle": "Medallón",
+  "runes.carvedToday": "Runas grabadas",
   "runes.title": "Sala de runas",
   "runes.empty": "Aún no hay nada grabado. Termina una sesión de concentración para grabar tu primera runa.",
   "runes.counts": "{runes} runas y {medallions} medallones en los últimos meses",

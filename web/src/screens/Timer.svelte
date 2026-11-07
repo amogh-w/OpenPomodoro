@@ -370,7 +370,7 @@
   {/if}
   <form class="mx-auto grid max-w-xl gap-4" onsubmit={start}>
     <div class="relative flex min-h-11 items-center justify-center">
-      {#if app.settings && !prefs.compact}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
+      {#if app.settings && !prefs.compact && !prefs.runes}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
       <button
         type="button"
         class="btn btn-gray absolute right-0 top-0 size-11 !px-0"
@@ -548,7 +548,7 @@
   </div>
 {:else}
   <div class="grid justify-items-center gap-5 pt-4 text-center">
-    {#if app.settings}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} running={view.phase === "focus"} />{/if}
+    {#if app.settings && !prefs.runes}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} running={view.phase === "focus"} />{/if}
 
     {#if prefs.compact}
       <!-- the compact view keeps only the clock and the buttons -->

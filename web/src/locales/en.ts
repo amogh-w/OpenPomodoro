@@ -13,6 +13,8 @@ const en = {
   "profile.title": "Profile",
   "profile.member": "Member",
   "profile.since": "Joined {date}",
+  "runes.stripTitle": "Medallion",
+  "runes.carvedToday": "Runes carved",
   "runes.title": "Hall of runes",
   "runes.empty": "Nothing carved yet. Finish a focus session to carve your first rune.",
   "runes.counts": "{runes} runes and {medallions} medallions in the last months",
