@@ -3,12 +3,16 @@
   import { completion } from "./completion";
   import AddSession from "./AddSession.svelte";
   import DayColumn from "./DayColumn.svelte";
+  import { cycleDone, glowOf, hall } from "./hallStore.svelte";
   import HallStrip from "./HallStrip.svelte";
   import { dayStartMs, groupByDay, localDayKey, moodTally } from "./days";
   import { formatSpan } from "./format";
   import { t, tn } from "./i18n";
+  import { prefs } from "../platform/prefs.svelte";
   import { calendar } from "./calendarStore.svelte";
   import { planPreview } from "./planPreview.svelte";
+  import Rune from "./Rune.svelte";
+  import { lastRunes, runeOf } from "./runes";
   import { recent, refreshRecent } from "./recentStore.svelte";
   import { addDays, weekStart } from "./stats";
   import type { SessionRecord } from "./types";
@@ -24,6 +28,9 @@
   const tally = $derived(moodTally(group?.sessions ?? []));
   const sessions = $derived((group?.sessions ?? []).filter((s) => s.kind === "focus").toReversed());
   const onToday = $derived(day === todayKey);
+  // The runes of the medallion being made, so their rows can be edged in gold.
+  const hallNow = $derived(hall());
+  const inMedallion = $derived(new Set(lastRunes(hallNow.runes, cycleDone(hallNow)).map((r) => r.id)));
   const hoursOf = (key: string): string => ((groups.find((g) => g.day === key)?.focusMs ?? 0) / 3_600_000).toFixed(2);
   let add: AddSession | undefined = $state();
 
@@ -74,7 +81,7 @@
     <span class="ml-2">{t("today.focusTotal", { time: formatSpan(group?.focusMs ?? 0) })}</span>
   </p>
 
-  <HallStrip {day} />
+  <HallStrip />
 
   <DayColumn
     sessions={group?.sessions ?? []}
@@ -89,7 +96,12 @@
     <ul class="grid gap-1 border-t border-surface0 pt-3">
       {#each sessions as s (s.id)}
         <li class="flex items-center gap-3 py-1.5">
-          <span class="size-3 shrink-0 rounded-full" style="background: {color(s.category)}" aria-hidden="true"></span>
+          {#if prefs.runes}
+            {@const rune = runeOf(s)}
+            <Rune glyph={rune.glyph} lit={rune.lit} glow={glowOf(s.category)} gold={inMedallion.has(s.id)} class="h-11 w-9 shrink-0" />
+          {:else}
+            <span class="size-3 shrink-0 rounded-full" style="background: {color(s.category)}" aria-hidden="true"></span>
+          {/if}
           <span class="min-w-0 flex-1">
             <span class="block truncate">{title(s)}</span>
             <span class="t-foot block text-subtext1">

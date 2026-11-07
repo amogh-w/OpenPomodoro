@@ -8,12 +8,14 @@
     lit: number;
     /** A theme colour for the glow, such as `var(--ctp-peach)`; the accent when not given. */
     glow?: string;
+    /** Edge the tablet in gold: it is one of the runes in the medallion being made. */
+    gold?: boolean;
     class?: string;
     style?: string;
     /** Spoken description; leave out for a purely decorative rune. */
     label?: string;
   }
-  let { glyph, lit, glow = "var(--accent)", class: extra = "", style, label }: Props = $props();
+  let { glyph, lit, glow = "var(--accent)", gold = false, class: extra = "", style, label }: Props = $props();
 
   // Clips need an id that is unique on the page, however many runes are drawn.
   const uid = `rune-${Math.random().toString(36).slice(2, 9)}`;
@@ -31,7 +33,7 @@
   </defs>
   <!-- the tablet: a soft shadow, a bevelled stone face, a stud in each corner -->
   <rect x="1.4" y="2.8" width="29.6" height="37.6" rx="5.5" fill="black" opacity="0.3" />
-  <rect x="1.2" y="1.2" width="29.6" height="37.6" rx="5.5" fill="url(#{uid}-stone)" class="stroke-overlay0" stroke-width="1.4" />
+  <rect x="1.2" y="1.2" width="29.6" height="37.6" rx="5.5" fill="url(#{uid}-stone)" style={gold ? "stroke: var(--ctp-yellow)" : "stroke: var(--ctp-overlay0)"} stroke-width={gold ? 1.9 : 1.4} />
   <rect x="3.2" y="3.2" width="25.6" height="33.6" rx="3.8" fill="none" stroke="white" stroke-opacity="0.12" stroke-width="0.9" />
   <circle cx="5.6" cy="5.6" r="1.35" class="fill-overlay1" /><circle cx="26.4" cy="5.6" r="1.35" class="fill-overlay1" />
   <circle cx="5.6" cy="34.4" r="1.35" class="fill-overlay1" /><circle cx="26.4" cy="34.4" r="1.35" class="fill-overlay1" />
