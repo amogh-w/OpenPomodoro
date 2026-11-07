@@ -47,7 +47,7 @@
 <button type="button" class="rounded-[var(--r-ctl)] disabled:opacity-60" data-menu={uid} disabled={locked} aria-haspopup="menu" aria-label={t("timer.category")} title={current?.name ?? t("timer.category.none")}>
   {#if row}
     <span class="grid min-h-11 min-w-11 items-center justify-items-end">
-      {#if current}<CategoryChip category={current} small class="max-w-[7rem]" />{:else}<span class="px-2 text-subtext1">—</span>{/if}
+      {#if current}<CategoryChip category={current} small iconOnlyInNarrowCard class="max-w-[7rem]" />{:else}<span class="px-2 text-subtext1">—</span>{/if}
     </span>
   {:else}
     <span class="inline-flex items-center gap-1">

@@ -148,7 +148,7 @@
 <div class="mt-3 grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
   <Insights data={insights} categories={app.categories} {sessions} />
 
-  <div class="grid content-start gap-3">
+  <div class="grid content-start gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
     <div class="flex flex-wrap items-center gap-2">
       <button class="chip" aria-pressed={notesOnly} onclick={() => (notesOnly = !notesOnly)}>{t("history.notesOnly")}</button>
     </div>

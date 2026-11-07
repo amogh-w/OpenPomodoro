@@ -49,7 +49,7 @@
   <HallStrip />
 
   {#if sessions.length > 0}
-    <ul class="anim m-stagger grid gap-1 border-t border-surface0 pt-3">
+    <ul class="anim m-stagger grid max-h-[min(22rem,34vh)] grid-cols-[minmax(0,1fr)] gap-1 overflow-y-auto overflow-x-hidden overscroll-contain border-t border-surface0 pt-3 pr-1">
       {#each sessions as s, i (s.id)}
         <li class="flex items-center gap-3 py-1.5" style="--i:{Math.min(i, 5)}">
           {#if prefs.runes}

@@ -33,11 +33,12 @@
   }
 </script>
 
-<section class={embedded ? "grid gap-2" : "card grid gap-3 p-4"} aria-label={t("tasks.title")}>
+<section class={embedded ? "grid gap-2" : "card @container grid grid-cols-[minmax(0,1fr)] gap-3 p-4"} aria-labelledby="tasks-title">
+  {#if !embedded}<h2 id="tasks-title" class="t-title3">{t("tasks.title")}</h2>{/if}
   {#if tasks.length === 0}
     <p class="t-foot text-subtext1">{t("tasks.empty")}</p>
   {:else}
-    <ul class="anim m-stagger grid gap-1">
+    <ul class="anim m-stagger grid max-h-[min(22rem,38vh)] grid-cols-[minmax(0,1fr)] gap-1 overflow-y-auto overflow-x-hidden overscroll-contain pr-1">
       {#each tasks as task, i (task.id)}
         <li class="flex items-center gap-2" style="--i:{Math.min(i, 5)}">
           <label class="flex size-11 shrink-0 cursor-pointer items-center justify-center">

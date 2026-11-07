@@ -84,14 +84,14 @@
   {#if tint}<div class="phase-layer {tint}" aria-hidden="true"></div>{/if}
 {/key}
 
-<div class="relative z-10 {session.status === 'signed_in' && !compact ? 'lg:pl-[4.5rem]' : ''}">
+<div class="relative z-10 {session.status === 'signed_in' && !compact ? 'rail-shift' : ''}">
 <div
   class="mx-auto min-h-dvh px-4 pt-[max(1rem,env(safe-area-inset-top))] {compact
     ? 'max-w-[22rem] pb-6'
-    : `max-w-[480px] md:max-w-xl lg:max-w-5xl lg:px-10 lg:pt-10 ${router.route === 'timer' ? 'pb-24 lg:pb-12' : 'pb-40 lg:pb-28'}`}"
+    : `max-w-[480px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl lg:px-10 lg:pt-10 ${router.route === 'timer' ? 'pb-24 rail-pb-timer' : 'pb-40 rail-pb-page'}`}"
 >
   {#if sw.updateReady}
-    <div class="alert tone-info mb-3" role="status">
+    <div class="alert tone-info mb-3 {router.route === 'timer' ? 'mr-12' : ''}" role="status">
       <svg class="size-5 shrink-0"><use href="/icons.svg#info" /></svg>
       <div class="flex-1">{t("sw.updateReady")}</div>
       <button class="btn btn-filled btn-sm" onclick={applyUpdate}>{t("sw.updateNow")}</button>
@@ -99,7 +99,7 @@
   {/if}
 
   {#if sw.offlineReady}
-    <div class="alert tone-success mb-3" role="status">
+    <div class="alert tone-success mb-3 {router.route === 'timer' ? 'mr-12' : ''}" role="status">
       <svg class="size-5 shrink-0"><use href="/icons.svg#circle-check" /></svg>
       <div class="flex-1">{t("sw.offlineReady")}</div>
       <button class="btn btn-gray btn-sm" onclick={() => (sw.offlineReady = false)}>{t("common.dismiss")}</button>

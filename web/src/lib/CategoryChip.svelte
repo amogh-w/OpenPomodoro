@@ -14,9 +14,11 @@
     detail?: string;
     /** Show only the icon on a narrow screen (the name appears from the `sm` width up). */
     iconOnlyNarrow?: boolean;
+    /** Same, but by the width of the nearest `@container` (a card) instead of the screen. */
+    iconOnlyInNarrowCard?: boolean;
     class?: string;
   }
-  let { category, selected = false, small = false, detail = "", iconOnlyNarrow = false, class: extra = "" }: Props = $props();
+  let { category, selected = false, small = false, detail = "", iconOnlyNarrow = false, iconOnlyInNarrowCard = false, class: extra = "" }: Props = $props();
 
   const color = $derived(`var(--ctp-${category?.color ?? "overlay1"})`);
   // Colour from the theme only. The tint keeps the text readable in Latte and Mocha; the icon carries the colour.
@@ -33,6 +35,6 @@
   style={look}
 >
   <svg class="shrink-0 {small ? 'size-3.5' : 'size-4'}" style={iconStyle} aria-hidden="true"><use href="/icons.svg#{category ? iconOf(category) : 'layers'}" /></svg>
-  <span class="truncate {iconOnlyNarrow ? 'max-sm:hidden' : ''}">{category ? category.name : t("timer.category.none")}</span>
+  <span class="truncate {iconOnlyNarrow ? 'max-sm:hidden' : ''} {iconOnlyInNarrowCard ? '@max-sm:hidden' : ''}">{category ? category.name : t("timer.category.none")}</span>
   {#if detail !== ""}<span class="tabular-nums {selected ? 'opacity-80' : 'text-subtext1'} font-normal">{detail}</span>{/if}
 </span>

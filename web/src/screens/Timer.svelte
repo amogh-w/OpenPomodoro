@@ -76,6 +76,8 @@
     taskId = task.id;
     intention = task.title;
     categoryId = task.category ?? "";
+    // On a phone the list is below the field; bring the field back into view.
+    intentionField?.scrollIntoView({ block: "nearest" });
   }
   const parsed = $derived(parseIntention(intention, app.categories));
   const fromText = $derived(parsed.durationMs !== null);
@@ -355,7 +357,7 @@
   body={t("timer.abandon.body")}
 />
 
-<div class={prefs.compact ? "" : "lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12"}>
+<div class={prefs.compact || view?.phase === "idle" ? "" : "md:grid md:grid-cols-[minmax(0,1fr)_16rem] md:items-start md:gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12"}>
 <div>
 {#if !app.ready || !view}
   <p class="mt-8 text-center text-subtext1" role="status">{t("common.loading")}</p>
@@ -371,7 +373,9 @@
       </span>
     </div>
   {/if}
-  <form class="mx-auto grid max-w-xl gap-4" onsubmit={start}>
+  <!-- One column on a phone; from a tablet up the timer is on the left and the tasks and today are on the right. -->
+  <form class="mx-auto grid max-w-xl grid-cols-[minmax(0,1fr)] gap-6 md:max-w-none md:grid-cols-2 md:items-start md:gap-x-8 md:pt-12 xl:grid-cols-[minmax(0,1fr)_24rem] xl:gap-x-12" onsubmit={start}>
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-4">
     <div class="relative flex min-h-11 items-center justify-center">
       {#if app.settings && !prefs.compact && !prefs.runes}<CycleDots rounds={app.timer?.rounds ?? 0} total={app.settings.rounds_before_long} />{/if}
     </div>
@@ -381,61 +385,55 @@
       <p class="t-foot -mt-2 text-center text-subtext1 lg:hidden">{t(cycleMessage.key as MessageKey, cycleMessage.params)}</p>
     {/if}
 
-    <!-- One card for what the session is about: the words, and below them the tasks with the category selector. -->
-    <div class="card grid grid-cols-[minmax(0,1fr)] gap-3 p-3">
-      <!-- The words on the left, the category on the right. A typed @name or length and the controls agree: the last one touched wins. -->
-      <div class="flex items-center gap-2">
-        <input
-          class="field min-w-0 flex-1"
-          bind:this={intentionField}
-          bind:value={intention}
-          placeholder={placeholder}
-          aria-label={t("timer.intention.label")}
-          maxlength="200"
-          autocomplete="off"
-          list="recent-intentions"
-        />
-        <datalist id="recent-intentions">
-          {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
-        </datalist>
-        <CategorySelect
-          beside
-          value={chosenCategory ?? ""}
-          onnew={() => (makingCategory = true)}
-          onpick={(id) => {
-            intention = stripCategory(intention, app.categories);
-            categoryId = id;
-            if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
-          }}
-        />
-      </div>
-      {#if atWord !== null && atMatches.length > 0}
-        <!-- Typing @ offers the categories; tap one to finish the word. -->
-        <div class="flex flex-wrap gap-2" role="group" aria-label={t("timer.category")}>
-          {#each atMatches as category (category.id)}
-            <button type="button" class="min-h-9 rounded-[var(--r-ctl)]" onclick={() => { intention = completeAt(intention, category.name); intentionField?.focus(); }}>
-              <CategoryChip {category} small class="min-h-9 px-3" />
-            </button>
-          {/each}
-        </div>
-      {/if}
-      {#if makingCategory}
-        <CategoryCreate
-          onadded={(id) => {
-            makingCategory = false;
-            categoryId = id;
-          }}
-          oncancel={() => (makingCategory = false)}
-        />
-      {/if}
-      <div class="border-t border-surface0 pt-3">
-        <TaskList embedded selected={chosenTask?.id ?? null} category={chosenCategory} onpick={pickTask} />
-      </div>
+    <!-- The words on the left, the category on the right. A typed @name or length and the controls agree: the last one touched wins. -->
+    <div class="flex items-center gap-2">
+      <input
+        class="field min-w-0 flex-1"
+        bind:this={intentionField}
+        bind:value={intention}
+        placeholder={placeholder}
+        aria-label={t("timer.intention.label")}
+        maxlength="200"
+        autocomplete="off"
+        list="recent-intentions"
+      />
+      <datalist id="recent-intentions">
+        {#each suggestions as suggestion (suggestion)}<option value={suggestion}></option>{/each}
+      </datalist>
+      <CategorySelect
+        beside
+        value={chosenCategory ?? ""}
+        onnew={() => (makingCategory = true)}
+        onpick={(id) => {
+          intention = stripCategory(intention, app.categories);
+          categoryId = id;
+          if (id !== "" && prefs.focusOnCategory) intentionField?.focus();
+        }}
+      />
     </div>
+    {#if atWord !== null && atMatches.length > 0}
+      <!-- Typing @ offers the categories; tap one to finish the word. -->
+      <div class="flex flex-wrap gap-2" role="group" aria-label={t("timer.category")}>
+        {#each atMatches as category (category.id)}
+          <button type="button" class="min-h-9 rounded-[var(--r-ctl)]" onclick={() => { intention = completeAt(intention, category.name); intentionField?.focus(); }}>
+            <CategoryChip {category} small class="min-h-9 px-3" />
+          </button>
+        {/each}
+      </div>
+    {/if}
+    {#if makingCategory}
+      <CategoryCreate
+        onadded={(id) => {
+          makingCategory = false;
+          categoryId = id;
+        }}
+        oncancel={() => (makingCategory = false)}
+      />
+    {/if}
 
     <div class="grid gap-3">
       <Dial
-        class="lg:size-[min(21rem,38vh)]"
+        class="md:size-[min(20rem,38vh)] lg:size-[min(21rem,38vh)] xl:size-[min(24rem,44vh)]"
         value={dialValue}
         step={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
         min={secondsDial ? prefs.dialStep : prefs.dialStep / 60}
@@ -460,6 +458,13 @@
     <p class="t-foot text-center text-subtext1">
       {t("timer.round", { n: roundNow, total: cycleLength })}
     </p>
+  
+    </div>
+
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-4 md:sticky md:top-16 md:max-h-[calc(100dvh-5rem)] md:overflow-y-auto md:overflow-x-hidden md:overscroll-contain md:pr-1">
+      <TaskList selected={chosenTask?.id ?? null} category={chosenCategory} onpick={pickTask} />
+      {#if !prefs.compact}<div class="hidden lg:block"><TodayPanel /></div>{/if}
+    </div>
   </form>
 {:else if view.phase === "breathe"}
   <div class="grid justify-items-center gap-6 pt-8 text-center">
@@ -551,7 +556,7 @@
       <button class="btn btn-plain btn-sm -mt-3" onclick={() => editDialog?.show()}>{t("timer.editSession")}</button>
     {/if}
 
-    <div class="relative size-64 [container-type:inline-size] lg:size-[min(24rem,40vh)]" role="timer" aria-label={t("timer.remaining")}>
+    <div class="relative size-[min(16rem,max(11rem,40vh))] [container-type:inline-size] md:size-[min(22rem,42vh)] lg:size-[min(24rem,48vh)] xl:size-[min(28rem,52vh)]" role="timer" aria-label={t("timer.remaining")}>
       <svg class="size-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
         <defs>
           <linearGradient id="ring-metal" x1="0" y1="0" x2="1" y2="1">
@@ -626,7 +631,7 @@
 
     {#if problem}<div class="alert tone-danger anim m-shake" role="alert">{problem}</div>{/if}
 
-    {#if view.phase === "focus"}<div class="w-full lg:hidden"><NotesPane /></div>{/if}
+    {#if view.phase === "focus"}<div class="w-full md:hidden"><NotesPane /></div>{/if}
 
     {#if view.phase === "focus" && view.overflow}
       <!-- Time is up: say plainly what each choice does. -->
@@ -703,8 +708,8 @@
   </div>
 {/if}
 </div>
-{#if !prefs.compact}
-<aside class="hidden lg:sticky lg:top-6 lg:block" aria-label={t("today.title")}>
+{#if !prefs.compact && view?.phase !== "idle"}
+<aside class="hidden md:sticky md:top-16 md:block md:max-h-[calc(100dvh-5rem)] md:overflow-y-auto md:overflow-x-hidden md:overscroll-contain lg:top-6" aria-label={t("today.title")}>
   {#if view?.phase === "focus"}<NotesColumn />{:else}<TodayPanel />{/if}
 </aside>
 {/if}

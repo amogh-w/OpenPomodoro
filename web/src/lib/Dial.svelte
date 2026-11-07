@@ -137,7 +137,7 @@
 <!-- A slider for assistive tech and keyboards; pointer drag turns it like a wheel. -->
 <svg
   bind:this={svg}
-  class="mx-auto block size-64 max-w-full touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent {disabled ? 'opacity-60' : ''} {extra}"
+  class="mx-auto block size-[min(16rem,max(11rem,40vh))] max-w-full touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent {disabled ? 'opacity-60' : ''} {extra}"
   viewBox="0 0 240 240"
   role="slider"
   tabindex="0"

@@ -47,7 +47,7 @@
 
 {#if view}
   <div
-    class="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-[480px] items-center gap-3 border-t border-surface0 bg-mantle px-4 py-2 md:max-w-xl lg:bottom-0 lg:left-[4.5rem] lg:max-w-none lg:px-10"
+    class="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-[480px] items-center gap-3 border-t border-surface0 bg-mantle px-4 py-2 md:max-w-xl rail-minibar"
     role="group"
     aria-label={t("minibar.label")}
   >

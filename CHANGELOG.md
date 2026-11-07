@@ -37,6 +37,12 @@
   screen). Typing `@` offers your categories to tap, the placeholder shows an example with one of your own, and typed
   shortcuts and the controls agree: turning the dial removes a typed length, and choosing a category removes a typed
   `@name`. The dial is no longer locked while a length is typed.
+- **Responsive layouts:** the timer screen is now one column on a phone (field, dial, Start, then tasks), two columns
+  from a tablet up (the timer on the left, tasks and today on the right) and wider on a desktop, so Start no longer
+  sits below the fold. Lists scroll inside their own panels (tasks, today, the History day list) and the side column
+  stays put. Nothing runs off the edge on a narrow folded screen, task tags shrink to an icon in a narrow card,
+  the dial and ring size to the screen's height, and a phone held sideways gets the rail instead of a bottom bar.
+  Content is wider on large screens, and the running screen shows the notes column from tablet width.
 - **Runes and medallions:** a rune lights up during each focus session, and every finished cycle seals a medallion with
   one socket per session; the Profile screen shows the hall of them. An early end lights its rune only as far as you
   got, abandoning costs nothing, and it can be switched off in Settings.
