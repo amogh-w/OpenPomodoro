@@ -30,10 +30,10 @@
     <h2 id="confirm-title" class="t-title3">{title}</h2>
     <p class="text-subtext1">{body}</p>
     <div class="grid grid-cols-2 gap-2">
-      <!-- No is the default, so a stray Enter never does the risky thing. -->
+      <!-- Yes stands out; No has the focus, so a stray Enter never does the risky thing. -->
       <!-- svelte-ignore a11y_autofocus -->
-      <button class="btn btn-filled" autofocus onclick={() => close(false)}>{t("confirm.no")}</button>
-      <button class="btn btn-gray" onclick={() => close(true)}>{t("confirm.yes")}</button>
+      <button class="btn btn-gray" autofocus onclick={() => close(false)}>{t("confirm.no")}</button>
+      <button class="btn btn-filled" onclick={() => close(true)}>{t("confirm.yes")}</button>
     </div>
   </div>
 </dialog>

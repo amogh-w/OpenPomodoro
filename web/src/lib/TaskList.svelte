@@ -44,14 +44,16 @@
               onchange={(e) => setTaskDone(task.id, e.currentTarget.checked)}
             />
           </label>
-          {#if task.done}
-            <span class="min-h-11 min-w-0 flex-1 truncate px-2 leading-[2.75rem] text-subtext1 line-through">{task.title}</span>
-          {:else}
-            <button class="min-h-11 min-w-0 flex-1 rounded-[var(--r-ctl)] px-2 text-left {selected === task.id ? 'bg-surface0 font-semibold' : ''}" aria-pressed={selected === task.id} onclick={() => onpick(task)}>
-              <span class="block truncate">{task.title}</span>
-              {#if (spent.get(task.id) ?? 0) > 0}<span class="t-foot block text-subtext1">{t("tasks.spent", { time: formatSpan(spent.get(task.id) ?? 0) })}</span>{/if}
-            </button>
-          {/if}
+          <!-- One element for open and ticked tasks, so ticking changes colour and strike-through but never the layout. -->
+          <button
+            class="min-h-11 min-w-0 flex-1 rounded-[var(--r-ctl)] px-2 text-left {task.done ? 'text-subtext1' : ''} {selected === task.id && !task.done ? 'bg-surface0 font-semibold' : ''}"
+            aria-pressed={selected === task.id && !task.done}
+            disabled={task.done === true}
+            onclick={() => onpick(task)}
+          >
+            <span class="block truncate {task.done ? 'line-through' : ''}">{task.title}</span>
+            {#if (spent.get(task.id) ?? 0) > 0}<span class="t-foot block text-subtext1">{t("tasks.spent", { time: formatSpan(spent.get(task.id) ?? 0) })}</span>{/if}
+          </button>
           <button class="btn btn-plain size-11 !px-0" aria-label={t("tasks.remove", { title: task.title })} onclick={() => removeTask(task.id)}>
             <svg class="size-5"><use href="/icons.svg#trash-2" /></svg>
           </button>
